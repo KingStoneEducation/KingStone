@@ -134,9 +134,13 @@ export class CareerSystem {
     if (now < s.start) this.core.advance(s.start - now, 'idle');
     const eff = this.core.player.workEfficiency(s.def.skill);
     this.core.state.player.stats.stress = Math.min(100, this.core.state.player.stats.stress + (s.def.stressPerHour * minutes) / 60);
-    this.core.advance(minutes, 'working');
     const j = s.job;
-    const hours = minutes / 60;
+    // mark the shift before time passes, so the end-of-shift absence check sees it
+    j.workedToday = Math.floor(s.start / MINUTES_PER_DAY);
+    const t0 = this.core.now();
+    this.core.advance(minutes, 'working');
+    const worked = Math.max(1, Math.min(minutes, this.core.now() - t0));
+    const hours = worked / 60;
     const rate = this.hourlyRate(j);
     const wage = Math.round(rate * hours);
     let tips = 0;

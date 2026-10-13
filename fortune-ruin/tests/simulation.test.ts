@@ -70,6 +70,9 @@ describe('long-running world simulation', () => {
     expect(toDate(core.now()).hour).toBe(17);
     const accrued = core.state.career.jobs[0].accrued;
     expect(accrued).toBeGreaterThan(G(1100));
+    // having worked the shift, it must not be counted as an absence
+    expect(core.state.career.jobs[0].absences).toBe(0);
+    expect(core.state.phone.messages.some((m) => m.body.includes('没来上班'))).toBe(false);
     // payday arrives (4 days after start) and money lands in the bank
     const bank = core.economy.balance('bank');
     skip(core, 4 * MINUTES_PER_DAY);
