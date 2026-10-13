@@ -1,0 +1,154 @@
+import { store, type Panel } from './store';
+import { useKey, useStore } from './hooks';
+import { MainMenu } from './MainMenu';
+import { CharacterCreate } from './CharacterCreate';
+import { Hud, Toasts } from './Hud';
+import { DialogueModal } from './modals/DialogueModal';
+import { BusModal, CollapseModal, EventModal, EventResultModal, KitchenModal, ReadModal, ShiftModal, SleepModal, TextModal, WardrobeModal, WorkModal } from './modals/LifeModals';
+import { ShopModal } from './modals/ShopModal';
+import { AtmModal, BankModal, CashierModal } from './modals/MoneyModals';
+import { CasinoMemberModal, ComputerModal } from './modals/ComputerModal';
+import { SavesModal, SettingsModal } from './modals/SystemModals';
+import { PhonePanel } from './panels/PhonePanel';
+import { FinancePanel } from './panels/FinancePanel';
+import { SocialPanel } from './panels/SocialPanel';
+import { MapPanel } from './panels/MapPanel';
+import { JournalPanel } from './panels/JournalPanel';
+import { InventoryPanel } from './panels/InventoryPanel';
+import { StatsPanel } from './panels/StatsPanel';
+import { HelpPanel, MenuPanel } from './panels/MenuPanel';
+import { TableUI } from './table/TableUI';
+
+function ModalHost(): JSX.Element | null {
+  const m = store.modal;
+  if (!m) return null;
+  switch (m.type) {
+    case 'dialogue':
+      return <DialogueModal view={m.view} />;
+    case 'shop':
+      return <ShopModal shopId={m.shopId} consume={!!m.consume} />;
+    case 'cashier':
+      return <CashierModal />;
+    case 'atm':
+      return <AtmModal where={m.where} />;
+    case 'bank':
+      return <BankModal tab={m.tab ?? 'account'} />;
+    case 'sleep':
+      return <SleepModal />;
+    case 'kitchen':
+      return <KitchenModal />;
+    case 'wardrobe':
+      return <WardrobeModal />;
+    case 'computer':
+      return <ComputerModal />;
+    case 'housing':
+      return <ComputerModal tab="housing" />;
+    case 'jobs':
+      return <ComputerModal tab="jobs" />;
+    case 'work':
+      return <WorkModal jobId={m.jobId} />;
+    case 'shift':
+      return <ShiftModal report={m.report} title={m.title} />;
+    case 'bus':
+      return <BusModal stop={m.stop} />;
+    case 'read':
+      return <ReadModal />;
+    case 'text':
+      return <TextModal title={m.title} text={m.text} tone={m.tone} />;
+    case 'event':
+      return <EventModal prompt={m.prompt} />;
+    case 'eventResult':
+      return <EventResultModal title={m.title} text={m.text} />;
+    case 'casino_member':
+      return <CasinoMemberModal />;
+    case 'collapse':
+      return <CollapseModal text={m.text} />;
+    case 'settings':
+      return <SettingsModal />;
+    case 'saves':
+      return <SavesModal mode={m.mode} />;
+  }
+}
+
+function PanelHost(): JSX.Element | null {
+  switch (store.panel) {
+    case 'phone':
+      return <PhonePanel />;
+    case 'finance':
+      return <FinancePanel />;
+    case 'social':
+      return <SocialPanel />;
+    case 'map':
+      return <MapPanel />;
+    case 'journal':
+      return <JournalPanel />;
+    case 'inventory':
+      return <InventoryPanel />;
+    case 'stats':
+      return <StatsPanel />;
+    case 'help':
+      return <HelpPanel />;
+    case 'menu':
+      return <MenuPanel />;
+    default:
+      return null;
+  }
+}
+
+const PANEL_KEYS: Record<string, Exclude<Panel, null>> = {
+  KeyP: 'phone',
+  KeyF: 'finance',
+  KeyR: 'social',
+  KeyM: 'map',
+  KeyJ: 'journal',
+  KeyI: 'inventory',
+  KeyT: 'stats',
+  KeyH: 'help',
+};
+
+function GameUI(): JSX.Element {
+  useStore();
+  useKey(
+    (e) => {
+      if (store.screen !== 'game') return;
+      if (e.code === 'Escape') {
+        if (store.modal) {
+          if (store.modal.type !== 'collapse' && store.modal.type !== 'event') store.closeModal();
+        } else if (store.panel) store.closePanel();
+        else if (!store.table) store.openPanel('menu');
+        e.preventDefault();
+        return;
+      }
+      if (store.modal || store.table || store.fade) return;
+      const p = PANEL_KEYS[e.code];
+      if (p && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        store.openPanel(p);
+        e.preventDefault();
+      }
+    },
+    [],
+  );
+  if (!store.core) return <></>;
+  return (
+    <>
+      <Hud />
+      {store.table && <TableUI />}
+      <PanelHost />
+      <ModalHost />
+      {store.fade && <div className="fade" style={{ opacity: 0 }} />}
+    </>
+  );
+}
+
+export function App(): JSX.Element {
+  useStore();
+  return (
+    <>
+      {store.screen === 'menu' && <MainMenu />}
+      {store.screen === 'create' && <CharacterCreate />}
+      {store.screen === 'game' && <GameUI />}
+      {store.screen !== 'game' && <ModalHost />}
+      <Toasts />
+    </>
+  );
+}

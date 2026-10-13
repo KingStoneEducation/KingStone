@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { CharacterLook } from '../data/npcs';
-import { ensureCharacter, frameRef } from './textures';
+import { ensureCharacter, frameRef, WORLD_FONT } from './textures';
 import { frameIndex, type CharDir } from '../art/characters';
 import type { Pt } from './pathfinding';
 
@@ -15,6 +15,8 @@ export class CharacterSprite {
   private label: Phaser.GameObjects.Text | null = null;
   private emote: Phaser.GameObjects.Image | null = null;
   private emoteUntil = 0;
+  private bubble: Phaser.GameObjects.Text | null = null;
+  private bubbleUntil = 0;
   private texKey: string;
   x: number;
   y: number;
@@ -130,6 +132,10 @@ export class CharacterSprite {
       this.emote.destroy();
       this.emote = null;
     }
+    if (this.bubble && now > this.bubbleUntil) {
+      this.bubble.destroy();
+      this.bubble = null;
+    }
     this.sync();
   }
 
@@ -145,6 +151,29 @@ export class CharacterSprite {
     this.shadow.setAlpha(this.alpha);
     if (this.label) this.label.setPosition(Math.round(this.x), Math.round(this.y) - 34);
     if (this.emote) this.emote.setPosition(Math.round(this.x), Math.round(this.y) - 34 - (this.label ? 6 : 0));
+    if (this.bubble) this.bubble.setPosition(Math.round(this.x), Math.round(this.y) - 35 - (this.label ? 7 : 0) - (this.emote ? 14 : 0));
+  }
+
+  /** Short speech bubble above the head. */
+  say(text: string, ms: number, now: number): void {
+    if (!this.bubble) {
+      this.bubble = this.scene.add
+        .text(this.x, this.y - 36, text, {
+          fontFamily: WORLD_FONT,
+          fontSize: '7px',
+          color: '#241b30',
+          backgroundColor: '#f4f1eaee',
+          padding: { x: 3, y: 2 },
+          resolution: TEXT_RES,
+          wordWrap: { width: 120, useAdvancedWrap: true },
+          align: 'center',
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(LABEL_DEPTH + 3);
+      smoothText(this.bubble);
+    } else this.bubble.setText(text);
+    this.bubbleUntil = now + ms;
+    this.sync();
   }
 
   setLabel(text: string | null, color = '#f4f1ea'): void {
@@ -156,7 +185,7 @@ export class CharacterSprite {
     if (!this.label) {
       this.label = this.scene.add
         .text(this.x, this.y - 34, text, {
-          fontFamily: '"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif',
+          fontFamily: WORLD_FONT,
           fontSize: '7px',
           color,
           stroke: '#120d1f',
@@ -165,6 +194,7 @@ export class CharacterSprite {
         })
         .setOrigin(0.5, 1)
         .setDepth(LABEL_DEPTH);
+      smoothText(this.label);
     } else {
       this.label.setText(text).setColor(color);
     }
@@ -188,5 +218,11 @@ export class CharacterSprite {
     this.shadow.destroy();
     this.label?.destroy();
     this.emote?.destroy();
+    this.bubble?.destroy();
   }
+}
+
+/** Text is rendered at high resolution and downsampled smoothly even in pixel-art mode. */
+export function smoothText(t: Phaser.GameObjects.Text): void {
+  t.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
 }

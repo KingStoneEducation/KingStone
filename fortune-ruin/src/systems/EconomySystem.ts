@@ -74,6 +74,16 @@ export function amortizedPayment(principal: Money, aprBp: number, months: number
   return Math.ceil(p);
 }
 
+export interface LoanQuote {
+  ok: boolean;
+  reason?: string;
+  aprBp: number;
+  monthly: Money;
+  maxPrincipal: Money;
+  totalInterest: Money;
+  termMonths: number;
+}
+
 export class EconomySystem {
   constructor(private core: GameCore) {}
 
@@ -409,6 +419,62 @@ export class EconomySystem {
       this.core.player.adjustCredit(15, `${loan.lenderName}贷款结清`);
     }
     return r;
+  }
+
+  /**
+   * Bank personal-loan underwriting. The rate depends on the credit score
+   * band; the amount is capped by a 40% debt-service-to-income ratio.
+   * Every term is shown to the player before signing.
+   */
+  personalLoanQuote(principal: Money, termMonths: number): LoanQuote {
+    const score = this.core.state.player.creditScore;
+    const income = this.core.career.monthlyIncomeEstimate();
+    const existing = this.s.loans.filter((l) => l.status === 'active').reduce((a, l) => a + l.monthlyPayment, 0);
+    const aprBp = score >= 760 ? 690 : score >= 720 ? 850 : score >= 680 ? 1050 : score >= 640 ? 1390 : score >= 600 ? 1790 : 2390;
+    const capacity = Math.max(0, Math.floor(income * 0.4) - existing);
+    const per1000 = amortizedPayment(G(1000), aprBp, termMonths);
+    const byIncome = per1000 > 0 ? Math.floor(capacity / per1000) * G(1000) : 0;
+    const maxPrincipal = Math.max(0, Math.min(G(80000), byIncome, income * 8));
+    const monthly = amortizedPayment(principal, aprBp, termMonths);
+    const base = { aprBp, maxPrincipal, monthly, totalInterest: Math.max(0, monthly * termMonths - principal), termMonths };
+    if (this.s.loans.some((l) => l.status === 'default')) return { ...base, ok: false, reason: '你有贷款违约记录，银行暂不受理新的贷款申请', maxPrincipal: 0 };
+    if (score < 560) return { ...base, ok: false, reason: `信用分 ${score} 低于最低要求 560`, maxPrincipal: 0 };
+    if (income <= 0) return { ...base, ok: false, reason: '没有稳定的工资收入，无法评估还款能力', maxPrincipal: 0 };
+    if (![6, 12, 24, 36].includes(termMonths)) return { ...base, ok: false, reason: '贷款期限只能选择 6 / 12 / 24 / 36 个月' };
+    if (principal < G(1000) || principal % G(100) !== 0) return { ...base, ok: false, reason: '贷款金额至少 1,000 G，且为 100 G 的整数倍' };
+    if (principal > maxPrincipal) return { ...base, ok: false, reason: `超出可贷额度（按你的收入与现有负债，最多 ${formatG(maxPrincipal)}）` };
+    return { ...base, ok: true };
+  }
+
+  takePersonalLoan(principal: Money, termMonths: number): TxnResult {
+    const q = this.personalLoanQuote(principal, termMonths);
+    if (!q.ok) return { ok: false, error: q.reason ?? '申请未通过' };
+    const loan = this.openLoan({ lender: 'bank', lenderName: '灰港储蓄信托', principal, aprBp: q.aprBp, termMonths, kind: 'personal' });
+    this.core.player.adjustCredit(-4, '新增贷款');
+    this.core.journal.add('money', `向灰港储蓄信托借了 ${formatG(principal)}，${termMonths} 个月，年利率 ${(q.aprBp / 100).toFixed(2)}%，月供 ${formatG(loan.monthlyPayment)}。`, true);
+    return { ok: true, txn: this.s.ledger[this.s.ledger.length - 1] };
+  }
+
+  /** Payday lender: no credit check, tiny amounts, ruinous price (30% per month). */
+  paydayQuote(principal: Money): LoanQuote {
+    const aprBp = 36000;
+    const monthly = amortizedPayment(principal, aprBp, 1);
+    const open = this.s.loans.filter((l) => l.kind === 'payday' && l.status === 'active');
+    const maxPrincipal = open.length ? 0 : G(2000);
+    const base = { aprBp, maxPrincipal, monthly, totalInterest: monthly - principal, termMonths: 1 };
+    if (open.length) return { ...base, ok: false, reason: '你还有一笔未还清的随借贷款' };
+    if (this.s.loans.filter((l) => l.status === 'default').length >= 2) return { ...base, ok: false, reason: '多次违约，平台拒绝放款' };
+    if (principal < G(100) || principal > maxPrincipal || principal % G(100) !== 0) return { ...base, ok: false, reason: `金额需在 100–${formatG(maxPrincipal)} 之间，且为 100 G 的整数倍` };
+    return { ...base, ok: true };
+  }
+
+  takePayday(principal: Money): TxnResult {
+    const q = this.paydayQuote(principal);
+    if (!q.ok) return { ok: false, error: q.reason ?? '申请未通过' };
+    this.openLoan({ lender: 'payday', lenderName: '随借 App', principal, aprBp: q.aprBp, termMonths: 1, kind: 'payday' });
+    this.core.player.adjustCredit(-8, '使用高利贷款');
+    this.core.journal.add('money', `用随借 App 借了 ${formatG(principal)}，一个月后要还 ${formatG(q.monthly)}。`, true);
+    return { ok: true, txn: this.s.ledger[this.s.ledger.length - 1] };
   }
 
   monthlyObligations(): Money {

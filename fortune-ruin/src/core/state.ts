@@ -25,6 +25,10 @@ export interface Appearance {
   hairColor: number;
   /** pronoun used in narration */
   pronoun: 'he' | 'she' | 'they';
+  /** body template for the sprite (defaults from the pronoun) */
+  body?: 'm' | 'f';
+  glasses?: boolean;
+  beard?: boolean;
 }
 
 export type PersonalityTendency = 'cautious' | 'bold' | 'sociable' | 'rational';

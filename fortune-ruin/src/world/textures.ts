@@ -13,6 +13,12 @@ import type { CharacterLook } from '../data/npcs';
 export const atlas = new AtlasBuilder('atlas');
 let registered = false;
 
+/** Font stack for in-world labels (system CJK fonts; nothing is downloaded). */
+export const WORLD_FONT = '"PingFang SC","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC","WenQuanYi Zen Hei","Source Han Sans SC",sans-serif';
+
+/** Vertical offset of each building image relative to its footprint. */
+export const BUILDING_OFFSET: Record<string, number> = {};
+
 export const EMOTES = ['!', '!!', '?', '♪', '…', '💢', '♥', '$', 'z', '★'] as const;
 
 function emoteCanvas(e: string): HTMLCanvasElement {
@@ -92,6 +98,7 @@ export function registerTextures(scene: Phaser.Scene): void {
     const art = drawBuilding(b);
     atlas.add(`bld:${b.id}`, art.day);
     atlas.add(`bld:${b.id}:n`, art.night);
+    BUILDING_OFFSET[b.id] = art.offsetY;
   }
   CAR_COLORS.forEach((c, i) => {
     for (const d of ['left', 'right', 'up', 'down'] as const) {

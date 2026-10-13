@@ -2,6 +2,18 @@ import type { GameCore } from '../core/GameCore';
 import type { DialogueView } from '../systems/DialogueEngine';
 import type { EventPrompt } from '../systems/EventManager';
 import type { ShiftReport } from '../systems/CareerSystem';
+import type { WorldApi } from '../world/WorldScene';
+import type { TableApi, TablePhase } from '../tables/TableScene';
+import type { Money } from '../core/money';
+
+export interface TableUiState {
+  /** selected chip denomination, whole G */
+  chip: number;
+  busy: boolean;
+  phase: TablePhase;
+  message: string;
+  result: { net: Money; text: string; t: number } | null;
+}
 
 export type Panel = 'phone' | 'finance' | 'social' | 'map' | 'journal' | 'menu' | 'inventory' | 'stats' | 'help' | null;
 
@@ -49,6 +61,8 @@ export interface Settings {
   zoom: number;
   showCasinoClock: boolean;
   reduceFlashing: boolean;
+  /** table animation speed multiplier */
+  tableSpeed: number;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -59,6 +73,7 @@ const DEFAULT_SETTINGS: Settings = {
   zoom: 0,
   showCasinoClock: false,
   reduceFlashing: false,
+  tableSpeed: 1,
 };
 
 function loadSettings(): Settings {
@@ -77,6 +92,8 @@ function loadSettings(): Settings {
  */
 class UIStore {
   core: GameCore | null = null;
+  /** live world scene (null on the menus) */
+  world: WorldApi | null = null;
   screen: 'boot' | 'menu' | 'create' | 'game' = 'boot';
   panel: Panel = null;
   modal: Modal | null = null;
@@ -84,6 +101,8 @@ class UIStore {
   prompt: Prompt | null = null;
   toasts: Toast[] = [];
   table: { game: 'blackjack' | 'baccarat' | 'roulette' | 'slots' | 'poker'; tableId: string } | null = null;
+  tableApi: TableApi | null = null;
+  tableUi: TableUiState = { chip: 25, busy: false, phase: 'betting', message: '', result: null };
   locationBanner: { name: string; sub: string; t: number } | null = null;
   fade = false;
   settings: Settings = loadSettings();

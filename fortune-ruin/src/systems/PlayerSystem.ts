@@ -3,6 +3,8 @@ import type { PlayerStats, SkillId } from '../core/state';
 
 export type Activity = 'idle' | 'walking' | 'gambling' | 'working' | 'sleeping' | 'talking' | 'exercising' | 'eating' | 'reading';
 
+export type LeisureKind = 'tv' | 'piano' | 'exercise' | 'bench';
+
 export const STAT_NAMES: Record<keyof PlayerStats, string> = {
   energy: '体力',
   hunger: '饥饿',
@@ -225,6 +227,46 @@ export class PlayerSystem {
     if (s.health <= 35) out.push({ label: '身体不适', tone: 'bad' });
     if (s.confidence >= 80) out.push({ label: '自信', tone: 'good' });
     return out;
+  }
+
+  /**
+   * Small pastimes found around the world. Each one costs game time and
+   * changes needs/skills; none of them touches any game odds.
+   */
+  leisure(kind: LeisureKind): { ok: boolean; text: string } {
+    const core = this.core;
+    const s = this.stats;
+    switch (kind) {
+      case 'tv': {
+        core.advance(60, 'idle');
+        this.change('stress', -5);
+        this.change('energy', 2);
+        this.addMoodBuff('tv', 3, 180, '放松了一会儿');
+        const shows = ['一部老电影', '灰港本地新闻', '一档美食节目', '纪录片《港口百年》', '职业篮球赛转播'];
+        return { ok: true, text: `看了一小时电视（${shows[Math.floor(core.rng.float() * shows.length)]}）。` };
+      }
+      case 'piano': {
+        core.advance(30, 'idle');
+        this.change('stress', -7);
+        this.addMoodBuff('piano', 4, 240, '弹了会儿琴');
+        const gain = this.addSkill('social', 0.15);
+        return { ok: true, text: `你坐在钢琴前弹了半小时。${gain > 0 ? '指法渐渐熟练了些。' : ''}` };
+      }
+      case 'exercise': {
+        if (s.energy < 20) return { ok: false, text: '你太累了，现在练不动。' };
+        if (s.hunger > 80) return { ok: false, text: '饿着肚子运动容易头晕，先吃点东西吧。' };
+        core.advance(45, 'exercising');
+        const gain = this.addSkill('fitness', 1.2);
+        this.change('health', 2);
+        this.addMoodBuff('exercise', 5, 300, '运动后的畅快');
+        return { ok: true, text: `运动了 45 分钟，出了一身汗。体能 +${gain.toFixed(1)}` };
+      }
+      case 'bench': {
+        core.advance(20, 'idle');
+        this.change('stress', -3);
+        return { ok: true, text: '你在长椅上坐了一会儿，看着来来往往的人。' };
+      }
+    }
   }
 
   /** True when the character can no longer stay awake. */

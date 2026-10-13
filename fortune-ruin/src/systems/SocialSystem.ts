@@ -823,6 +823,38 @@ export class SocialSystem {
     return { stranger: '陌生人', acquaintance: '点头之交', friend: '朋友', close: '挚友', partner: '恋人', estranged: '疏远', rival: '心存芥蒂' }[s];
   }
 
+  /** Whether a short "how are you" text makes sense right now. */
+  canText(npcId: string): string | null {
+    const r = this.rel(npcId);
+    if (!r.knowsName) return '你没有对方的联系方式';
+    const last = Number(r.flags.lastText ?? -99);
+    if (this.core.today() - last < 2) return '前两天刚发过消息';
+    if (r.status === 'estranged' && r.affection < -30) return '对方大概不会回你';
+    return null;
+  }
+
+  /** A light-touch message that keeps a relationship warm; replies depend on who they are. */
+  textGreeting(npcId: string): string {
+    const err = this.canText(npcId);
+    if (err) return err;
+    const def = NPC_BY_ID[npcId];
+    const r = this.rel(npcId);
+    r.flags.lastText = this.core.today();
+    r.lastContact = this.core.now();
+    const d = this.disposition(npcId);
+    // texting someone you barely know is a little odd for reserved people
+    const facets: Partial<Record<Facet, number>> = r.familiarity < 10 ? { attention: 0.08 } : { attention: 0.18 };
+    this.applyDirect(npcId, { kind: 'texted', facets, importance: 2 }, { silent: true, noMemory: true });
+    this.applyDelta(npcId, { familiarity: r.familiarity < 40 ? 0.6 : 0.2 });
+    const warm = ['最近还好吗？有空一起吃饭。', '哈哈，正想起你呢。', '收到～这周忙完找你。', '谢谢惦记，我挺好的，你也照顾好自己。'];
+    const neutral = ['嗯，挺好的。', '收到。', '最近有点忙，回头聊。'];
+    const cold = ['……', '有事吗？', '嗯。'];
+    const pool = d > 25 ? warm : d > -10 ? neutral : cold;
+    const reply = pool[this.core.rng.int(0, pool.length - 1)];
+    this.core.phone.send(npcId, def.name, reply);
+    return `你给${def.name}发了条问候。`;
+  }
+
   /** Record a conversation contact (limits farming of small talk). */
   touchContact(npcId: string): void {
     const r = this.rel(npcId);

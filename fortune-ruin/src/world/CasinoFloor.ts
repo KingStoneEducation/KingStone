@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { GameCore } from '../core/GameCore';
-import { CharacterSprite, LABEL_DEPTH } from './CharacterSprite';
-import { anonLook } from './textures';
+import { CharacterSprite, LABEL_DEPTH, smoothText } from './CharacterSprite';
+import { anonLook, WORLD_FONT } from './textures';
 import { CASINO_TABLES } from './maps/casinoMap';
 import { PROPS } from '../art/props';
 import { TABLE_BY_ID } from '../casino/tables';
@@ -194,9 +194,10 @@ export class CasinoFloor {
 
   float(x: number, y: number, text: string, color: string): void {
     const obj = this.scene.add
-      .text(x, y, text, { fontFamily: '"PingFang SC","Microsoft YaHei",sans-serif', fontSize: '7px', color, stroke: '#120d1f', strokeThickness: 2, resolution: 4 })
+      .text(x, y, text, { fontFamily: WORLD_FONT, fontSize: '7px', color, stroke: '#120d1f', strokeThickness: 2, resolution: 4 })
       .setOrigin(0.5, 1)
       .setDepth(LABEL_DEPTH + 2);
+    smoothText(obj);
     this.floats.push({ obj, born: this.scene.time.now });
   }
 

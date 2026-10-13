@@ -9,7 +9,8 @@ import { locationAnchor } from './maps/cityLayout';
 import type { CharDir } from '../art/characters';
 
 export interface WorldHost {
-  scene: Phaser.Scene;
+  /** the Phaser scene NPC sprites are added to */
+  hostScene: Phaser.Scene;
   map: MapData;
   core: GameCore;
   /** entry tile of the current interior (where people come in) */
@@ -86,7 +87,7 @@ export class NpcDirector {
     const loc = this.host.map.id;
     for (const rt of this.core.npcs.npcsAt(loc)) {
       const def = NPC_BY_ID[rt.id];
-      const s = new CharacterSprite(this.host.scene, def.look, 0, 0, 'down');
+      const s = new CharacterSprite(this.host.hostScene, def.look, 0, 0, 'down');
       this.sprites.set(rt.id, s);
       this.targetSpot.set(rt.id, rt.spot);
       this.place(rt.id, s, rt.spot);
@@ -112,7 +113,7 @@ export class NpcDirector {
       const sprite = this.sprites.get(def.id);
       if (here && !sprite) {
         // arrival: walk in from the entrance
-        const s = new CharacterSprite(this.host.scene, def.look, 0, 0, 'up');
+        const s = new CharacterSprite(this.host.hostScene, def.look, 0, 0, 'up');
         this.sprites.set(def.id, s);
         this.targetSpot.set(def.id, rt.spot);
         const seat = loc === 'casino' ? this.host.seatFor(def.id) : null;
@@ -202,7 +203,7 @@ export class NpcDirector {
         const path = [start, ...(findPath(this.host.map, start.x, start.y, end.x, end.y, true, 20000) ?? [end])];
         const lengths: number[] = [0];
         for (let i = 1; i < path.length; i++) lengths.push(lengths[i - 1] + Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].y - path[i - 1].y));
-        const sprite = new CharacterSprite(this.host.scene, def.look, start.x * 16 + 8, start.y * 16 + 14, 'down');
+        const sprite = new CharacterSprite(this.host.hostScene, def.look, start.x * 16 + 8, start.y * 16 + 14, 'down');
         t = { sprite, path, depart: rt.travel.depart, arrive: rt.travel.arrive, lengths, total: lengths[lengths.length - 1] };
         this.travellers.set(rt.id, t);
       }

@@ -16,6 +16,7 @@ import { DialogueEngine } from '../systems/DialogueEngine';
 import { EventManager, type EventPrompt } from '../systems/EventManager';
 import { JournalSystem, PhoneSystem } from '../systems/PhoneSystem';
 import { WealthSystem } from '../systems/WealthSystem';
+import { ServicesSystem } from '../systems/ServicesSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -91,6 +92,7 @@ export class GameCore {
   phone: PhoneSystem;
   journal: JournalSystem;
   wealth: WealthSystem;
+  services: ServicesSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -109,10 +111,18 @@ export class GameCore {
     this.phone = new PhoneSystem(this);
     this.journal = new JournalSystem(this);
     this.wealth = new WealthSystem(this);
+    this.services = new ServicesSystem(this);
   }
 
   now(): number {
     return this.state.time.minutes;
+  }
+
+  /** Current time including the fraction of the minute in progress (for smooth animation only). */
+  nowFloat(): number {
+    if (this.paused.size > 0) return this.state.time.minutes;
+    const ms = MS_PER_MINUTE[this.timeMode] / this.speed;
+    return this.state.time.minutes + Math.min(0.999, this.acc / ms);
   }
 
   today(): number {

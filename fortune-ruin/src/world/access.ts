@@ -26,7 +26,7 @@ export function entryRefusal(core: GameCore, loc: string): string | null {
   if (def.access === 'employees' && !worksHere) return '前台拦住了你：「这里是办公区域，访客请预约。」';
   if (def.access === 'members') {
     const guest = Number(p.flags.clubGuestUntil ?? -1) >= core.today();
-    if (!p.flags.clubMember && !guest) return '门房礼貌地欠身：「子午线会所仅接待会员与会员的宾客。」';
+    if (!core.services.isClubMember() && !guest) return '门房礼貌地欠身：「子午线会所仅接待会员与会员的宾客。」';
   }
   if (def.access === 'reservation') {
     const invited = core.events.upcoming().some((e) => e.status === 'accepted' && e.location === loc && Math.abs(e.at - core.now()) < 180);
