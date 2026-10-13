@@ -2,7 +2,7 @@ import { EventBus } from './EventBus';
 import { Rng } from './rng';
 import { G, formatG, type Money } from './money';
 import { MINUTES_PER_DAY, toDate } from './calendar';
-import type { Bill, GameState, JournalEntry, Loan, MemberTier, Memory, PhoneMessage, RelDims, Txn, AccountId } from './state';
+import type { Bill, Encounter, GameState, JournalEntry, Loan, MemberTier, Memory, PhoneMessage, RelDims, Txn, AccountId } from './state';
 import { EconomySystem } from '../systems/EconomySystem';
 import { PlayerSystem, type Activity } from '../systems/PlayerSystem';
 import { InventorySystem } from '../systems/InventorySystem';
@@ -17,6 +17,7 @@ import { EventManager, type EventPrompt } from '../systems/EventManager';
 import { JournalSystem, PhoneSystem } from '../systems/PhoneSystem';
 import { WealthSystem } from '../systems/WealthSystem';
 import { ServicesSystem } from '../systems/ServicesSystem';
+import { EncounterSystem } from '../systems/EncounterSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -53,6 +54,7 @@ export interface GameEvents {
   'patron:left': { id: string; net: Money };
   'patron:arrived': { id: string; tableId: string };
   'npc:arrived': { id: string; location: string | null };
+  'npc:encounter': { encounter: Encounter };
   'npc:departed': { id: string; from: string | null; to: string | null };
   'npc:moved': { id: string };
   invest: { id: string; units: number; side: 'buy' | 'sell'; amount: Money; pnl?: Money };
@@ -93,6 +95,7 @@ export class GameCore {
   journal: JournalSystem;
   wealth: WealthSystem;
   services: ServicesSystem;
+  encounters: EncounterSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -112,6 +115,7 @@ export class GameCore {
     this.journal = new JournalSystem(this);
     this.wealth = new WealthSystem(this);
     this.services = new ServicesSystem(this);
+    this.encounters = new EncounterSystem(this);
   }
 
   now(): number {
@@ -192,6 +196,7 @@ export class GameCore {
     const d = toDate(t);
     this.player.tick(1, activity);
     this.npcs.tick(t);
+    this.encounters.tick(t);
     this.career.tickMinute(t);
     this.events.tickMinute(t);
     this.casino.tickBackground(1);

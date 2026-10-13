@@ -425,6 +425,26 @@ export interface Belief {
   lastSeen: number;
 }
 
+export type EncounterKind = 'chat' | 'gossip' | 'toast' | 'comfort' | 'argue';
+
+/** Two named NPCs talking to each other somewhere in the world. */
+export interface Encounter {
+  id: number;
+  /** who starts (and, if needed, walks over) */
+  a: NpcId;
+  b: NpcId;
+  kind: EncounterKind;
+  location: LocationId;
+  start: number;
+  end: number;
+  /** gossip: the story about the player as it was told (already retold / distorted) */
+  topic?: string;
+  /** gossip: the teller's memory that was passed on */
+  memory?: number;
+  /** the player was close enough to hear it */
+  overheard?: boolean;
+}
+
 export interface SocialState {
   rel: Record<NpcId, Relationship>;
   memories: Memory[];
@@ -432,6 +452,11 @@ export interface SocialState {
   beliefs: Record<NpcId, Belief>;
   /** NPC↔NPC affinity, symmetric keys "a|b" (a < b) */
   ties: Record<string, number>;
+  /** current and just-finished NPC↔NPC conversations */
+  encounters: Encounter[];
+  encSeq: number;
+  /** last day each pair met (keys like ties) */
+  pairDay: Record<string, number>;
 }
 
 // ------------------------------------------------------------------ events / phone / journal / stats

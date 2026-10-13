@@ -60,6 +60,9 @@ export function migrate(state: GameState): GameState {
   s.casino.activeTable ??= null;
   s.casino.invites ??= { highLimit: -1, vip: -1 };
   for (const rt of Object.values(s.npcs)) rt.overrides ??= [];
+  s.social.encounters ??= [];
+  s.social.encSeq ??= 0;
+  s.social.pairDay ??= {};
   s.meta.version = SAVE_VERSION;
   return s;
 }

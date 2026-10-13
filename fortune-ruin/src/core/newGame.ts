@@ -176,7 +176,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
       invites: { highLimit: -1, vip: -1 },
     },
     npcs: Object.fromEntries(NPCS.map((d) => [d.id, initialNpcRuntime(d)])),
-    social: { rel: {}, memories: [], memSeq: 0, beliefs: {}, ties: initialTies() },
+    social: { rel: {}, memories: [], memSeq: 0, beliefs: {}, ties: initialTies(), encounters: [], encSeq: 0, pairDay: {} },
     events: { cooldown: {}, count: {}, scheduled: [], seq: 0, lastDailyCheck: -1, marketShock: 0 },
     phone: { messages: [], seq: 0 },
     journal: { entries: [], seq: 0 },

@@ -23,6 +23,8 @@ export class CharacterSprite {
   dir: CharDir = 'down';
   moving = false;
   sitting = false;
+  /** horizontal offset of the emote and speech bubble (keeps them off a neighbour's head) */
+  bubbleDx = 0;
   path: Pt[] = [];
   speed = 40;
   depthBias = 0;
@@ -150,8 +152,9 @@ export class CharacterSprite {
     this.sprite.setAlpha(this.alpha);
     this.shadow.setAlpha(this.alpha);
     if (this.label) this.label.setPosition(Math.round(this.x), Math.round(this.y) - 34);
-    if (this.emote) this.emote.setPosition(Math.round(this.x), Math.round(this.y) - 34 - (this.label ? 6 : 0));
-    if (this.bubble) this.bubble.setPosition(Math.round(this.x), Math.round(this.y) - 35 - (this.label ? 7 : 0) - (this.emote ? 14 : 0));
+    const bx = Math.round(this.x + this.bubbleDx);
+    if (this.emote) this.emote.setPosition(bx, Math.round(this.y) - 34 - (this.label ? 6 : 0));
+    if (this.bubble) this.bubble.setPosition(bx, Math.round(this.y) - 35 - (this.label ? 7 : 0) - (this.emote ? 14 : 0));
   }
 
   /** Short speech bubble above the head. */

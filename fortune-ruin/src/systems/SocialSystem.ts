@@ -1,6 +1,7 @@
 import type { GameCore } from '../core/GameCore';
 import { G, formatG, type Money } from '../core/money';
 import { MINUTES_PER_DAY } from '../core/calendar';
+import type { Rng } from '../core/rng';
 import type { Belief, Memory, MemorySource, RelDims, Relationship } from '../core/state';
 import { INITIAL_TIES, NPCS, NPC_BY_ID, type NpcDef, type Traits } from '../data/npcs';
 import { CITY_SPOTS } from '../world/maps/cityLayout';
@@ -317,6 +318,14 @@ export function emptyRelationship(): Relationship {
 
 export function emptyBelief(): Belief {
   return { wealth: null, outfitPrestige: -1, knowsJob: null, knowsHome: null, knowsDebt: false, knowsGambling: 0, lastSeen: -1 };
+}
+
+/** People retell amounts in round numbers: two significant figures, whole G. */
+export function roundTold(minor: number): number {
+  const g = minor / 100;
+  if (g < 100) return Math.max(1, Math.round(g)) * 100;
+  const unit = Math.pow(10, Math.floor(Math.log10(g)) - 1);
+  return Math.round(g / unit) * unit * 100;
 }
 
 export function tieKey(a: string, b: string): string {
@@ -707,10 +716,7 @@ export class SocialSystem {
         const p = teller.traits.gossip * (0.25 + tie) * 0.6;
         if (!rng.chance(p)) continue;
         m.sharedWith.push(listener);
-        const exaggeration = Math.exp(rng.normal(0.12 + teller.traits.gossip * 0.18, 0.3));
-        const data = { ...m.data };
-        if (typeof data.amount === 'number') data.amount = Math.round((data.amount * exaggeration) / 100) * 100;
-        const reliability = Math.max(0.1, m.reliability * (0.55 + 0.35 * teller.traits.honesty));
+        const { data, reliability } = this.retell(m, teller);
         newOnes.push({ ...m, id: 0, npc: listener, source: 'rumor', reliability, via: teller.id, data, sharedWith: [teller.id], t: m.t });
       }
     }
@@ -718,6 +724,55 @@ export class SocialSystem {
       const spec = this.specFromMemory(r);
       if (spec) this.applyDirect(r.npc, spec, { source: 'rumor', reliability: r.reliability, via: r.via, silent: true });
     }
+  }
+
+  /** How a story changes in the retelling: amounts grow, certainty shrinks with the teller's honesty. */
+  private retell(m: Memory, teller: NpcDef, rng: Rng = this.core.rng): { data: Memory['data']; reliability: number } {
+    const exaggeration = Math.exp(rng.normal(0.12 + teller.traits.gossip * 0.18, 0.3));
+    const data = { ...m.data };
+    if (typeof data.amount === 'number') data.amount = roundTold(data.amount * exaggeration);
+    const reliability = Math.max(0.1, m.reliability * (0.55 + 0.35 * teller.traits.honesty));
+    return { data, reliability };
+  }
+
+  /** Does this NPC already know a story like this one (same kind, about the same time)? */
+  knowsStory(npcId: string, m: Memory): boolean {
+    return this.s.memories.some((x) => x.npc === npcId && x.kind === m.kind && Math.abs(x.t - m.t) < 2 * MINUTES_PER_DAY);
+  }
+
+  /** The juiciest fresh story about the player that `teller` has not yet told `listener`. */
+  storyFor(teller: string, listener: string): Memory | undefined {
+    const now = this.core.now();
+    let best: Memory | undefined;
+    let bestImp = 0;
+    for (const m of this.s.memories) {
+      if (m.npc !== teller || m.about !== 'player' || !GOSSIP_KINDS.has(m.kind) || now - m.t >= 10 * MINUTES_PER_DAY) continue;
+      if (m.sharedWith.includes(listener)) continue;
+      const imp = this.effectiveImportance(m, now);
+      if (imp < 12 || imp <= bestImp || this.knowsStory(listener, m)) continue;
+      best = m;
+      bestImp = imp;
+    }
+    return best;
+  }
+
+  /** Face to face: `listener` hears the (retold) story now. Returns the version they heard. */
+  tellStory(m: Memory, listener: string, rng?: Rng): Memory | null {
+    const teller = NPC_BY_ID[m.npc];
+    if (!teller || m.sharedWith.includes(listener)) return null;
+    m.sharedWith.push(listener);
+    if (this.knowsStory(listener, m)) return null;
+    const { data, reliability } = this.retell(m, teller, rng);
+    const heard: Memory = { ...m, id: 0, npc: listener, source: 'rumor', reliability, via: teller.id, data, sharedWith: [teller.id] };
+    const spec = this.specFromMemory(heard);
+    if (spec) this.applyDirect(listener, spec, { source: 'rumor', reliability, via: teller.id, silent: true });
+    return heard;
+  }
+
+  /** NPC↔NPC affinity changes through their own encounters. */
+  adjustTie(a: string, b: string, delta: number): void {
+    const k = tieKey(a, b);
+    this.s.ties[k] = Math.round(Math.max(0, Math.min(100, (this.s.ties[k] ?? 0) + delta)) * 10) / 10;
   }
 
   /** Rebuild the facets of a memory so a listener can appraise a rumor. */

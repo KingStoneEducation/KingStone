@@ -7,6 +7,8 @@ import { findPath, type Pt } from './pathfinding';
 import type { MapData, SpotDef } from './maps/types';
 import { locationAnchor } from './maps/cityLayout';
 import type { CharDir } from '../art/characters';
+import type { Encounter } from '../core/state';
+import { encounterLines, type EncounterBeat } from './encounterLines';
 
 export interface WorldHost {
   /** the Phaser scene NPC sprites are added to */
@@ -30,6 +32,20 @@ interface Traveller {
 }
 
 const WALK_SPEED = 38;
+/** ms between conversation beats */
+const BEAT_MS = 2600;
+/** how close (px) the player must be to overhear */
+const EARSHOT = 80;
+
+interface Staging {
+  enc: Encounter;
+  /** who walked over (walks back afterwards) */
+  walker: string | null;
+  ready: boolean;
+  beats: EncounterBeat[];
+  idx: number;
+  next: number;
+}
 
 function tilePx(p: Pt): { x: number; y: number } {
   return { x: p.x * 16 + 8, y: p.y * 16 + 14 };
@@ -42,6 +58,11 @@ export class NpcDirector {
   private targetSpot = new Map<string, string | null>();
   private travellers = new Map<string, Traveller>();
   private idleAt = new Map<string, number>();
+  private staged = new Map<number, Staging>();
+  /** NPCs standing away from their spot because they walked over to talk */
+  private displaced = new Set<string>();
+  /** NPCs currently facing someone in conversation (no idle fidgeting) */
+  private talking = new Set<string>();
 
   constructor(private host: WorldHost) {}
 
@@ -101,6 +122,9 @@ export class NpcDirector {
     this.travellers.clear();
     this.leaving.clear();
     this.targetSpot.clear();
+    this.staged.clear();
+    this.displaced.clear();
+    this.talking.clear();
   }
 
   /** Reconcile sprites with simulation state; animate arrivals, departures and spot changes. */
@@ -145,6 +169,7 @@ export class NpcDirector {
         const want = rt.spot;
         if (this.targetSpot.get(def.id) !== want && sprite.path.length === 0) {
           this.targetSpot.set(def.id, want);
+          this.displaced.delete(def.id);
           const spot = this.spotFor(def.id, want);
           const from = { x: Math.floor(sprite.x / 16), y: Math.floor(sprite.y / 16) };
           sprite.fixedDepth = null;
@@ -155,13 +180,138 @@ export class NpcDirector {
         this.idle(def.id, sprite, rt.activity, now);
       }
     }
+    this.updateEncounters(now);
     for (const s of this.sprites.values()) s.update(dt, now);
     if (loc === 'city') this.updateTravellers(dt, now, nowF);
     this.updateLabels();
   }
 
+  // ------------------------------------------------------------------ NPC↔NPC conversations
+
+  /** Seated at a gaming table or working a post: the other one comes over instead. */
+  private anchored(id: string, s: CharacterSprite): boolean {
+    return s.fixedDepth !== null || this.core.state.npcs[id]?.activity === 'work';
+  }
+
+  private freeTileNear(target: CharacterSprite, from: CharacterSprite, working: boolean): Pt | null {
+    const m = this.host.map;
+    const tx = Math.floor(target.x / 16);
+    const ty = Math.floor(target.y / 16);
+    const side = from.x >= target.x ? 1 : -1;
+    const blocked = (x: number, y: number) => x < 0 || y < 0 || x >= m.w || y >= m.h || !!m.blocked[y * m.w + x];
+    const taken = (x: number, y: number) => [...this.sprites.values()].some((o) => o !== from && Math.floor(o.x / 16) === x && Math.floor(o.y / 16) === y);
+    // someone working behind a counter is talked to across it, from the customer side
+    const across = working && blocked(tx, ty + 1) ? [{ x: tx, y: ty + 2 }, { x: tx + side, y: ty + 2 }, { x: tx - side, y: ty + 2 }] : [];
+    for (const c of [
+      ...across,
+      { x: tx + side, y: ty },
+      { x: tx - side, y: ty },
+      { x: tx, y: ty + 1 },
+      { x: tx, y: ty - 1 },
+      { x: tx + side, y: ty + 1 },
+      { x: tx - side, y: ty + 1 },
+    ]) {
+      if (blocked(c.x, c.y) || taken(c.x, c.y)) continue;
+      return c;
+    }
+    return null;
+  }
+
+  private faceEachOther(a: CharacterSprite, b: CharacterSprite): void {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const horiz = Math.abs(dx) >= Math.abs(dy);
+    // one above the other: the lower speaker's bubble goes to the side
+    if (!horiz) (dy > 0 ? b : a).bubbleDx = 20;
+    if (a.fixedDepth === null) a.face(horiz ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up');
+    if (b.fixedDepth === null) b.face(horiz ? (dx > 0 ? 'left' : 'right') : dy > 0 ? 'up' : 'down');
+  }
+
+  /** Stage conversations happening here: walk over, face each other, talk; the player may overhear. */
+  private updateEncounters(now: number): void {
+    const loc = this.host.map.id;
+    const recent = this.core.encounters.recent(loc);
+    const nowMin = this.core.now();
+    const ids = new Set(recent.map((e) => e.id));
+    for (const [id, st] of this.staged) {
+      const done = st.idx >= st.beats.length && now >= st.next;
+      if (ids.has(id) && !done) continue;
+      this.staged.delete(id);
+      this.talking.delete(st.enc.a);
+      this.talking.delete(st.enc.b);
+      for (const n of [st.enc.a, st.enc.b]) {
+        const sp = this.sprites.get(n);
+        if (sp) sp.bubbleDx = 0;
+      }
+      if (st.walker) this.walkBack(st.walker);
+    }
+    for (const e of recent) {
+      const sa = this.sprites.get(e.a);
+      const sb = this.sprites.get(e.b);
+      if (!sa || !sb || this.leaving.has(e.a) || this.leaving.has(e.b)) {
+        const st = this.staged.get(e.id);
+        if (st) st.idx = st.beats.length;
+        continue;
+      }
+      let st = this.staged.get(e.id);
+      if (!st) {
+        // only conversations still going on start; both must have arrived
+        if (e.end <= nowMin || sa.path.length || sb.path.length) continue;
+        st = { enc: e, walker: null, ready: false, beats: encounterLines(e, this.core), idx: 0, next: 0 };
+        this.staged.set(e.id, st);
+        const walker = !this.anchored(e.a, sa) ? e.a : !this.anchored(e.b, sb) ? e.b : null;
+        const ws = walker === e.a ? sa : sb;
+        const ts = walker === e.a ? sb : sa;
+        const dist = Math.hypot(sa.x - sb.x, sa.y - sb.y) / 16;
+        if (walker && dist > 2.5) {
+          const target = walker === e.a ? e.b : e.a;
+          const goal = this.freeTileNear(ts, ws, this.core.state.npcs[target]?.activity === 'work');
+          const path = goal ? findPath(this.host.map, Math.floor(ws.x / 16), Math.floor(ws.y / 16), goal.x, goal.y, false, 3000) : null;
+          if (path && path.length <= 24) {
+            ws.fixedDepth = null;
+            ws.setSitting(false);
+            ws.walkPath(path, WALK_SPEED);
+            this.displaced.add(walker);
+            st.walker = walker;
+          } else if (dist > 4) st.idx = st.beats.length; // too far to talk; it happens off-stage
+        } else if (dist > 4) st.idx = st.beats.length;
+      }
+      if (st.idx >= st.beats.length) continue;
+      if (!st.ready) {
+        if (sa.path.length || sb.path.length) continue;
+        st.ready = true;
+        this.talking.add(e.a);
+        this.talking.add(e.b);
+        this.faceEachOther(sa, sb);
+        st.next = now + 250;
+      }
+      if (now >= st.next) {
+        const beat = st.beats[st.idx++];
+        const sp = beat.who === 'a' ? sa : sb;
+        if (beat.text) sp.say(beat.text, BEAT_MS - 200, now);
+        if (beat.emote) sp.showEmote(beat.emote, BEAT_MS - 600, now);
+        st.next = now + (beat.text ? BEAT_MS : 1300);
+      }
+      if ((e.kind === 'gossip' || e.kind === 'argue') && !e.overheard) {
+        const p = this.host.playerPos();
+        if (Math.min(Math.hypot(sa.x - p.x, sa.y - p.y), Math.hypot(sb.x - p.x, sb.y - p.y)) < EARSHOT) this.core.encounters.overhear(e.id);
+      }
+    }
+  }
+
+  private walkBack(id: string): void {
+    if (!this.displaced.has(id)) return;
+    this.displaced.delete(id);
+    const sprite = this.sprites.get(id);
+    if (!sprite || this.leaving.has(id)) return;
+    const rt = this.core.state.npcs[id];
+    const spot = this.spotFor(id, rt.spot);
+    const path = findPath(this.host.map, Math.floor(sprite.x / 16), Math.floor(sprite.y / 16), spot.x, spot.y, this.host.map.id === 'city') ?? [];
+    sprite.walkPath(path, WALK_SPEED, () => this.place(id, sprite, rt.spot));
+  }
+
   private idle(id: string, s: CharacterSprite, activity: string, now: number): void {
-    if (s.path.length > 0 || s.fixedDepth !== null) return;
+    if (s.path.length > 0 || s.fixedDepth !== null || this.talking.has(id) || this.displaced.has(id)) return;
     const next = this.idleAt.get(id) ?? 0;
     if (now < next) return;
     this.idleAt.set(id, now + 3500 + (hashString(id + now) % 4000));
