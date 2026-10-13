@@ -20,6 +20,14 @@ npm run preview    # 预览生产构建
 
 游戏完全离线运行：所有像素美术、音效和音乐都在运行时由代码生成，没有任何外部资源请求，也不依赖付费 AI 服务。界面文字使用系统自带的中文字体。
 
+### 单文件版（不用安装任何东西）
+
+```bash
+npm run build:single   # 输出 fortune-ruin/dist-single/fortune-ruin.html（约 2 MB）
+```
+
+这个 HTML 文件包含了整个游戏（代码、Phaser、React、样式）。把它复制到任何电脑上，用 Chrome / Edge / Firefox / Safari 双击打开就能玩，不需要 Node.js、不需要联网。存档保存在这台电脑的浏览器里；换电脑或换浏览器时，先在游戏的存档界面「导出」存档文件，再到新地方「导入」。
+
 ## 操作
 
 | 操作 | 按键 |
