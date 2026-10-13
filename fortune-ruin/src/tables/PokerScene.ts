@@ -366,9 +366,11 @@ export class PokerScene extends TableScene {
   // ------------------------------------------------------------------ event playback
 
   private async play(events: PK.PokerEvent[]): Promise<void> {
+    const gen = this.gen;
     const holes: { seat: number; cards: Card[] }[] = [];
     for (const e of events) {
-      if (!this.alive) return;
+      // stop if the table was closed (or reopened) meanwhile
+      if (!this.alive || gen !== this.gen) return;
       if (e.k !== 'hole' && holes.length) {
         await this.animDealHoles(holes.splice(0));
       }
@@ -616,7 +618,8 @@ export class PokerScene extends TableScene {
 
   /** Patrons act in turn until it is the player's decision or the hand is over. */
   private async advance(): Promise<void> {
-    for (let guard = 0; guard < 300 && this.alive; guard++) {
+    const gen = this.gen;
+    for (let guard = 0; guard < 300 && this.alive && gen === this.gen; guard++) {
       const s = this.st;
       if (PK.handInProgress(s)) {
         const owner = this.core.casino.pkTurnOwner(this.tableId);
@@ -630,7 +633,7 @@ export class PokerScene extends TableScene {
         const me = this.mySeat();
         const away = me < 0 || !s.seats[me].inHand || s.seats[me].folded || s.seats[me].allIn;
         await this.wait((away ? 320 : 600) + Math.random() * (away ? 260 : 600));
-        if (!this.alive) return;
+        if (!this.alive || gen !== this.gen) return;
         const r = this.core.casino.pkPatronAct(this.tableId);
         if (!r.ok) return;
         await this.play(r.value);
@@ -646,6 +649,7 @@ export class PokerScene extends TableScene {
   }
 
   private async finishHand(): Promise<void> {
+    const gen = this.gen;
     if (!this.alive) return;
     this.setPhase('settling');
     this.pointAt(-1);
@@ -658,7 +662,7 @@ export class PokerScene extends TableScene {
       this.showResult(res.net, text);
     }
     await this.wait(res ? 2000 : 1300);
-    if (!this.alive) return;
+    if (!this.alive || gen !== this.gen) return;
     // sweep the cards
     const all: Phaser.GameObjects.Image[] = [...this.board];
     for (const v of this.views) all.push(...v.cards);
