@@ -203,6 +203,7 @@ export class CasinoManager {
     }
     this.cs.patrons = [];
     for (const cfg of POKER_TABLES) this.pkClearPatrons(cfg.id);
+    this.clearGhosts();
     this.refreshCrowd(true);
     this.core.touch();
   }
@@ -223,6 +224,7 @@ export class CasinoManager {
     this.syncNpcPatrons(true);
     this.cs.patrons = [];
     this.cs.activeTable = null;
+    this.clearGhosts();
     const s = this.cs.session;
     if (s) {
       const end = this.core.now();
@@ -236,6 +238,42 @@ export class CasinoManager {
       this.core.bus.emit('casino:left', { net: s.net, rounds: s.rounds, hours: (end - s.start) / 60 });
     }
     this.core.touch();
+  }
+
+  /**
+   * The crowd goes home with the player, but the tables keep their state:
+   * finish any round left on a felt and free every seat or bet that belongs
+   * to someone who is no longer here (otherwise phantom players would hold
+   * seats forever and the table would look permanently full).
+   */
+  private clearGhosts(): void {
+    const here = new Set(this.cs.patrons.filter((p) => p.state !== 'gone').map((p) => p.id));
+    here.add(PLAYER);
+    for (const [id, t] of Object.entries(this.cs.tables)) {
+      if (t.game === 'blackjack') {
+        const s = t.s;
+        for (let guard = 0; guard < 120 && (s.phase === 'insurance' || s.phase === 'player'); guard++) {
+          if (s.phase === 'insurance') {
+            for (let i = 0; i < s.seats.length; i++) if (s.seats[i].hands.length && !s.seats[i].insuranceDecided) BJ.decideInsurance(s, i, false);
+            BJ.closeInsurance(s);
+          } else if (s.turnSeat >= 0) BJ.act(s, s.turnSeat, 'stand');
+          else break;
+        }
+        if (s.phase === 'settled') {
+          this.collect(id);
+          BJ.finishRound(s);
+        }
+        s.seats.forEach((seat, i) => {
+          if (seat.occupant && !here.has(seat.occupant) && s.phase === 'betting') {
+            seat.pendingBet = 0;
+            BJ.leave(s, i);
+          }
+        });
+      } else if ((t.game === 'baccarat' || t.game === 'roulette') && t.s.phase === 'betting') {
+        const s = t.s as { bets: { owner: string }[] };
+        s.bets = s.bets.filter((b) => here.has(b.owner));
+      }
+    }
   }
 
   /** Occupancy target 0..1 by hour and weekday. */
