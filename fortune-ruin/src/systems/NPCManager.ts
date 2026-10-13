@@ -90,6 +90,10 @@ export class NPCManager {
       if (o) return { loc: o.location, spot: o.spot, act: o.activity };
     }
     const w = this.scheduled(this.def(id), t);
+    const day = Math.floor(t / MINUTES_PER_DAY);
+    // storylines: someone who swore off gambling stays away; a suspended employee stays home
+    if (w.act === 'gamble' && Number(rt.flags.noGambleUntil ?? -1) >= day) return { loc: null, spot: null, act: 'home' };
+    if (w.act === 'work' && Number(rt.flags.suspendedUntil ?? -1) >= day) return { loc: null, spot: null, act: 'home' };
     // A broke gambler can't go to the casino; a banned one can't either.
     if (w.act === 'gamble' && (rt.money < G(40) || rt.flags.bustedTonight === Math.floor(t / MINUTES_PER_DAY))) return { loc: id === 'marco' ? 'bar' : null, spot: id === 'marco' ? 'bar_stool3' : null, act: id === 'marco' ? 'drink' : 'home' };
     return w;
@@ -185,7 +189,7 @@ export class NPCManager {
         rt.debt += Math.round((rt.debt * 0.18) / 336); // interest
       }
       // gamblers lose money over time when the player isn't there to see it
-      const gambledYesterday = this.scheduledGambling(def, day - 1);
+      const gambledYesterday = this.scheduledGambling(def, day - 1) && Number(rt.flags.noGambleUntil ?? -1) < day - 1;
       if (gambledYesterday && rt.flags.liveGambleDay !== day - 1) {
         const stake = Math.max(G(10), Math.round(rt.money * 0.05));
         const rounds = rng.int(25, 70);

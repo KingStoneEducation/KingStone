@@ -34,6 +34,18 @@ export function JournalPanel(): JSX.Element {
           </button>
         ))}
       </div>
+      {core.stories.summaries().length > 0 && (
+        <div className="item" style={{ marginBottom: 10 }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>进行中的故事</div>
+          {core.stories.summaries().map((x) => (
+            <div key={x.arc} style={{ fontSize: 13, lineHeight: 1.6 }}>
+              <span style={{ color: 'var(--gold-light)' }}>【{x.title}】</span>
+              {x.status}
+              <span className="dim" style={{ fontSize: 11.5 }}> · 第 {x.days + 1} 天</span>
+            </div>
+          ))}
+        </div>
+      )}
       {entries.length === 0 && <div className="muted">还没有记录。</div>}
       {entries.map((e) => {
         const d = toDate(e.t);

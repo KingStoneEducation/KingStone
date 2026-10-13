@@ -251,8 +251,13 @@ export class EconomySystem {
     return loans + bills;
   }
 
+  /** Shares in friends' businesses, at their current estimated value. */
+  stakesValue(): Money {
+    return this.s.stakes.filter((x) => x.status === 'active').reduce((a, x) => a + x.value, 0);
+  }
+
   totalAssets(): Money {
-    return this.liquid() + this.securitiesValue() + this.propertyValue() + this.vehicleValue() + this.valuablesValue() + this.receivablesValue();
+    return this.liquid() + this.securitiesValue() + this.propertyValue() + this.vehicleValue() + this.valuablesValue() + this.receivablesValue() + this.stakesValue();
   }
 
   /** Real net worth: assets minus liabilities. */

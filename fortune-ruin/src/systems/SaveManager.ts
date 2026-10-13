@@ -63,6 +63,8 @@ export function migrate(state: GameState): GameState {
   s.social.encounters ??= [];
   s.social.encSeq ??= 0;
   s.social.pairDay ??= {};
+  s.stories ??= { active: [], done: [], ended: {} };
+  s.economy.stakes ??= [];
   s.meta.version = SAVE_VERSION;
   return s;
 }

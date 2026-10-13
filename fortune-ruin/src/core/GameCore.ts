@@ -18,6 +18,7 @@ import { JournalSystem, PhoneSystem } from '../systems/PhoneSystem';
 import { WealthSystem } from '../systems/WealthSystem';
 import { ServicesSystem } from '../systems/ServicesSystem';
 import { EncounterSystem } from '../systems/EncounterSystem';
+import { StorySystem } from '../systems/StorySystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -96,6 +97,7 @@ export class GameCore {
   wealth: WealthSystem;
   services: ServicesSystem;
   encounters: EncounterSystem;
+  stories: StorySystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -116,6 +118,7 @@ export class GameCore {
     this.wealth = new WealthSystem(this);
     this.services = new ServicesSystem(this);
     this.encounters = new EncounterSystem(this);
+    this.stories = new StorySystem(this);
   }
 
   now(): number {
@@ -227,6 +230,7 @@ export class GameCore {
       this.events.processReceivables();
       this.events.processPlayerDebts();
     }
+    if (hour === 11) this.stories.dailyPass();
     if (hour === 18) this.events.dailyPass('evening');
     this.bus.emit('time:hour', { hour });
   }

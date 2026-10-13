@@ -272,10 +272,6 @@ export const SOCIAL_EVENTS: Record<string, SocialEventDef> = {
 
 // ---------------------------------------------------------------- daily world events
 
-function knows(core: GameCore, id: string): boolean {
-  return core.state.social.rel[id]?.met ?? false;
-}
-
 function inviteMessage(core: GameCore, def: string, npc: string, at: number, durationMin: number, body: string, data: Record<string, string | number | boolean> = {}, others: string[] = []): void {
   const sd = SOCIAL_EVENTS[def];
   const ev: ScheduledEvent = {
@@ -417,28 +413,6 @@ const DAILY: DailyEventDef[] = [
       core.state.casino.comps += comps;
       core.phone.send('victor', '维克多（灰港大赌场）', `感谢您一直以来的支持。我已为您的会员账户增加了 ${formatG(comps)} 的餐饮积分，可在幸运七酒吧使用。如需安排，随时联系我。`);
       core.social.applyDirect('victor', { kind: 'chat', facets: { attention: 0.3 }, importance: 6 }, { silent: true });
-    },
-  },
-  {
-    id: 'gambler_crisis',
-    cooldownDays: 18,
-    check: (core) => {
-      const rt = core.state.npcs.marco;
-      if (!rt?.flags.inCrisis) return null;
-      return knows(core, 'marco') ? { mode: 'ask' } : knows(core, 'daniel') ? { mode: 'rumor' } : null;
-    },
-    chance: () => 0.5,
-    fire: (core, p) => {
-      if (p.mode === 'ask') {
-        const amount = G(Math.round(core.rng.range(8, 30)) * 100);
-        core.phone.send('marco', '马可', `兄弟……我最近手气太背了，欠了一些人钱，他们催得很紧。能不能先借我 ${formatG(amount)}？下个月发提成就还你，我保证。`, [
-          { id: `lend:marco:${amount}:28`, label: `借给他 ${formatG(amount)}` },
-          { id: 'refuse:marco', label: '拒绝' },
-        ]);
-      } else {
-        core.phone.send('daniel', '丹尼尔', '你认识我们店里的马可吧？听说他在赌场欠了一屁股债，今天有两个人来店里找他……真替他担心。');
-        core.social.remember({ npc: 'daniel', kind: 'npc_hardship', about: 'marco', importance: 20, valence: -30, source: 'witnessed', reliability: 0.9, data: { amount: 0 } });
-      }
     },
   },
   {
@@ -935,6 +909,8 @@ export class EventManager {
       case 'open':
         core.bus.emit('ui:open', { panel: a });
         return { text: '', resolve: false };
+      case 'story':
+        return core.stories.choose(a, b);
     }
     void msg;
     return { text: '' };

@@ -51,6 +51,7 @@ function Overview(): JSX.Element {
     ['车辆', eco.vehicleValue()],
     ['贵重物品', eco.valuablesValue()],
     ['别人欠你的钱', eco.receivablesValue()],
+    ['私人投资（股份）', eco.stakesValue()],
   ];
   return (
     <div className="stack">

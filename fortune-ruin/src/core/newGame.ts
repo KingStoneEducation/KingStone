@@ -106,6 +106,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
       holdings: {},
       receivables: [],
       autopay: true,
+      stakes: [],
     },
     inventory: { items: { meal_basic: 3, chocolate: 1 }, outfits: ['outfit_casual', 'outfit_hoodie'] },
     housing: {
@@ -182,6 +183,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
     journal: { entries: [], seq: 0 },
     stats: { days: [], peakNetWorth: G(20000), lowestNetWorth: G(20000), milestones: {}, lifeEvents: [] },
     market: initialMarket(rng.nextU32()),
+    stories: { active: [], done: [], ended: {} },
   };
 
   // relationships

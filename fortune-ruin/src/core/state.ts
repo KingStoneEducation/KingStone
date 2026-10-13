@@ -211,6 +211,24 @@ export interface EconomyState {
   /** Money other people owe the player (informal loans) */
   receivables: { id: string; npc: NpcId; amount: Money; lentDay: number; dueDay: number; repaid: Money; status: 'open' | 'repaid' | 'written_off' }[];
   autopay: boolean;
+  /** Shares in other people's businesses (valued at the player's share of the business) */
+  stakes: Stake[];
+}
+
+export interface Stake {
+  id: string;
+  name: string;
+  npc: NpcId;
+  /** total the player put in */
+  invested: Money;
+  /** current estimate of the stake (share × business equity) */
+  value: Money;
+  /** fraction of the business owned, 0..1 */
+  share: number;
+  since: number;
+  /** dividends and buy-back money received so far */
+  received: Money;
+  status: 'active' | 'sold' | 'closed';
 }
 
 // ------------------------------------------------------------------ inventory / housing / career
@@ -585,4 +603,22 @@ export interface GameState {
   journal: JournalState;
   stats: StatsState;
   market: MarketState;
+  stories: StoriesState;
+}
+
+/** A storyline in progress: which stage it is at and what has happened so far. */
+export interface StoryState {
+  arc: string;
+  stage: string;
+  /** day the current stage began */
+  since: number;
+  started: number;
+  data: Record<string, number | string | boolean>;
+}
+
+export interface StoriesState {
+  active: StoryState[];
+  done: { arc: string; ending: string; day: number }[];
+  /** day each storyline last ended (for cooldowns) */
+  ended: Record<string, number>;
 }
