@@ -91,6 +91,16 @@ export class BlackjackScene extends TableScene {
   // ------------------------------------------------------------------ build / sync
 
   protected build(): void {
+    this.events.once('shutdown', () => {
+      // objects die with the scene; the next visit starts from clean references
+      this.hands = [];
+      this.dealerCards = [];
+      this.dealerValues = [];
+      this.dealerLabel = null;
+      this.pending = [];
+      this.insurance = [];
+      this.marker = null;
+    });
     this.syncFromState();
     const s = this.st;
     if (s.phase === 'betting') {
@@ -214,11 +224,12 @@ export class BlackjackScene extends TableScene {
   // ------------------------------------------------------------------ flow
 
   private async run(fn: () => Promise<void>): Promise<void> {
+    const gen = this.gen;
     this.setBusy(true);
     try {
       await fn();
     } finally {
-      if (this.alive) this.setBusy(false);
+      if (this.alive && gen === this.gen) this.setBusy(false);
     }
   }
 

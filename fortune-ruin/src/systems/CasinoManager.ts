@@ -6,10 +6,12 @@ import { MINUTES_PER_DAY, toDate } from '../core/calendar';
 import * as BJ from '../casino/BlackjackEngine';
 import * as BAC from '../casino/BaccaratEngine';
 import * as RL from '../casino/RouletteEngine';
+import * as PK from '../casino/PokerEngine';
+import { decidePoker, POKER_STYLES, type PokerStyleId } from '../casino/pokerAI';
 import { hiLoTrueCount } from '../casino/cards';
 import { npcDecision, npcTakesInsurance } from '../casino/blackjackStrategy';
-import { TABLES, TABLE_BY_ID, TIERS, TIER_INDEX, ratedEdge, tierInfo, type TableArea, type TableConfig, type TierInfo } from '../casino/tables';
-import { generatePatron, patronBaccaratSide, patronBetSize, patronReaction, patronRouletteBets, patronWantsToLeave } from '../casino/patrons';
+import { POKER_TABLES, TABLES, TABLE_BY_ID, TIERS, TIER_INDEX, ratedEdge, tierInfo, type TableArea, type TableConfig, type TierInfo } from '../casino/tables';
+import { generatePatron, patronBaccaratSide, patronBetSize, patronReaction, patronRouletteBets, patronWantsToLeave, uniqueName } from '../casino/patrons';
 import { NPC_BY_ID } from '../data/npcs';
 
 export const PLAYER = 'player';
@@ -153,6 +155,7 @@ export class CasinoManager {
       const seed = this.core.rng.nextU32();
       if (cfg.game === 'blackjack') t = { game: 'blackjack', s: BJ.createBlackjackTable(id, cfg.rules, seed) };
       else if (cfg.game === 'baccarat') t = { game: 'baccarat', s: BAC.createBaccaratTable(id, cfg.rules, seed) };
+      else if (cfg.game === 'poker') t = { game: 'poker', s: PK.createPokerTable(id, cfg.rules, seed) };
       else t = { game: 'roulette', s: RL.createRouletteTable(id, cfg.rules, seed) };
       this.cs.tables[id] = t;
     }
@@ -168,6 +171,12 @@ export class CasinoManager {
   bac(id: string): BAC.BaccaratState {
     const t = this.table(id);
     if (t.game !== 'baccarat') throw new Error('not a baccarat table');
+    return t.s;
+  }
+
+  pk(id: string): PK.PokerState {
+    const t = this.table(id);
+    if (t.game !== 'poker') throw new Error('not a poker table');
     return t.s;
   }
 
@@ -193,12 +202,23 @@ export class CasinoManager {
       this.cs.session = { start: this.core.now(), startChips: chips, buyIn: 0, net: 0, rounds: 0, peak: 0 };
     }
     this.cs.patrons = [];
+    for (const cfg of POKER_TABLES) this.pkClearPatrons(cfg.id);
     this.refreshCrowd(true);
     this.core.touch();
   }
 
   leaveCasino(): void {
-    // credit anything still owed and release named NPCs
+    // finish any poker hand still running, credit anything still owed and release named NPCs
+    for (const cfg of POKER_TABLES) {
+      if (!this.cs.tables[cfg.id]) continue;
+      this.pkRunOut(cfg.id);
+      this.collect(cfg.id);
+      const s = this.pk(cfg.id);
+      PK.finishPokerHand(s);
+      const me = PK.seatOfPoker(s, PLAYER);
+      if (me >= 0) PK.leavePoker(s, me);
+      this.pkClearPatrons(cfg.id);
+    }
     for (const id of Object.keys(this.cs.tables)) this.collect(id);
     this.syncNpcPatrons(true);
     this.cs.patrons = [];
@@ -244,6 +264,7 @@ export class CasinoManager {
   playerSeatIndex(tableId: string): number {
     const cfg = TABLE_BY_ID[tableId];
     if (cfg.game === 'blackjack') return BJ.seatOf(this.bj(tableId), PLAYER);
+    if (cfg.game === 'poker') return PK.seatOfPoker(this.pk(tableId), PLAYER);
     return Number(this.core.state.player.flags[`seat:${tableId}`] ?? -1);
   }
 
@@ -254,6 +275,8 @@ export class CasinoManager {
       if (cfg.id === this.cs.activeTable) continue;
       this.refreshTableCrowd(cfg.id, initial);
     }
+    // the table the player sits at is only managed between its hands (or when the floor is rebuilt)
+    for (const cfg of POKER_TABLES) if (initial || cfg.id !== this.cs.activeTable) this.pkManage(cfg.id, initial);
     this.cs.patrons = this.cs.patrons.filter((p) => p.state !== 'gone');
     this.core.touch();
   }
@@ -311,6 +334,10 @@ export class CasinoManager {
     } else if (tableId && game === 'roulette') {
       const st = this.rl(tableId);
       if (st.phase === 'betting') RL.clearRouletteBets(st, p.id);
+    } else if (tableId && game === 'poker') {
+      const st = this.pk(tableId);
+      const i = PK.seatOfPoker(st, p.id);
+      if (i >= 0 && !PK.handInProgress(st)) p.bankroll += PK.leavePoker(st, i);
     }
     p.state = 'gone';
     p.seat = null;
@@ -333,6 +360,7 @@ export class CasinoManager {
 
   tableMin(cfg: TableConfig): Money {
     if (cfg.game === 'roulette') return cfg.rules.minTotal ?? G(5);
+    if (cfg.game === 'poker') return cfg.rules.minBuyIn ?? G(40);
     return cfg.rules.minBet ?? G(10);
   }
 
@@ -388,6 +416,10 @@ export class CasinoManager {
     const t = this.cs.tables[tableId];
     if (!t) return false;
     if (t.game === 'blackjack') return t.s.phase === 'insurance' || t.s.phase === 'player';
+    if (t.game === 'poker') {
+      const i = PK.seatOfPoker(t.s, PLAYER);
+      return i >= 0 && PK.handInProgress(t.s) && t.s.seats[i].inHand;
+    }
     return false;
   }
 
@@ -398,6 +430,14 @@ export class CasinoManager {
     if (err) return fail(err);
     const cfg = TABLE_BY_ID[tableId];
     if (this.cs.activeTable && this.cs.activeTable !== tableId) this.standUp();
+    if (cfg.game === 'poker') {
+      // the buy-in is chosen at the table; keep a seat free for the player
+      this.cs.activeTable = tableId;
+      this.pkManage(tableId);
+      this.core.bus.emit('casino:sit', { tableId });
+      this.core.touch();
+      return ok(this.playerSeatIndex(tableId));
+    }
     let seat = this.playerSeatIndex(tableId);
     if (seat < 0) {
       const taken = this.takenSeats(tableId);
@@ -423,6 +463,13 @@ export class CasinoManager {
   standUp(): CasinoResult<undefined> {
     const tableId = this.cs.activeTable;
     if (!tableId) return ok(undefined);
+    if (TABLE_BY_ID[tableId].game === 'poker' && this.roundInProgress(tableId)) {
+      // after folding the player may get up; the others finish the hand without them
+      const s = this.pk(tableId);
+      const me = s.seats[PK.seatOfPoker(s, PLAYER)];
+      if (!me.folded) return fail('请先打完这一手（或者弃牌）');
+      this.pkRunOut(tableId);
+    }
     if (this.roundInProgress(tableId)) return fail('请先打完这一手');
     this.collect(tableId);
     const cfg = TABLE_BY_ID[tableId];
@@ -434,6 +481,12 @@ export class CasinoManager {
     } else if (cfg.game === 'baccarat') {
       BAC.clearBacBets(this.bac(tableId), PLAYER);
       delete this.core.state.player.flags[`seat:${tableId}`];
+    } else if (cfg.game === 'poker') {
+      const st = this.pk(tableId);
+      if (st.phase === 'settled') PK.finishPokerHand(st);
+      const i = PK.seatOfPoker(st, PLAYER);
+      // chips at the poker table are part of the chip balance all along; nothing to transfer
+      if (i >= 0) PK.leavePoker(st, i);
     } else {
       RL.clearRouletteBets(this.rl(tableId), PLAYER);
       delete this.core.state.player.flags[`seat:${tableId}`];
@@ -459,6 +512,16 @@ export class CasinoManager {
       return i >= 0 ? tbl.s.seats[i].pendingBet : 0;
     }
     if (tbl.game === 'baccarat') return tbl.s.phase === 'betting' ? BAC.ownerStake(tbl.s, PLAYER) : 0;
+    if (tbl.game === 'poker') {
+      // the whole stack in front of the player is reserved at the table
+      const i = PK.seatOfPoker(tbl.s, PLAYER);
+      if (i < 0) return 0;
+      const st = tbl.s.seats[i];
+      if (!st.inHand) return st.stack;
+      if (PK.handInProgress(tbl.s)) return st.stack + st.committed;
+      // settled: until the result is booked the chip account still holds the starting stack
+      return (this.cs.paidRounds[tableId] ?? 0) >= tbl.s.hand ? st.stack : st.startStack;
+    }
     return tbl.s.phase === 'betting' ? RL.ownerTotal(tbl.s, PLAYER) : 0;
   }
 
@@ -526,8 +589,12 @@ export class CasinoManager {
   }
 
   private patronSettle(p: Patron, stake: Money, ret: Money): void {
-    const net = ret - stake;
     p.bankroll += ret;
+    this.patronFeel(p, ret - stake, stake);
+  }
+
+  /** Streaks, mood and a visible reaction after a round. */
+  private patronFeel(p: Patron, net: Money, stake: Money): void {
     if (net > 0) {
       p.wins += 1;
       p.streak = p.streak >= 0 ? p.streak + 1 : 1;
@@ -593,6 +660,30 @@ export class CasinoManager {
           if (p) this.patronSettle(p, stake, ret);
         }
       }
+      return result;
+    }
+    if (t.game === 'poker') {
+      // stacks stay at the table; only each hand's net result moves through the chip account
+      const s = t.s;
+      if (s.phase !== 'settled' || paid >= s.hand) return null;
+      this.cs.paidRounds[tableId] = s.hand;
+      let result: RoundResult | null = null;
+      s.seats.forEach((seat, i) => {
+        if (!seat.occupant || !seat.inHand) return;
+        const delta = PK.handDelta(s, i);
+        const stake = seat.committed;
+        if (seat.occupant === PLAYER) {
+          if (delta > 0) this.creditPlayer(delta, tableId, `德州扑克 第${s.hand}手 赢得底池`);
+          else if (delta < 0) {
+            const d = this.debitPlayer(-delta, tableId, `德州扑克 第${s.hand}手 输掉的筹码`);
+            if (!d.ok) console.warn('poker settlement failed', d.error);
+          }
+          if (stake > 0) result = this.recordPlayerRound('poker', tableId, stake, stake + delta);
+        } else {
+          const p = this.patronById(seat.occupant);
+          if (p && stake > 0) this.patronFeel(p, delta, stake);
+        }
+      });
       return result;
     }
     const s = t.s;
@@ -926,6 +1017,272 @@ export class CasinoManager {
     return ok(out);
   }
 
+
+  // ------------------------------------------------------------ poker controller
+
+  /** Seats the player can take (empty engine seats). */
+  private pkFreeSeat(s: PK.PokerState): number {
+    const free = s.seats.map((st, i) => (st.occupant ? -1 : i)).filter((i) => i >= 0);
+    if (free.length === 0) return -1;
+    return free[this.crowdRng.int(0, free.length - 1)];
+  }
+
+  private pkPickStyle(rng: Rng): PokerStyleId {
+    const weights: [PokerStyleId, number][] = [
+      ['tight', 0.22],
+      ['loose', 0.22],
+      ['aggressive', 0.14],
+      ['passive', 0.2],
+      ['bluffer', 0.1],
+      ['tilter', 0.12],
+    ];
+    let r = rng.float();
+    for (const [id, w] of weights) {
+      if (r < w) return id;
+      r -= w;
+    }
+    return 'tight';
+  }
+
+  private pkPersona(p: Patron | undefined) {
+    return POKER_STYLES[(p?.pokerStyle as PokerStyleId) ?? 'tight'] ?? POKER_STYLES.tight;
+  }
+
+  /** How much a patron brings to the table for a (re-)buy. */
+  private pkPatronBuyIn(p: Patron, rules: PK.PokerRules, current: Money): Money {
+    const want = Math.round((p.startBankroll * this.crowdRng.range(0.25, 0.6)) / G(10)) * G(10);
+    const target = Math.max(rules.minBuyIn, Math.min(rules.maxBuyIn, want));
+    return Math.max(0, Math.min(p.bankroll, target - current));
+  }
+
+  /** Empties a poker table of patrons (when the floor crowd is rebuilt). */
+  private pkClearPatrons(tableId: string): void {
+    if (!this.cs.tables[tableId]) return;
+    const s = this.pk(tableId);
+    if (PK.handInProgress(s)) this.pkRunOut(tableId);
+    this.collect(tableId);
+    PK.finishPokerHand(s);
+    s.seats.forEach((st, i) => {
+      if (!st.occupant || st.occupant === PLAYER) return;
+      const p = this.patronById(st.occupant);
+      const stack = PK.leavePoker(s, i);
+      if (p) {
+        p.bankroll += stack;
+        p.state = 'gone';
+        p.seat = null;
+      }
+    });
+  }
+
+  /** Plays the rest of a hand instantly. A player who is away checks when possible, otherwise folds. */
+  pkRunOut(tableId: string): PK.PokerEvent[] {
+    const s = this.pk(tableId);
+    const ev: PK.PokerEvent[] = [];
+    for (let guard = 0; guard < 400 && PK.handInProgress(s); guard++) {
+      const seat = s.toAct;
+      const owner = s.seats[seat]?.occupant;
+      const r = owner && owner !== PLAYER ? this.pkPatronAct(tableId) : null;
+      if (r?.ok) ev.push(...r.value);
+      else {
+        const legal = PK.legalPokerActions(s, seat);
+        ev.push(...PK.actPoker(s, seat, { type: legal?.check ? 'check' : 'fold' }));
+      }
+    }
+    this.core.touch();
+    return ev;
+  }
+
+  /**
+   * Between hands: book the finished hand, then patrons leave (time, goals,
+   * busted), re-buy when short, and new players take empty seats.
+   */
+  pkManage(tableId: string, initial = false): void {
+    const s = this.pk(tableId);
+    if (PK.handInProgress(s)) return;
+    if (s.phase === 'settled') {
+      this.collect(tableId);
+      PK.finishPokerHand(s);
+    }
+    const cfg = TABLE_BY_ID[tableId];
+    const rules = s.rules;
+    const now = this.core.now();
+    const rng = this.crowdRng;
+    // seats whose patron no longer exists (crowd rebuilt) are freed
+    s.seats.forEach((st, i) => {
+      if (st.occupant && st.occupant !== PLAYER && !this.patronById(st.occupant)) PK.leavePoker(s, i);
+    });
+    for (const p of this.patronsAt(tableId)) {
+      const i = PK.seatOfPoker(s, p.id);
+      if (i < 0) {
+        p.state = 'gone';
+        p.seat = null;
+        continue;
+      }
+      const st = s.seats[i];
+      const total = p.bankroll + st.stack;
+      let leave = now >= p.leaveAt || total >= p.startBankroll * p.winGoal || total <= p.startBankroll * p.stopLoss;
+      if (!leave && st.stack < rules.bigBlind * 25) {
+        const add = this.pkPatronBuyIn(p, rules, st.stack);
+        const rebuy = add > 0 && st.stack + add >= Math.min(rules.minBuyIn, rules.bigBlind * 25) && rng.chance(0.45 + this.pkPersona(p).tiltProne * 0.45);
+        if (rebuy) {
+          p.bankroll -= add;
+          PK.topUp(s, i, add);
+        } else if (st.stack < rules.bigBlind) leave = true;
+      }
+      if (leave) this.retirePatron(p);
+    }
+    const playerSeated = PK.seatOfPoker(s, PLAYER) >= 0;
+    const playerHere = this.cs.activeTable === tableId;
+    // one seat is always kept for the player while they are at the table
+    const maxPatrons = cfg.seats - (playerSeated || playerHere ? 1 : 0);
+    let n = this.patronsAt(tableId).length;
+    if (n > maxPatrons) {
+      const p = this.patronsAt(tableId).find((x) => !x.npc);
+      if (p) {
+        this.retirePatron(p);
+        n--;
+      }
+    }
+    const want = Math.min(maxPatrons, Math.max(3, Math.round(cfg.seats * Math.min(1, this.occupancy() + 0.25))));
+    for (let guard = 0; n < want && guard < 8; guard++) {
+      if (n >= 2 && !initial && !rng.chance(0.4)) break;
+      const seat = this.pkFreeSeat(s);
+      if (seat < 0) break;
+      const p = generatePatron(`p${++this.cs.patronSeq}`, rng, cfg.area, 'poker', now);
+      uniqueName(p, new Set(this.patronsAt(tableId).map((x) => x.name)), rng);
+      if (p.bankroll < rules.minBuyIn * 2) p.bankroll = rules.minBuyIn * rng.int(2, 6);
+      p.startBankroll = p.bankroll;
+      p.pokerStyle = this.pkPickStyle(rng);
+      p.leaveAt = now + rng.int(90, 420);
+      const buyIn = this.pkPatronBuyIn(p, rules, 0);
+      if (buyIn < rules.minBuyIn) continue;
+      p.bankroll -= buyIn;
+      PK.sitPoker(s, seat, p.id, buyIn);
+      p.seat = `${tableId}:${seat}`;
+      p.state = 'playing';
+      this.cs.patrons.push(p);
+      n++;
+      this.core.bus.emit('patron:arrived', { id: p.id, tableId });
+    }
+    this.cs.patrons = this.cs.patrons.filter((p) => p.state !== 'gone');
+    this.core.touch();
+  }
+
+  /** The player takes a seat with `amount` of their chips in front of them. */
+  pkBuyIn(tableId: string, amount: Money): CasinoResult<number> {
+    const err = this.tableAccess(tableId);
+    if (err) return fail(err);
+    if (this.cs.activeTable !== tableId) return fail('请先走到这张桌子前');
+    const s = this.pk(tableId);
+    if (PK.seatOfPoker(s, PLAYER) >= 0) return fail('你已经入座了');
+    const r = s.rules;
+    if (amount < r.minBuyIn || amount > r.maxBuyIn) return fail(`本桌买入 ${formatG(r.minBuyIn)} – ${formatG(r.maxBuyIn)}`);
+    if (amount > this.availableChips()) return fail('筹码不足，请先到兑换台换筹码');
+    let seat = this.pkFreeSeat(s);
+    if (seat < 0) {
+      // someone makes room, but only between hands
+      const p = PK.handInProgress(s) ? undefined : this.patronsAt(tableId).find((x) => !x.npc);
+      if (p) this.retirePatron(p);
+      seat = this.pkFreeSeat(s);
+      if (seat < 0) return fail('满座了，请等这一手结束');
+    }
+    PK.sitPoker(s, seat, PLAYER, amount);
+    this.core.journal.add('casino', `在${TABLE_BY_ID[tableId].name}买入 ${formatG(amount)}。`);
+    this.core.touch();
+    return ok(seat);
+  }
+
+  /** Add chips to the player's stack between hands (up to the maximum buy-in). */
+  pkTopUp(tableId: string, amount: Money): CasinoResult<undefined> {
+    const s = this.pk(tableId);
+    const seat = PK.seatOfPoker(s, PLAYER);
+    if (seat < 0) return fail('你还没有入座');
+    if (PK.handInProgress(s) && s.seats[seat].inHand) return fail('这一手结束后才能补码');
+    // the finished hand must be booked before the stack changes
+    if (s.phase === 'settled') this.collect(tableId);
+    if (amount <= 0) return fail('请输入补码金额');
+    if (amount > this.availableChips()) return fail('筹码不足，请先到兑换台换筹码');
+    try {
+      PK.topUp(s, seat, amount);
+    } catch (e) {
+      return fail((e as Error).message);
+    }
+    this.core.touch();
+    return ok(undefined);
+  }
+
+  /** Deal the next hand (patrons come and go first). */
+  pkDeal(tableId: string): CasinoResult<PK.PokerEvent[]> {
+    const s = this.pk(tableId);
+    if (PK.handInProgress(s)) return fail('这一手还没有结束');
+    this.pkManage(tableId);
+    if (!PK.canStartHand(s)) return fail('等待更多玩家入座');
+    const ev = PK.startHand(s);
+    this.core.touch();
+    return ok(ev);
+  }
+
+  /** Whose turn: 'player', a patron id, or null. */
+  pkTurnOwner(tableId: string): string | null {
+    const s = this.pk(tableId);
+    if (!PK.handInProgress(s) || s.toAct < 0) return null;
+    return s.seats[s.toAct].occupant;
+  }
+
+  /** A patron acts using only what they can see (own cards + public information). */
+  pkPatronAct(tableId: string): CasinoResult<PK.PokerEvent[]> {
+    const s = this.pk(tableId);
+    const owner = this.pkTurnOwner(tableId);
+    if (!owner || owner === PLAYER) return fail('不是 NPC 的回合');
+    const seat = s.toAct;
+    const view = PK.pokerView(s, seat);
+    if (!view) return fail('现在不能行动');
+    const p = this.patronById(owner);
+    const tilt = p ? Math.max(0, Math.min(1, -p.mood / 60)) : 0;
+    const action = decidePoker(view, this.pkPersona(p), tilt, this.crowdRng);
+    let ev: PK.PokerEvent[];
+    try {
+      ev = PK.actPoker(s, seat, action);
+    } catch {
+      ev = PK.actPoker(s, seat, { type: view.toCall === 0 ? 'check' : 'fold' });
+    }
+    this.core.touch();
+    return ok(ev);
+  }
+
+  pkPlayerAct(tableId: string, action: PK.PokerAction): CasinoResult<PK.PokerEvent[]> {
+    const s = this.pk(tableId);
+    const seat = PK.seatOfPoker(s, PLAYER);
+    if (seat < 0 || this.pkTurnOwner(tableId) !== PLAYER) return fail('现在不是你的回合');
+    try {
+      const ev = PK.actPoker(s, seat, action);
+      this.core.touch();
+      return ok(ev);
+    } catch (e) {
+      return fail((e as Error).message);
+    }
+  }
+
+  /** A complete hand among patrons at a table the player is not watching. */
+  private playBackgroundPoker(tableId: string): void {
+    const s = this.pk(tableId);
+    // a hand the player was only watching when they walked away is finished first
+    if (PK.handInProgress(s)) this.pkRunOut(tableId);
+    this.pkManage(tableId);
+    if (!PK.canStartHand(s)) return;
+    PK.startHand(s);
+    this.pkRunOut(tableId);
+    this.collect(tableId);
+    const last = s.history[s.history.length - 1];
+    const top = last?.winners.slice().sort((a, b) => b.amount - a.amount)[0];
+    if (top && last.pot >= s.rules.bigBlind * 20) {
+      const who = s.seats[top.seat].occupant;
+      const name = (who && this.patronById(who)?.name) ?? '牌手';
+      this.core.bus.emit('casino:bgResult', { tableId, text: `${name} 赢下 ${formatG(top.amount, { compact: true })}${top.name ? `（${top.name}）` : ''}` });
+    }
+    PK.finishPokerHand(s);
+  }
+
   // ------------------------------------------------------------ background tables
 
   /** While the player is in the casino, other tables keep playing real rounds. */
@@ -941,6 +1298,14 @@ export class CasinoManager {
         this.playBackgroundRound(cfg);
       } catch (e) {
         console.warn('background round failed', cfg.id, e);
+      }
+    }
+    for (const cfg of POKER_TABLES) {
+      if (cfg.id === this.cs.activeTable || !this.crowdRng.chance(0.3)) continue;
+      try {
+        this.playBackgroundPoker(cfg.id);
+      } catch (e) {
+        console.warn('background poker hand failed', cfg.id, e);
       }
     }
     if (this.crowdRng.chance(0.25)) this.refreshCrowd();

@@ -9,6 +9,7 @@ import { findPath, type Pt } from './pathfinding';
 import type { MapData } from './maps/types';
 import type { CharDir } from '../art/characters';
 import { formatG } from '../core/money';
+import { POKER_SEAT_ANGLES } from '../art/tableArt';
 
 export interface SeatPos {
   x: number;
@@ -23,10 +24,17 @@ export function seatPosition(tableId: string, seat: number): SeatPos | null {
   const cfg = TABLE_BY_ID[tableId];
   if (!t || !cfg) return null;
   const def = PROPS[t.prop];
-  const left = t.x * 16 + (def.foot.w * 16 - def.w) / 2;
-  const top = (t.y + 1) * 16 - def.h;
+  const left = t.x * 16 + (def.foot.w * 16 - def.w) / 2 + (t.ox ?? 0);
+  const top = (t.y + 1) * 16 - def.h + (t.oy ?? 0);
   const base = (t.y + 1) * 16;
   const n = cfg.seats;
+  if (t.prop === 'poker_table') {
+    // six seats around the oval in the same order as the table view; the dealer stands at the top
+    const deg = POKER_SEAT_ANGLES[seat % POKER_SEAT_ANGLES.length];
+    const a = (deg * Math.PI) / 180;
+    const dir: CharDir = deg > 200 && deg < 340 ? 'down' : deg <= 30 || deg >= 340 ? 'left' : deg >= 150 && deg <= 200 ? 'right' : 'up';
+    return { x: Math.round(left + 34 + Math.cos(a) * 30), y: Math.round(top + 18 + Math.sin(a) * 16 + 6), dir, depth: dir === 'down' ? base - 8 : base + 4 };
+  }
   if (t.prop === 'bj_table') {
     const a = Math.PI * (0.12 + (0.76 * seat) / Math.max(1, n - 1));
     return { x: left + 26 + Math.cos(a) * 27, y: top + 14 + Math.sin(a) * 22 + 6, dir: 'up', depth: base + 4 };

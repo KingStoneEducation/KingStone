@@ -70,7 +70,7 @@ export function begin(core: GameCore): void {
   store.screen = 'game';
   store.notify();
   if (game) {
-    for (const k of ['blackjack', 'baccarat', 'roulette']) if (game.scene.isActive(k) || game.scene.isPaused(k)) game.scene.stop(k);
+    for (const k of ['blackjack', 'baccarat', 'roulette', 'poker']) if (game.scene.isActive(k) || game.scene.isPaused(k)) game.scene.stop(k);
     game.scene.stop('world');
     game.scene.start('world', { attract: false });
   }
@@ -114,7 +114,7 @@ export function quitToMenu(): void {
   store.screen = 'menu';
   store.notify();
   if (game) {
-    for (const k of ['blackjack', 'baccarat', 'roulette']) if (game.scene.isActive(k) || game.scene.isSleeping(k)) game.scene.stop(k);
+    for (const k of ['blackjack', 'baccarat', 'roulette', 'poker']) if (game.scene.isActive(k) || game.scene.isSleeping(k)) game.scene.stop(k);
     game.scene.stop('world');
     game.scene.start('world', { attract: true });
   }

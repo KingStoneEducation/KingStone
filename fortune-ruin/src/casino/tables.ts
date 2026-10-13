@@ -3,6 +3,7 @@ import type { GameKind, MemberTier } from '../core/state';
 import type { BlackjackRules } from './BlackjackEngine';
 import type { BaccaratRules } from './BaccaratEngine';
 import type { RouletteRules } from './RouletteEngine';
+import type { PokerRules } from './PokerEngine';
 
 export type TableArea = 'main' | 'high' | 'vip';
 
@@ -19,7 +20,8 @@ interface TableBase {
 export type TableConfig =
   | (TableBase & { game: 'blackjack'; rules: Partial<BlackjackRules> })
   | (TableBase & { game: 'baccarat'; rules: Partial<BaccaratRules> })
-  | (TableBase & { game: 'roulette'; rules: Partial<RouletteRules> });
+  | (TableBase & { game: 'roulette'; rules: Partial<RouletteRules> })
+  | (TableBase & { game: 'poker'; rules: Partial<PokerRules> });
 
 export const TABLES: TableConfig[] = [
   {
@@ -126,7 +128,30 @@ export const TABLES: TableConfig[] = [
   },
 ];
 
-export const TABLE_BY_ID: Record<string, TableConfig> = Object.fromEntries(TABLES.map((t) => [t.id, t]));
+/**
+ * Poker is player-versus-player; the house only deals and takes a published
+ * rake. Kept apart from TABLES so the house-banked crowd logic never touches it.
+ */
+export const POKER_TABLES: TableConfig[] = [
+  {
+    id: 'pk1',
+    game: 'poker',
+    name: '德州扑克 · 1/2',
+    area: 'main',
+    seats: 6,
+    rules: { seats: 6, smallBlind: G(1), bigBlind: G(2), minBuyIn: G(40), maxBuyIn: G(200), rakeBp: 500, rakeCap: G(4) },
+  },
+  {
+    id: 'pk2',
+    game: 'poker',
+    name: '德州扑克 · 5/10',
+    area: 'main',
+    seats: 6,
+    rules: { seats: 6, smallBlind: G(5), bigBlind: G(10), minBuyIn: G(200), maxBuyIn: G(1000), rakeBp: 500, rakeCap: G(10) },
+  },
+];
+
+export const TABLE_BY_ID: Record<string, TableConfig> = Object.fromEntries([...TABLES, ...POKER_TABLES].map((t) => [t.id, t]));
 
 export const GAME_NAMES: Record<GameKind, string> = { blackjack: '21点', baccarat: '百家乐', roulette: '轮盘', poker: '德州扑克', slots: '老虎机' };
 
@@ -168,6 +193,9 @@ export function ratedEdge(game: GameKind, detail?: string): number {
       return detail === 'tie' ? 0.1436 : 0.0115;
     case 'roulette':
       return detail === 'laPartage' ? 0.0135 : 0.027;
+    case 'poker':
+      // poker players are rated on the rake they generate (≈ 2.5% of chips put into pots)
+      return 0.025;
     default:
       return 0.03;
   }

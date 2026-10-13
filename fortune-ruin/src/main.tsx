@@ -7,6 +7,7 @@ import { WorldScene } from './world/WorldScene';
 import { BlackjackScene } from './tables/BlackjackScene';
 import { BaccaratScene } from './tables/BaccaratScene';
 import { RouletteScene } from './tables/RouletteScene';
+import { PokerScene } from './tables/PokerScene';
 import { setGame } from './game/session';
 import { audio, sfx } from './audio/Audio';
 import { LOCATIONS } from './data/locations';
@@ -20,7 +21,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
-  scene: [BootScene, WorldScene, BlackjackScene, BaccaratScene, RouletteScene],
+  scene: [BootScene, WorldScene, BlackjackScene, BaccaratScene, RouletteScene, PokerScene],
   input: { mouse: { preventDefaultWheel: false } },
   disableContextMenu: true,
   fps: { target: 60 },

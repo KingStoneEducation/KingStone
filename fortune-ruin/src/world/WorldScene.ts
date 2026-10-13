@@ -57,7 +57,6 @@ const VERBS: Record<InteractKind, string> = {
   door: '进入',
   piano: '弹钢琴',
   slots: '查看',
-  poker_room: '查看',
 };
 
 const WALK_SPEED = 58;
@@ -93,6 +92,7 @@ function clamp01(v: number): number {
 
 export function tableLimits(cfg: TableConfig): string {
   const r = cfg.rules as Record<string, unknown>;
+  if (cfg.game === 'poker') return `买入 ${formatG(Number(r.minBuyIn))}–${formatG(Number(r.maxBuyIn))}`;
   const min = (r.minBet ?? r.minTotal) as number | undefined;
   const max = (r.maxBet ?? r.maxOutside) as number | undefined;
   return min !== undefined && max !== undefined ? `${formatG(min)}–${formatG(max)}` : '';
@@ -1050,13 +1050,6 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
           type: 'text',
           title: '老虎机',
           text: '一排闪烁的老虎机。机台旁贴着告示：「本区机台正在进行合规检测与回报率公示，暂停对外开放。」\n\n（开发说明：老虎机不在第一阶段范围内，尚未实现。可以去 21 点、百家乐和轮盘桌游戏。）',
-        });
-        break;
-      case 'poker_room':
-        store.openModal({
-          type: 'text',
-          title: '扑克室',
-          text: '扑克室的门上挂着牌子：「德州扑克牌局筹备中，敬请期待。」\n\n（开发说明：德州扑克计划在第二阶段实现——包含完整牌型比较、边池、盲注轮转与不同风格的 NPC 牌手。目前尚不可玩。）',
         });
         break;
       case 'door':

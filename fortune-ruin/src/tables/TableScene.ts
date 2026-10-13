@@ -35,6 +35,8 @@ export abstract class TableScene extends Phaser.Scene {
   cfg!: TableConfig;
   variant: FeltVariant = 'green';
   protected alive = false;
+  /** bumped on every shutdown; async work started in an earlier visit checks it and stops */
+  protected gen = 0;
   protected busy = false;
   protected dealer: Phaser.GameObjects.Image | null = null;
   private dealerBubble: Phaser.GameObjects.Text | null = null;
@@ -81,8 +83,14 @@ export abstract class TableScene extends Phaser.Scene {
 
   private teardown(): void {
     this.alive = false;
+    this.gen++;
     for (const off of this.offs) off();
     this.offs = [];
+    // Phaser reuses this scene object for the next visit: forget the destroyed objects
+    this.plaques.clear();
+    this.dealerBubble = null;
+    this.bubbleTimer = null;
+    this.dealer = null;
     this.scale.off('resize', this.fit, this);
     if (store.tableApi === (this as unknown as TableApi)) store.tableApi = null;
   }
@@ -349,4 +357,9 @@ export interface TableApi {
   bacBet?(side: 'player' | 'banker' | 'tie' | 'playerPair' | 'bankerPair'): void;
   // roulette
   rlUndo?(): void;
+  // poker
+  pkAct?(action: { type: 'fold' | 'check' | 'call' | 'raise' | 'allin'; to?: Money }): void;
+  pkBuyIn?(amount: Money): void;
+  pkTopUp?(amount: Money): void;
+  pkAuto?(on: boolean): void;
 }

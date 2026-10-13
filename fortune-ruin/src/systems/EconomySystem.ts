@@ -213,6 +213,8 @@ export class EconomySystem {
   }
 
   cashOutChips(amount: Money): TxnResult {
+    // chips in play (a poker stack, bets on a layout) stay at the table
+    if (amount > this.core.casino.availableChips()) return { ok: false, error: '桌上的筹码不能兑现，请先离桌' };
     return this.transfer('chips', 'cash', amount, 'casino_cashout', '筹码兑现');
   }
 

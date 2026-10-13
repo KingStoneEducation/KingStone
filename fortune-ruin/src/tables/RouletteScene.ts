@@ -48,6 +48,14 @@ export class RouletteScene extends TableScene {
   }
 
   protected build(): void {
+    this.events.once('shutdown', () => {
+      // objects die with the scene; the next visit starts from clean references
+      this.stacks.clear();
+      this.hover = [];
+      this.dolly = null;
+      this.plan = null;
+      this.spinDone = null;
+    });
     const scale = (RL.wheel.r * 2) / 360;
     this.wheel = this.add.image(RL.wheel.x, RL.wheel.y, 'wheel').setScale(scale).setDepth(20);
     const b = tableAtlas.ref('ball');
@@ -74,11 +82,12 @@ export class RouletteScene extends TableScene {
   }
 
   private async run(fn: () => Promise<void>): Promise<void> {
+    const gen = this.gen;
     this.setBusy(true);
     try {
       await fn();
     } finally {
-      if (this.alive) this.setBusy(false);
+      if (this.alive && gen === this.gen) this.setBusy(false);
     }
   }
 

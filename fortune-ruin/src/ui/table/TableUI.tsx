@@ -6,6 +6,7 @@ import { TABLE_BY_ID, GAME_NAMES } from '../../casino/tables';
 import * as BJE from '../../casino/BlackjackEngine';
 import * as BACE from '../../casino/BaccaratEngine';
 import * as RLE from '../../casino/RouletteEngine';
+import * as PKE from '../../casino/PokerEngine';
 import { basicStrategy } from '../../casino/blackjackStrategy';
 import { beadPlate, bigRoad, shoeStats } from '../../casino/baccaratRoads';
 import { CHIP_COLORS, CHIP_DENOMS } from '../../art/palette';
@@ -18,6 +19,7 @@ const SIDE_LABELS: Record<BACE.BacSide, string> = { player: '闲 1:1', banker: '
 function limits(tableId: string): { min: Money; max: Money } {
   const cfg = TABLE_BY_ID[tableId];
   const r = cfg.rules as Record<string, number>;
+  if (cfg.game === 'poker') return { min: r.minBuyIn ?? G(40), max: r.maxBuyIn ?? G(200) };
   return { min: r.minBet ?? r.minTotal ?? G(1), max: r.maxBet ?? r.maxOutside ?? G(1000) };
 }
 
@@ -48,6 +50,20 @@ export function rulesText(core: GameCore, tableId: string): string[] {
       '补牌完全按标准规则表执行，与下注无关',
       `限注 ${formatG(r.minBet)}–${formatG(r.maxBet)}，和局最高 ${formatG(r.tieMax)}`,
       `理论庄家优势：庄 ${BACE.BACCARAT_EDGES.banker}% · 闲 ${BACE.BACCARAT_EDGES.player}% · 和 ${BACE.BACCARAT_EDGES.tie}%`,
+    ];
+  }
+  if (t.game === 'poker') {
+    const r = t.s.rules;
+    return [
+      `无限注德州扑克现金桌，最多 ${r.seats} 人；牌手之间互相比牌，赌场不参与输赢`,
+      `盲注 ${formatG(r.smallBlind)}/${formatG(r.bigBlind)}，按钮位每手顺时针轮转；两人单挑时按钮位下小盲、翻牌前先行动`,
+      `买入 ${formatG(r.minBuyIn)}–${formatG(r.maxBuyIn)}；只能在两手之间补码，离桌时面前筹码全部带走`,
+      '每人两张底牌，五张公共牌依次发出：翻牌 3 张、转牌 1 张、河牌 1 张，每次发牌前先烧一张',
+      '最小加注 = 本轮上一次加注的幅度（至少一个大盲）；不足额的全下不会重新开放加注',
+      '摊牌比最好的五张：同花顺 > 四条 > 葫芦 > 同花 > 顺子 > 三条 > 两对 > 一对 > 高牌；A-2-3-4-5 是最小的顺子，花色不分大小',
+      '有人全下时按投入额分成主池和边池；平分底池时零头筹码归按钮左侧最近的赢家；无人跟注的下注退回',
+      `抽水：看到翻牌的底池抽 ${r.rakeBp / 100}%，每手最多 ${formatG(r.rakeCap)}；翻牌前结束的底池不抽水`,
+      '每手都用重新洗过的一副牌；NPC 牌手只能看到自己的底牌和桌面公开信息',
     ];
   }
   const r = (t as { game: 'roulette'; s: RLE.RouletteState }).s.rules;
@@ -238,6 +254,190 @@ function RlActions(props: { tableId: string }): JSX.Element {
   );
 }
 
+function PkActions(props: { tableId: string }): JSX.Element {
+  const core = useCore();
+  const api = store.tableApi;
+  const s = core.casino.pk(props.tableId);
+  const ui = store.tableUi;
+  const r = s.rules;
+  const me = PKE.seatOfPoker(s, 'player');
+  const seat = me >= 0 ? s.seats[me] : null;
+  const busy = ui.busy;
+  const live = PKE.handInProgress(s);
+  const avail = core.casino.availableChips();
+  const unit = r.smallBlind;
+  const legal = seat && ui.phase === 'player' && !busy ? PKE.legalPokerActions(s, me) : null;
+  const pot = s.seats.reduce((a, x) => a + x.committed, 0);
+  const maxBuy = Math.min(r.maxBuyIn, Math.floor(avail / G(1)) * G(1));
+  const [buyIn, setBuyIn] = useState(() => Math.max(r.minBuyIn, Math.min(maxBuy, Math.round(r.maxBuyIn / 2 / G(10)) * G(10))));
+  const [raiseTo, setRaiseTo] = useState(0);
+  const [auto, setAuto] = useState(false);
+  const decisionKey = legal ? `${s.hand}:${s.phase}:${s.currentBet}:${legal.minRaiseTo}:${legal.maxRaiseTo}` : '';
+  useEffect(() => {
+    if (legal) setRaiseTo(legal.minRaiseTo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decisionKey]);
+  useEffect(() => {
+    if (buyIn > maxBuy && maxBuy >= r.minBuyIn) setBuyIn(maxBuy);
+  }, [maxBuy, buyIn, r.minBuyIn]);
+  const snap = (v: number): number => (legal ? Math.max(legal.minRaiseTo, Math.min(legal.maxRaiseTo, Math.round(v / unit) * unit)) : v);
+  const potRaise = (f: number): number => snap(s.currentBet + f * (pot + (legal?.call ?? 0)));
+  const doRaise = (to: number): void => {
+    if (!legal) return;
+    if (to >= legal.maxRaiseTo) api?.pkAct?.({ type: 'allin' });
+    else api?.pkAct?.({ type: 'raise', to });
+  };
+  useKey(
+    (e) => {
+      if (store.modal || store.panel || !legal) return;
+      if (e.code === 'KeyF') api?.pkAct?.({ type: 'fold' });
+      else if (e.code === 'KeyC') api?.pkAct?.({ type: legal.check ? 'check' : 'call' });
+      else if (e.code === 'KeyR' && legal.canRaise) doRaise(raiseTo);
+      else if (e.code === 'KeyA') api?.pkAct?.({ type: 'allin' });
+    },
+    [decisionKey, raiseTo],
+  );
+  const leaveBtn = (
+    <button className="ghost" disabled={!!seat && live && seat.inHand && !seat.folded} onClick={() => api?.leave()} title="打完这一手（或弃牌）后可以离桌，面前的筹码随身带走">
+      离桌
+    </button>
+  );
+  if (!seat) {
+    const short = avail < r.minBuyIn;
+    return (
+      <div className="action-row" style={{ alignItems: 'center' }}>
+        {short ? (
+          <span className="error">筹码不足：最低买入 {formatG(r.minBuyIn)}，请离桌去兑换台换筹码。</span>
+        ) : (
+          <>
+            <span className="muted">买入</span>
+            <input type="range" min={r.minBuyIn} max={maxBuy} step={G(5)} value={Math.min(buyIn, maxBuy)} onChange={(e) => setBuyIn(Number(e.target.value))} onPointerUp={(e) => e.currentTarget.blur()} style={{ width: 150 }} />
+            <span className="num" style={{ minWidth: 64, color: 'var(--gold-light)' }}>
+              {formatG(Math.min(buyIn, maxBuy))}
+            </span>
+            <button className="primary" disabled={busy || live} onClick={() => api?.pkBuyIn?.(Math.min(buyIn, maxBuy))} title={live ? '这一手结束后可以入座' : ''}>
+              买入入座
+            </button>
+          </>
+        )}
+        <button disabled={busy || live} onClick={() => api?.deal()}>
+          看下一手
+        </button>
+        {leaveBtn}
+      </div>
+    );
+  }
+  if (legal) {
+    const allInCall = !legal.check && legal.call >= seat.stack;
+    return (
+      <div className="action-row" style={{ alignItems: 'center' }}>
+        <button onClick={() => api?.pkAct?.({ type: 'fold' })} title="快捷键 F">
+          弃牌
+        </button>
+        {legal.check ? (
+          <button className="primary" onClick={() => api?.pkAct?.({ type: 'check' })} title="快捷键 C">
+            过牌
+          </button>
+        ) : (
+          <button className="primary" onClick={() => api?.pkAct?.({ type: 'call' })} title="快捷键 C">
+            {allInCall ? '全下跟注' : '跟注'} {formatG(legal.call)}
+          </button>
+        )}
+        {legal.canRaise && (
+          <>
+            <input type="range" min={legal.minRaiseTo} max={legal.maxRaiseTo} step={unit} value={Math.max(legal.minRaiseTo, Math.min(legal.maxRaiseTo, raiseTo))} onChange={(e) => setRaiseTo(Number(e.target.value))} onPointerUp={(e) => e.currentTarget.blur()} style={{ width: 120 }} />
+            {(
+              [
+                ['½池', 0.5],
+                ['¾池', 0.75],
+                ['1池', 1],
+              ] as const
+            ).map(([label, f]) => (
+              <button key={label} className="small" style={{ minWidth: 0 }} onClick={() => setRaiseTo(potRaise(f))}>
+                {label}
+              </button>
+            ))}
+            <button className="primary" onClick={() => doRaise(snap(raiseTo))} title="快捷键 R">
+              {raiseTo >= legal.maxRaiseTo ? '全下' : s.currentBet === 0 ? '下注' : '加注到'} {formatG(snap(raiseTo))}
+            </button>
+          </>
+        )}
+        {(legal.canRaise || allInCall) && !(legal.canRaise && raiseTo >= legal.maxRaiseTo) && (
+          <button onClick={() => api?.pkAct?.({ type: 'allin' })} title="快捷键 A" style={{ borderColor: '#ff5a6a' }}>
+            全下 {formatG(seat.bet + seat.stack)}
+          </button>
+        )}
+      </div>
+    );
+  }
+  const inHand = live && seat.inHand && !seat.folded;
+  const topUp = Math.min(r.maxBuyIn - seat.stack, Math.floor(avail / G(1)) * G(1));
+  return (
+    <div className="action-row" style={{ alignItems: 'center' }}>
+      <span className="muted">
+        面前筹码 <GV v={seat.stack} />
+      </span>
+      {inHand ? (
+        <span className="muted">{seat.allIn ? '你已全下，等待发完公共牌……' : '等待其他玩家行动……'}</span>
+      ) : (
+        <>
+          <button disabled={busy || topUp <= 0 || (live && seat.inHand)} onClick={() => api?.pkTopUp?.(topUp)} title={`补到最高买入 ${formatG(r.maxBuyIn)}`}>
+            补码 +{formatG(Math.max(0, topUp))}
+          </button>
+          <label className="row" style={{ gap: 4, fontSize: 12.5, alignItems: 'center' }}>
+            <input
+              type="checkbox"
+              checked={auto}
+              onChange={(e) => {
+                setAuto(e.target.checked);
+                api?.pkAuto?.(e.target.checked);
+              }}
+            />
+            自动发下一手
+          </label>
+          <button className="primary" disabled={busy || live || seat.stack <= 0} onClick={() => api?.deal()} title="快捷键 空格">
+            {seat.folded && live ? '等这一手结束' : '下一手'}
+          </button>
+        </>
+      )}
+      {leaveBtn}
+    </div>
+  );
+}
+
+function PkHistory(props: { tableId: string }): JSX.Element {
+  const core = useCore();
+  const s = core.casino.pk(props.tableId);
+  const h = s.history.slice(-5).reverse();
+  const who = (id: string | null): string => {
+    if (id === 'player') return '你';
+    const p = id ? core.casino.patronById(id) : undefined;
+    return p?.name ?? '已离座的牌手';
+  };
+  const players = s.seats.filter((x) => x.occupant).length;
+  return (
+    <div className="table-info" style={{ maxWidth: 260 }}>
+      <div className="row between" style={{ fontSize: 12 }}>
+        <span>最近几手</span>
+        <span className="dim">在座 {players}/{s.seats.length}</span>
+      </div>
+      {h.length === 0 && <div className="dim" style={{ fontSize: 12 }}>—</div>}
+      {h.map((e) => (
+        <div key={e.hand} style={{ fontSize: 11.5, lineHeight: 1.5 }} className="muted">
+          #{e.hand} 底池 {formatG(e.pot, { compact: true })}：
+          {e.winners.map((w, i) => (
+            <span key={i} style={{ color: w.who === 'player' ? 'var(--gold-light)' : undefined }}>
+              {i > 0 ? '、' : ''}
+              {who(w.who)} {formatG(w.amount, { compact: true })}
+              {w.name ? `（${w.name}）` : ''}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function BacRoads(props: { tableId: string }): JSX.Element {
   const core = useCore();
   const h = core.casino.bac(props.tableId).history;
@@ -341,7 +541,7 @@ export function TableUI(): JSX.Element | null {
   const rules = rulesText(core, t.tableId);
   const shoeInfo = (() => {
     const tb = core.casino.table(t.tableId);
-    if (tb.game === 'roulette') return null;
+    if (tb.game === 'roulette' || tb.game === 'poker') return null;
     const sh = tb.s.shoe;
     const left = sh.cards.length - sh.pos;
     return { left, pct: left / sh.cards.length, cut: sh.cutIndex / sh.cards.length };
@@ -358,7 +558,9 @@ export function TableUI(): JSX.Element | null {
             </button>
           </div>
           <div className="muted" style={{ fontSize: 12 }}>
-            {GAME_NAMES[cfg.game]} · 限注 {formatG(lim.min)}–{formatG(lim.max)}
+            {cfg.game === 'poker'
+              ? `无限注 · 盲注 ${formatG(cfg.rules.smallBlind ?? 0)}/${formatG(cfg.rules.bigBlind ?? 0)} · 买入 ${formatG(lim.min)}–${formatG(lim.max)}`
+              : `${GAME_NAMES[cfg.game]} · 限注 ${formatG(lim.min)}–${formatG(lim.max)}`}
           </div>
           {showRules && (
             <ul style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: 12, lineHeight: 1.55, color: 'var(--muted)' }}>
@@ -391,10 +593,11 @@ export function TableUI(): JSX.Element | null {
                 {core.casino.tierInfo().name}
               </span>
             </div>
-            {core.casino.availableChips() < lim.min && <div className="error" style={{ marginTop: 4 }}>筹码不足：离桌去兑换台换筹码。</div>}
+            {cfg.game !== 'poker' && core.casino.availableChips() < lim.min && <div className="error" style={{ marginTop: 4 }}>筹码不足：离桌去兑换台换筹码。</div>}
           </div>
           {t.game === 'baccarat' && <BacRoads tableId={t.tableId} />}
           {t.game === 'roulette' && <RlHistory tableId={t.tableId} />}
+          {t.game === 'poker' && <PkHistory tableId={t.tableId} />}
         </div>
       </div>
       {ui.result && (
@@ -404,13 +607,23 @@ export function TableUI(): JSX.Element | null {
           <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center', color: 'var(--text)' }}>{ui.result.text}</div>
         </div>
       )}
-      <div className="table-bar" title={t.game === 'blackjack' ? '快捷键：B 下注 · 空格 发牌 · H 要牌 · S 停牌 · D 加倍 · P 分牌 · R 投降 · Esc 离桌' : '快捷键：空格 开局 · Esc 离桌'}>
+      <div
+        className="table-bar"
+        title={
+          t.game === 'blackjack'
+            ? '快捷键：B 下注 · 空格 发牌 · H 要牌 · S 停牌 · D 加倍 · P 分牌 · R 投降 · Esc 离桌'
+            : t.game === 'poker'
+              ? '快捷键：F 弃牌 · C 过牌/跟注 · R 下注/加注 · A 全下 · 空格 下一手 · Esc 离桌'
+              : '快捷键：空格 开局 · Esc 离桌'
+        }
+      >
         <div className="table-msg">{ui.message || '\u00a0'}</div>
         <div className="row wrap" style={{ gap: 10, justifyContent: 'center' }}>
-          <ChipSelector tableId={t.tableId} />
+          {t.game !== 'poker' && <ChipSelector tableId={t.tableId} />}
           {t.game === 'blackjack' && <BjActions tableId={t.tableId} />}
           {t.game === 'baccarat' && <BacActions tableId={t.tableId} />}
           {t.game === 'roulette' && <RlActions tableId={t.tableId} />}
+          {t.game === 'poker' && <PkActions tableId={t.tableId} />}
         </div>
       </div>
     </div>

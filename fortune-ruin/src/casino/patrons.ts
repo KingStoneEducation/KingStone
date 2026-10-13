@@ -41,6 +41,13 @@ export function generatePatron(id: string, rng: Rng, area: TableArea, favorite: 
   };
 }
 
+/** Give a patron a name nobody else at the table has (same gender list). */
+export function uniqueName(p: Patron, taken: ReadonlySet<string>, rng: Rng): void {
+  if (!taken.has(p.name)) return;
+  const pool = (p.look % 2 === 1 ? FEMALE : MALE).filter((n) => !taken.has(n));
+  if (pool.length) p.name = rng.pick(pool);
+}
+
 /** Round to the table's betting unit and clamp to limits/bankroll. */
 function clampBet(amount: number, min: Money, max: Money, bankroll: Money): Money {
   const unit = min >= G(100) ? G(25) : G(5);

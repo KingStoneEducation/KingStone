@@ -476,6 +476,98 @@ export function drawWheel(ctx: Ctx, size: number): void {
   ctx.fill();
 }
 
+// ------------------------------------------------------------------ poker
+
+/**
+ * Seat angles (degrees, y down) around the oval, clockwise, i.e. in the order
+ * the action moves. The dealer stands at the top (270°). Shared with the
+ * casino floor so a patron sits in the same place in both views.
+ */
+export const POKER_SEAT_ANGLES = [118, 170, 222, 318, 10, 62];
+
+export const PKT = {
+  cx: 240,
+  cy: 150,
+  rx: 206,
+  ry: 92,
+  board: { x: 240, y: 146, gap: 26 },
+  pot: { x: 240, y: 112 },
+  muck: { x: 240, y: 74 },
+};
+
+export interface PokerSeatGeom {
+  angle: number;
+  plaque: { x: number; y: number };
+  cards: { x: number; y: number };
+  bet: { x: number; y: number };
+  button: { x: number; y: number };
+  /** where the action label and stack text go */
+  label: { x: number; y: number };
+}
+
+/** Layout for display position `d` (0 = the player's seat, then clockwise). */
+export function pokerSeatGeom(d: number): PokerSeatGeom {
+  const deg = POKER_SEAT_ANGLES[d % POKER_SEAT_ANGLES.length];
+  const a = (deg * Math.PI) / 180;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  const at = (f: number, off = 0) => {
+    const b = ((deg + off) * Math.PI) / 180;
+    return { x: Math.round(PKT.cx + PKT.rx * f * Math.cos(b)), y: Math.round(PKT.cy + PKT.ry * f * Math.sin(b)) };
+  };
+  const plaque = { x: Math.round(PKT.cx + 226 * c), y: Math.min(220, Math.round(PKT.cy + 108 * s - 16)) };
+  const cards = d === 0 ? { x: plaque.x + 44, y: 236 } : at(0.8);
+  return { angle: deg, plaque, cards, bet: at(0.55), button: at(0.55, -16), label: { x: plaque.x, y: plaque.y + 39 } };
+}
+
+export function drawPokerTable(ctx: Ctx, variant: FeltVariant, stakes: string): void {
+  const f = FELTS[variant];
+  const { cx, cy, rx, ry } = PKT;
+  const inside = (x: number, y: number, ax: number, ay: number) => ((x - cx) / ax) ** 2 + ((y - cy) / ay) ** 2 <= 1;
+  for (let y = Math.floor(cy - ry - 12); y <= cy + ry + 12; y++) {
+    for (let x = Math.floor(cx - rx - 12); x <= cx + rx + 12; x++) {
+      if (!inside(x, y, rx + 12, ry + 12)) continue;
+      if (!inside(x, y, rx, ry)) {
+        // padded leather rail with a highlight on top
+        const top = y < cy;
+        const edge = !inside(x, y, rx + 10, ry + 10) || !inside(x, y, rx + 2, ry + 2);
+        px(ctx, x, y, edge ? '#1c0e08' : top ? '#4a2416' : '#3a1a10');
+        continue;
+      }
+      const d = Math.sqrt(((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2);
+      let col = d < 0.5 ? f.light : d < 0.86 ? f.felt : f.dark;
+      if (d >= 0.48 && d < 0.52 && (x + y) % 2 === 0) col = f.felt;
+      if (d >= 0.84 && d < 0.88 && (x + y) % 2 === 0) col = f.dark;
+      px(ctx, x, y, col);
+    }
+  }
+  // rail highlight
+  for (let t = 200; t <= 340; t += 0.5) {
+    const a = (t * Math.PI) / 180;
+    px(ctx, Math.round(cx + Math.cos(a) * (rx + 6)), Math.round(cy + Math.sin(a) * (ry + 6)), '#6a3a24');
+  }
+  // betting line
+  for (let t = 0; t < 360; t += 0.7) {
+    const a = (t * Math.PI) / 180;
+    px(ctx, Math.round(cx + Math.cos(a) * rx * 0.66), Math.round(cy + Math.sin(a) * ry * 0.66), rgba(f.ink, 0.45));
+  }
+  // community card boxes
+  for (let i = 0; i < 5; i++) {
+    const x = PKT.board.x + (i - 2) * PKT.board.gap;
+    strokeRect(ctx, x - 12, PKT.board.y - 16, 24, 32, rgba(f.ink, 0.35));
+  }
+  drawTextCentered(ctx, "TEXAS HOLD'EM", cx, cy + 26, rgba(f.ink, 0.8), '5x7', 1, rgba('#000000', 0.3));
+  drawTextCentered(ctx, `NO LIMIT  ${stakes}`, cx, cy + 37, rgba(f.ink, 0.7), '3x5');
+  // dealer's tray
+  rect(ctx, cx - 30, cy - ry + 4, 60, 9, '#1c1016');
+  strokeRect(ctx, cx - 30, cy - ry + 4, 60, 9, '#6a4a2a');
+  [1000, 500, 100, 25, 5, 1].forEach((d, i) => {
+    const c = CHIP_COLORS[d];
+    rect(ctx, cx - 27 + i * 9.5, cy - ry + 6, 7, 5, c.base);
+    rect(ctx, cx - 27 + i * 9.5, cy - ry + 6, 7, 1, shade(c.base, 0.25));
+  });
+}
+
 // ------------------------------------------------------------------ registration
 
 export const tableAtlas = new AtlasBuilder('tbl');
@@ -508,6 +600,17 @@ export function registerTableTextures(scene: Phaser.Scene): void {
     px(ctx, 2, 2, '#ffffff');
     px(ctx, 4, 4, '#b8b8c0');
   });
+  for (const [id, fill, ink, text] of [
+    ['btn:D', '#f4f1ea', '#1b1824', 'D'],
+    ['btn:SB', '#3b6fc4', '#f4f1ea', 'SB'],
+    ['btn:BB', '#c8a24a', '#1b1824', 'BB'],
+  ] as const) {
+    tableAtlas.draw(id, 11, 11, (ctx) => {
+      circle(ctx, 5.5, 6, 5, shade(fill, -0.35));
+      circle(ctx, 5.5, 5.5, 5, fill);
+      drawTextCentered(ctx, text, 5.5, 3, ink, '3x5');
+    });
+  }
   tableAtlas.draw('marker', 12, 7, (ctx) => {
     for (let i = 0; i < 6; i++) rect(ctx, i, i, 12 - i * 2, 1, '#ffe45c');
   });

@@ -3,6 +3,7 @@ import type { RngState } from './rng';
 import type { BlackjackState } from '../casino/BlackjackEngine';
 import type { BaccaratState } from '../casino/BaccaratEngine';
 import type { RouletteState } from '../casino/RouletteEngine';
+import type { PokerState } from '../casino/PokerEngine';
 
 /**
  * The complete, JSON-serializable world state. Everything that must survive a
@@ -265,7 +266,8 @@ export type GameKind = 'blackjack' | 'baccarat' | 'roulette' | 'poker' | 'slots'
 export type TableEngineState =
   | { game: 'blackjack'; s: BlackjackState }
   | { game: 'baccarat'; s: BaccaratState }
-  | { game: 'roulette'; s: RouletteState };
+  | { game: 'roulette'; s: RouletteState }
+  | { game: 'poker'; s: PokerState };
 
 export interface Patron {
   id: string;
@@ -294,6 +296,8 @@ export interface Patron {
   streak: number;
   /** linked named NPC, if any */
   npc?: NpcId;
+  /** poker temperament (see pokerAI POKER_STYLES) */
+  pokerStyle?: string;
   state: 'arriving' | 'playing' | 'wandering' | 'leaving' | 'gone';
 }
 

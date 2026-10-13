@@ -1,7 +1,7 @@
 import { MapBuilder, type MapData } from './types';
 
 /** Table anchors (bottom-left tile of the footprint) shared with the scene for seating. */
-export const CASINO_TABLES: Record<string, { x: number; y: number; prop: string; dealer: { x: number; y: number; face: 'down' | 'right' } }> = {
+export const CASINO_TABLES: Record<string, { x: number; y: number; prop: string; dealer: { x: number; y: number; face: 'down' | 'right' }; ox?: number; oy?: number }> = {
   bj1: { x: 4, y: 17, prop: 'bj_table', dealer: { x: 5, y: 14, face: 'down' } },
   bj2: { x: 10, y: 17, prop: 'bj_table', dealer: { x: 11, y: 14, face: 'down' } },
   bj3: { x: 16, y: 17, prop: 'bj_table', dealer: { x: 17, y: 14, face: 'down' } },
@@ -14,6 +14,8 @@ export const CASINO_TABLES: Record<string, { x: number; y: number; prop: string;
   bach: { x: 57, y: 8, prop: 'bac_table', dealer: { x: 58, y: 5, face: 'down' } },
   bacv: { x: 25, y: 8, prop: 'bac_table', dealer: { x: 26, y: 5, face: 'down' } },
   bjv: { x: 35, y: 8, prop: 'bj_table', dealer: { x: 36, y: 5, face: 'down' } },
+  pk1: { x: 12, y: 5, prop: 'poker_table', ox: 8, oy: -2, dealer: { x: 14, y: 2, face: 'down' } },
+  pk2: { x: 17, y: 8, prop: 'poker_table', ox: 8, dealer: { x: 19, y: 6, face: 'down' } },
 };
 
 export function buildCasinoMap(): MapData {
@@ -72,11 +74,13 @@ export function buildCasinoMap(): MapData {
   b.set(32, H - 1, 'mat', false);
   b.data.doors.push({ x: 31, y: H - 1, w: 2, target: 'city', spawn: 'door:casino', label: '出口' });
   b.spawn('entry', 31, H - 2, 'up');
+  // the poker room is open to everyone
+  b.set(16, 10, 'carpet_green', false);
+  b.set(17, 10, 'carpet_green', false);
   // gates (blocked; interacting asks for access)
-  for (const [x, y] of [[16, 10], [17, 10], [31, 11], [32, 11], [52, 12], [53, 12], [10, 39]] as [number, number][]) {
+  for (const [x, y] of [[31, 11], [32, 11], [52, 12], [53, 12], [10, 39]] as [number, number][]) {
     b.set(x, y, x === 10 ? 'carpet_grey' : y === 11 ? 'carpet_vip0' : y === 12 ? 'carpet_vip0' : 'carpet_green', true);
   }
-  b.interactable('gate_poker', 16, 10, 2, 1, { kind: 'poker_room', label: '扑克室' });
   b.interactable('gate_vip', 31, 11, 2, 1, { kind: 'gate', label: 'VIP 私人厅入口', data: { area: 'vip', inside: '31,10', outside: '31,12' } });
   b.interactable('gate_high', 52, 12, 2, 1, { kind: 'gate', label: '高额投注区入口', data: { area: 'high', inside: '52,11', outside: '52,13' } });
   b.interactable('gate_office', 10, 39, 1, 1, { kind: 'gate', label: '经理办公室', data: { area: 'office', inside: '9,39', outside: '11,39' } });
@@ -96,9 +100,13 @@ export function buildCasinoMap(): MapData {
   b.prop('atm', 10, 9, { kind: 'atm', label: '赌场 ATM（手续费 6 G）', data: { where: 'casino' } });
   b.prop('vault', 6, 1, undefined, { oy: -6 });
 
-  // poker room
-  b.prop('poker_table', 13, 6);
-  b.prop('poker_table', 17, 8);
+  // poker room: two no-limit hold'em tables
+  for (const id of ['pk1', 'pk2'] as const) {
+    const t = CASINO_TABLES[id];
+    b.prop(t.prop, t.x, t.y, { kind: 'table', label: id === 'pk1' ? '德州扑克 · 1/2' : '德州扑克 · 5/10', data: { table: id } }, { ox: t.ox, oy: t.oy });
+  }
+  // the first table overhangs its footprint by half a tile
+  b.block(16, 4, 1, 2);
   b.prop('neon_poker', 15, 1, undefined, { oy: -1 });
 
   // VIP salon

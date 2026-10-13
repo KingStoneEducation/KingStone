@@ -66,6 +66,14 @@ export class BaccaratScene extends TableScene {
   }
 
   protected build(): void {
+    this.events.once('shutdown', () => {
+      // objects die with the scene; the next visit starts from clean references
+      this.stacks.clear();
+      this.cards = { player: [], banker: [] };
+      this.values = { player: [], banker: [] };
+      this.totals = { player: null, banker: null };
+      this.glow = null;
+    });
     this.refreshPlaques();
     const s = this.st;
     if (s.phase === 'settled') {
@@ -85,11 +93,12 @@ export class BaccaratScene extends TableScene {
   }
 
   private async run(fn: () => Promise<void>): Promise<void> {
+    const gen = this.gen;
     this.setBusy(true);
     try {
       await fn();
     } finally {
-      if (this.alive) this.setBusy(false);
+      if (this.alive && gen === this.gen) this.setBusy(false);
     }
   }
 

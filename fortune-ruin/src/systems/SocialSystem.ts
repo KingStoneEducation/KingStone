@@ -482,7 +482,7 @@ export class SocialSystem {
     if (!notable && !huge) return;
     const amountG = Math.abs(net) / 100;
     const mag = clamp(Math.log10(Math.max(10, amountG)) - 2.2, 0.2, 1.6);
-    const gameName = game === 'blackjack' ? '21点' : game === 'baccarat' ? '百家乐' : game === 'roulette' ? '轮盘' : game;
+    const gameName = game === 'blackjack' ? '21点' : game === 'baccarat' ? '百家乐' : game === 'roulette' ? '轮盘' : game === 'poker' ? '德州扑克' : game;
     const spec: SocialEventSpec =
       net > 0
         ? { kind: 'big_win', facets: { wealthGain: mag, gambling: 0.6 + mag * 0.2 }, importance: 22 + mag * 18, data: { amount: net, game: gameName, table: tableId } }

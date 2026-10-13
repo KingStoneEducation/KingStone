@@ -962,6 +962,7 @@ table.data th.r {
   left: 50%;
   bottom: 8px;
   transform: translateX(-50%);
+  width: max-content;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 14px;
