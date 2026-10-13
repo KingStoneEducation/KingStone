@@ -1,0 +1,311 @@
+import { G, type Money } from '../core/money';
+import type { PlayerStats, SkillId } from '../core/state';
+
+export type ItemKind = 'food' | 'drink' | 'grocery' | 'outfit' | 'gift' | 'valuable' | 'vehicle' | 'book' | 'furniture' | 'misc';
+
+export interface OutfitLook {
+  top: string;
+  topShade: string;
+  bottom: string;
+  shoes: string;
+  accent?: string;
+  /** visual style template */
+  style: 'tee' | 'hoodie' | 'shirt' | 'suit' | 'dress' | 'gown' | 'jacket';
+}
+
+export interface ItemDef {
+  id: string;
+  name: string;
+  kind: ItemKind;
+  price: Money;
+  desc: string;
+  effects?: Partial<Record<keyof PlayerStats, number>>;
+  /** minutes it takes to consume */
+  useMinutes?: number;
+  prestige?: number;
+  look?: OutfitLook;
+  giftTags?: string[];
+  /** fraction of price recovered when sold (pawn/second hand) */
+  resale?: number;
+  vehicle?: { speed: number; prestige: number; upkeep: Money; tripCost: Money };
+  skill?: { id: SkillId; amount: number; cap: number };
+  comfort?: number;
+  homePrestige?: number;
+  /** for groceries: how many home meals it provides */
+  meals?: number;
+}
+
+const food = (id: string, name: string, price: number, desc: string, effects: ItemDef['effects'], useMinutes = 15, giftTags?: string[]): ItemDef => ({
+  id,
+  name,
+  kind: 'food',
+  price: G(price),
+  desc,
+  effects,
+  useMinutes,
+  giftTags,
+});
+
+const drink = (id: string, name: string, price: number, desc: string, effects: ItemDef['effects'], useMinutes = 10, giftTags?: string[]): ItemDef => ({
+  id,
+  name,
+  kind: 'drink',
+  price: G(price),
+  desc,
+  effects,
+  useMinutes,
+  giftTags,
+});
+
+export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
+  (
+    [
+      // convenience store
+      food('instant_noodles', '杯面', 4, '便宜、快速，但吃多了会让人心情低落。', { hunger: -30, mood: -1 }, 10),
+      food('rice_ball', '饭团', 3.5, '方便的小点心。', { hunger: -18 }, 5),
+      food('sandwich', '便利店三明治', 7, '能顶一阵子。', { hunger: -35 }, 10),
+      food('chocolate', '巧克力', 3, '一点甜味让人开心。', { hunger: -8, mood: 3 }, 3, ['sweet']),
+      drink('water', '矿泉水', 1.5, '补充水分。', { energy: 2 }, 2),
+      drink('canned_coffee', '罐装咖啡', 3, '提神，但会影响睡眠。', { energy: 8, sleep: 4, stress: 1 }, 3),
+      drink('energy_drink', '能量饮料', 5, '短时间内精神大振，之后更累。', { energy: 18, sleep: 8, stress: 3, health: -1 }, 3),
+      drink('beer_can', '罐装啤酒', 4, '下班后的一罐。', { mood: 4, stress: -4, drunk: 12 }, 10),
+      { id: 'groceries_basic', name: '基础食材', kind: 'grocery', price: G(18), desc: '在家做饭用，可做 3 餐。', meals: 3, effects: { hunger: -45, mood: 2 }, useMinutes: 40 },
+      { id: 'groceries_fresh', name: '新鲜食材', kind: 'grocery', price: G(32), desc: '新鲜蔬菜和肉，可做 3 餐，更健康。', meals: 3, effects: { hunger: -50, mood: 5, health: 2 }, useMinutes: 45 },
+      { id: 'painkillers', name: '止痛药', kind: 'misc', price: G(8), desc: '缓解头痛和宿醉。', effects: { health: 4, stress: -3, drunk: -10 }, useMinutes: 2 },
+      { id: 'strategy_card', name: '21点基本策略卡', kind: 'misc', price: G(5), desc: '赌场允许使用的策略卡。持有后可在21点桌查看基本策略建议。它不改变赔率，只帮你少犯错。' },
+      { id: 'wine_bottle', name: '红酒（瓶装）', kind: 'gift', price: G(22), desc: '适合作为礼物。', giftTags: ['wine'] },
+      { id: 'flowers', name: '花束', kind: 'gift', price: G(25), desc: '一束新鲜的花。', giftTags: ['flowers'] },
+      { id: 'book_finance', name: '《个人理财入门》', kind: 'book', price: G(28), desc: '在家阅读可提升理财能力。', skill: { id: 'finance', amount: 8, cap: 40 }, useMinutes: 120, giftTags: ['book'] },
+      { id: 'book_career', name: '《高效职场》', kind: 'book', price: G(24), desc: '在家阅读可提升工作能力。', skill: { id: 'work', amount: 7, cap: 40 }, useMinutes: 120, giftTags: ['book'] },
+      { id: 'book_social', name: '《说话的艺术》', kind: 'book', price: G(22), desc: '在家阅读可提升社交能力。', skill: { id: 'social', amount: 7, cap: 40 }, useMinutes: 120, giftTags: ['book'] },
+      { id: 'book_cards', name: '《赌场数学》', kind: 'book', price: G(30), desc: '讲解庄家优势与概率。读完你会更清楚：长期来看赌场总是赢家。', skill: { id: 'cards', amount: 10, cap: 50 }, useMinutes: 150, giftTags: ['book'] },
+
+      // café
+      drink('espresso', '意式浓缩', 4, '浓烈提神。', { energy: 12, sleep: 6, stress: 1 }, 5, ['coffee']),
+      drink('latte', '拿铁', 5.5, '温暖顺滑。', { energy: 10, sleep: 5, mood: 3 }, 10, ['coffee']),
+      food('croissant', '可颂', 4.5, '黄油香气。', { hunger: -15, mood: 2 }, 5, ['sweet']),
+      food('bagel', '贝果三明治', 9, '扎实的一餐。', { hunger: -35, mood: 1 }, 10),
+      food('cheesecake', '芝士蛋糕', 6, '甜蜜的小奢侈。', { hunger: -15, mood: 5 }, 8, ['sweet']),
+      { id: 'coffee_beans', name: '精品咖啡豆', kind: 'gift', price: G(18), desc: '包装精美，适合送给咖啡爱好者。', giftTags: ['coffee'] },
+
+      // restaurant
+      food('lunch_set', '午市套餐', 18, '汤、主菜和饮料。', { hunger: -60, mood: 4 }, 30),
+      food('pasta', '招牌意面', 24, 'Marlow 家的招牌。', { hunger: -55, mood: 6 }, 30),
+      food('steak_dinner', '牛排晚餐', 48, '一顿像样的晚餐。', { hunger: -70, mood: 10, stress: -4 }, 45),
+      drink('house_wine', '餐厅红酒（杯）', 12, '佐餐的一杯。', { mood: 6, stress: -6, drunk: 15 }, 15),
+      food('dessert', '甜点拼盘', 9, '饭后甜点。', { hunger: -10, mood: 5 }, 10, ['sweet']),
+
+      // bar
+      drink('draft_beer', '生啤', 7, '冰凉的扎啤。', { mood: 5, stress: -6, drunk: 14 }, 15),
+      drink('cocktail', '鸡尾酒', 13, '调酒师的手艺。', { mood: 7, stress: -7, drunk: 18 }, 15),
+      drink('whiskey', '威士忌', 15, '烈酒，一饮而尽或慢慢品。', { mood: 6, stress: -9, drunk: 24 }, 15),
+      drink('soda', '苏打水', 3, '不含酒精。', { energy: 2 }, 5),
+      food('bar_snacks', '下酒小食', 8, '炸薯条和鸡翅。', { hunger: -22, mood: 2 }, 15),
+
+      // casino bar
+      drink('casino_cocktail', '赌场特调', 16, '「幸运七」特调。', { mood: 8, stress: -6, drunk: 18 }, 10),
+      drink('champagne', '香槟（杯）', 28, '庆祝的味道。', { mood: 10, stress: -5, drunk: 16 }, 10),
+      drink('mineral_water', '进口矿泉水', 4, '保持清醒。', { energy: 3, drunk: -4 }, 3),
+      food('club_sandwich', '总汇三明治', 18, '赌场餐吧的经典。', { hunger: -40, mood: 2 }, 15),
+
+      // fine dining & club
+      food('tasting_menu', 'Lumière 品鉴菜单', 280, '七道菜的法式晚宴。', { hunger: -80, mood: 20, stress: -12 }, 120),
+      drink('wine_pairing', '配餐酒', 160, '侍酒师精选。', { mood: 10, stress: -8, drunk: 22 }, 60),
+      drink('club_scotch', '会所单一麦芽', 45, '只对会员与宾客供应。', { mood: 8, stress: -10, drunk: 20 }, 20),
+
+      // boutique gifts
+      { id: 'perfume', name: '香水', kind: 'gift', price: G(160), desc: '精致的礼物。', giftTags: ['luxury', 'beauty'] },
+      { id: 'cufflinks', name: '银质袖扣', kind: 'gift', price: G(900), desc: '讲究的礼物。', giftTags: ['luxury', 'formal'] },
+      { id: 'concert_tickets', name: '爵士音乐会门票', kind: 'gift', price: G(120), desc: '两张周末音乐会门票。', giftTags: ['music'] },
+      { id: 'basketball', name: '篮球', kind: 'gift', price: G(35), desc: '室外用篮球。', giftTags: ['sports'] },
+
+      // valuables
+      { id: 'watch_basic', name: '石英腕表', kind: 'valuable', price: G(120), desc: '普通但体面的手表。', prestige: 0.2, resale: 0.35 },
+      { id: 'watch_luxury', name: 'Aurelius 机械名表', kind: 'valuable', price: G(12000), desc: '懂行的人一眼就能认出来。', prestige: 1, resale: 0.62 },
+      { id: 'jewelry', name: '金饰', kind: 'valuable', price: G(2500), desc: '黄金首饰，保值性一般。', prestige: 0.4, resale: 0.55 },
+
+      // vehicles
+      { id: 'bicycle', name: '自行车', kind: 'vehicle', price: G(260), desc: '骑行出行，比步行快。', vehicle: { speed: 1.35, prestige: 0, upkeep: G(5), tripCost: 0 }, resale: 0.45 },
+      { id: 'used_car', name: '二手掀背车', kind: 'vehicle', price: G(6800), desc: '开了很多年的老车，能跑。', vehicle: { speed: 1, prestige: 1, upkeep: G(160), tripCost: G(3) }, resale: 0.6 },
+      { id: 'sedan', name: '新款轿车', kind: 'vehicle', price: G(32000), desc: '舒适可靠的家用车。', vehicle: { speed: 1, prestige: 2, upkeep: G(320), tripCost: G(4) }, resale: 0.7 },
+      { id: 'sports_car', name: 'Vantor GT 跑车', kind: 'vehicle', price: G(145000), desc: '引擎声能让整条街回头。', vehicle: { speed: 1, prestige: 4, upkeep: G(1100), tripCost: G(9) }, resale: 0.68 },
+      { id: 'luxury_car', name: 'Regalia 豪华轿车', kind: 'vehicle', price: G(380000), desc: '真正的身份象征。', vehicle: { speed: 1, prestige: 5, upkeep: G(2600), tripCost: G(12) }, resale: 0.66 },
+
+      // furniture (ordered online, delivered home)
+      { id: 'furn_bed_good', name: '记忆棉床垫', kind: 'furniture', price: G(680), desc: '睡眠恢复效率提升。', comfort: 0.12, homePrestige: 0.1 },
+      { id: 'furn_bed_luxury', name: '手工定制大床', kind: 'furniture', price: G(5200), desc: '睡得像酒店一样。', comfort: 0.22, homePrestige: 0.4 },
+      { id: 'furn_sofa', name: '布艺沙发', kind: 'furniture', price: G(540), desc: '在家放松更有效。', comfort: 0.05, homePrestige: 0.2 },
+      { id: 'furn_tv', name: '大屏电视', kind: 'furniture', price: G(980), desc: '看节目可以减压。', comfort: 0.03, homePrestige: 0.2 },
+      { id: 'furn_plants', name: '室内绿植', kind: 'furniture', price: G(120), desc: '让家更有生气。', comfort: 0.02, homePrestige: 0.1 },
+      { id: 'furn_art', name: '当代艺术画作', kind: 'furniture', price: G(8800), desc: '客人会注意到它。', comfort: 0.01, homePrestige: 0.8 },
+      { id: 'furn_treadmill', name: '跑步机', kind: 'furniture', price: G(1450), desc: '在家运动，缓解压力。', comfort: 0.02, homePrestige: 0.1 },
+      { id: 'furn_piano', name: '立式钢琴', kind: 'furniture', price: G(6400), desc: '优雅的爱好。', comfort: 0.03, homePrestige: 0.6 },
+    ] as ItemDef[]
+  ).map((d) => [d.id, d]),
+);
+
+export const OUTFITS: Record<string, ItemDef> = {
+  outfit_casual: {
+    id: 'outfit_casual',
+    name: '日常休闲装',
+    kind: 'outfit',
+    price: G(60),
+    desc: 'T 恤和牛仔裤，普普通通。',
+    prestige: 1,
+    look: { top: '#4f7fbf', topShade: '#3a5f94', bottom: '#3b4a66', shoes: '#2a2a2e', style: 'tee' },
+    resale: 0.1,
+  },
+  outfit_hoodie: {
+    id: 'outfit_hoodie',
+    name: '连帽运动装',
+    kind: 'outfit',
+    price: G(45),
+    desc: '舒服，但不太正式。',
+    prestige: 0,
+    look: { top: '#7a8a96', topShade: '#5c6a75', bottom: '#2f3540', shoes: '#d8d8d8', style: 'hoodie' },
+    resale: 0.1,
+  },
+  outfit_smart: {
+    id: 'outfit_smart',
+    name: '商务休闲装',
+    kind: 'outfit',
+    price: G(180),
+    desc: '衬衫加卡其裤，得体。',
+    prestige: 2,
+    look: { top: '#e6e1d3', topShade: '#c4bfae', bottom: '#8a7556', shoes: '#4a3424', style: 'shirt' },
+    resale: 0.15,
+  },
+  outfit_suit: {
+    id: 'outfit_suit',
+    name: '深色西装',
+    kind: 'outfit',
+    price: G(650),
+    desc: '正式场合与金融行业的标准着装。',
+    prestige: 3,
+    look: { top: '#2b3448', topShade: '#1d2433', bottom: '#232b3b', shoes: '#141414', accent: '#c8c8d0', style: 'suit' },
+    resale: 0.2,
+  },
+  outfit_evening: {
+    id: 'outfit_evening',
+    name: '晚宴礼服',
+    kind: 'outfit',
+    price: G(1800),
+    desc: '出席晚宴与私人会所的着装。',
+    prestige: 4,
+    look: { top: '#5a1630', topShade: '#3f0e21', bottom: '#2a0a17', shoes: '#111111', accent: '#e0c27a', style: 'gown' },
+    resale: 0.25,
+  },
+  outfit_designer: {
+    id: 'outfit_designer',
+    name: '设计师品牌套装',
+    kind: 'outfit',
+    price: G(4500),
+    desc: '剪裁考究，懂行的人能看出价值。',
+    prestige: 4,
+    look: { top: '#e9e4dc', topShade: '#c9c2b6', bottom: '#1b1b1f', shoes: '#0d0d0d', accent: '#b8955a', style: 'jacket' },
+    resale: 0.3,
+  },
+  outfit_haute: {
+    id: 'outfit_haute',
+    name: '高级定制',
+    kind: 'outfit',
+    price: G(18000),
+    desc: '只为极少数人量身定制。',
+    prestige: 5,
+    look: { top: '#101018', topShade: '#07070c', bottom: '#0b0b12', shoes: '#050505', accent: '#e8d08a', style: 'suit' },
+    resale: 0.35,
+  },
+};
+
+export function itemDef(id: string): ItemDef | undefined {
+  return ITEMS[id] ?? OUTFITS[id];
+}
+
+export interface ShopDef {
+  id: string;
+  name: string;
+  items: string[];
+  /** which payment methods are accepted */
+  accepts: ('cash' | 'card')[];
+  greeting: string;
+}
+
+export const SHOPS: Record<string, ShopDef> = {
+  store: {
+    id: 'store',
+    name: 'QuickMart 便利店',
+    items: ['instant_noodles', 'rice_ball', 'sandwich', 'chocolate', 'water', 'canned_coffee', 'energy_drink', 'beer_can', 'groceries_basic', 'groceries_fresh', 'painkillers', 'wine_bottle', 'flowers', 'strategy_card', 'book_finance', 'book_career', 'book_social', 'book_cards'],
+    accepts: ['cash', 'card'],
+    greeting: '欢迎光临 QuickMart！',
+  },
+  cafe: {
+    id: 'cafe',
+    name: 'Harbor Bean 咖啡馆',
+    items: ['espresso', 'latte', 'croissant', 'bagel', 'cheesecake', 'coffee_beans'],
+    accepts: ['cash', 'card'],
+    greeting: '今天想喝点什么？',
+  },
+  restaurant: {
+    id: 'restaurant',
+    name: "Marlow's 小馆",
+    items: ['lunch_set', 'pasta', 'steak_dinner', 'house_wine', 'dessert'],
+    accepts: ['cash', 'card'],
+    greeting: '请坐，这是菜单。',
+  },
+  bar: {
+    id: 'bar',
+    name: 'Rusty Anchor 酒吧',
+    items: ['draft_beer', 'cocktail', 'whiskey', 'soda', 'bar_snacks'],
+    accepts: ['cash', 'card'],
+    greeting: '来点什么？',
+  },
+  casino_bar: {
+    id: 'casino_bar',
+    name: '幸运七酒吧',
+    items: ['casino_cocktail', 'champagne', 'mineral_water', 'club_sandwich'],
+    accepts: ['cash', 'card'],
+    greeting: '欢迎来到幸运七。',
+  },
+  fine_dining: {
+    id: 'fine_dining',
+    name: 'Lumière 法餐厅',
+    items: ['tasting_menu', 'wine_pairing'],
+    accepts: ['card'],
+    greeting: '晚上好，欢迎光临 Lumière。',
+  },
+  club_bar: {
+    id: 'club_bar',
+    name: '子午线会所吧台',
+    items: ['club_scotch', 'mineral_water'],
+    accepts: ['card'],
+    greeting: '先生/女士，需要什么？',
+  },
+  boutique: {
+    id: 'boutique',
+    name: 'Thread & Needle 服装店',
+    items: ['outfit_hoodie', 'outfit_casual', 'outfit_smart', 'outfit_suit', 'outfit_evening', 'perfume', 'watch_basic', 'basketball', 'concert_tickets'],
+    accepts: ['cash', 'card'],
+    greeting: '随便看看，有喜欢的可以试穿。',
+  },
+  luxury: {
+    id: 'luxury',
+    name: 'Maison Aurèle 精品店',
+    items: ['outfit_designer', 'outfit_haute', 'watch_luxury', 'jewelry', 'cufflinks', 'perfume'],
+    accepts: ['card'],
+    greeting: '欢迎光临 Maison Aurèle。',
+  },
+  motors: {
+    id: 'motors',
+    name: '灰港汽车行',
+    items: ['bicycle', 'used_car', 'sedan', 'sports_car', 'luxury_car'],
+    accepts: ['card'],
+    greeting: '看车吗？今天有优惠。',
+  },
+  furniture: {
+    id: 'furniture',
+    name: '家居网上商城',
+    items: ['furn_bed_good', 'furn_bed_luxury', 'furn_sofa', 'furn_tv', 'furn_plants', 'furn_art', 'furn_treadmill', 'furn_piano'],
+    accepts: ['card'],
+    greeting: '下单后次日送货上门。',
+  },
+};

@@ -1,0 +1,13 @@
+{
+  "name": "kingstone",
+  "private": true,
+  "workspaces": [
+    "fortune-ruin"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w fortune-ruin",
+    "build": "npm run build -w fortune-ruin",
+    "test": "npm run test -w fortune-ruin",
+    "preview": "npm run preview -w fortune-ruin"
+  }
+}
