@@ -192,7 +192,9 @@ export class NpcDirector {
       active.add(rt.id);
       const def = NPC_BY_ID[rt.id];
       let t = this.travellers.get(rt.id);
+      let fresh = false;
       if (!t || t.depart !== rt.travel.depart) {
+        fresh = true;
         t?.sprite.destroy();
         const fromLoc = rt.travel.from;
         const toLoc = rt.travel.to;
@@ -221,8 +223,8 @@ export class NpcDirector {
       const dy = ty - t.sprite.y;
       const moving = Math.abs(dx) + Math.abs(dy) > 0.05;
       const dir: CharDir = Math.abs(b.x - a.x) > Math.abs(b.y - a.y) ? (b.x > a.x ? 'right' : 'left') : b.y > a.y ? 'down' : 'up';
-      // smooth toward the timed position
-      const k = Math.min(1, dt / 120);
+      // smooth toward the timed position (a new traveller appears where it should be)
+      const k = fresh ? 1 : Math.min(1, dt / 120);
       t.sprite.setPos(t.sprite.x + dx * k, t.sprite.y + dy * k);
       t.sprite.setMoving(moving && f < 1, dir);
       t.sprite.alpha = f > 0.97 ? Math.max(0, (1 - f) / 0.03) : f < 0.03 ? f / 0.03 : 1;

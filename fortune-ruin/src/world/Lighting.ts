@@ -109,7 +109,7 @@ export class Lighting {
         if (!visible(l.x, l.y, l.r)) continue;
         const flick = l.flicker ? 1 + Math.sin(time / 90 + l.x) * l.flicker : 1;
         const d = l.r * 2 * flick;
-        ctx.globalAlpha = l.strength ?? 0.95;
+        ctx.globalAlpha = l.strength ?? 0.86;
         ctx.drawImage(this.light, l.x - ox - d / 2, l.y - oy - d / 2, d, d);
       }
       for (const e of emissive) {

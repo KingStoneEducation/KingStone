@@ -313,7 +313,17 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   private resolveSpawn(map: MapData, spawn: string | null, tile?: Pt, face?: Face): { x: number; y: number; face: Face } {
     const ok = (x: number, y: number) => x >= 0 && y >= 0 && x < map.w && y < map.h && !map.blocked[y * map.w + x];
-    if (tile && ok(tile.x, tile.y)) return { x: tile.x, y: tile.y, face: face ?? 'down' };
+    if (tile) {
+      // nearest walkable tile to the requested one
+      for (let r = 0; r <= 6; r++) {
+        for (let dy = -r; dy <= r; dy++) {
+          for (let dx = -r; dx <= r; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+            if (ok(tile.x + dx, tile.y + dy)) return { x: tile.x + dx, y: tile.y + dy, face: face ?? 'down' };
+          }
+        }
+      }
+    }
     if (spawn && map.spawns[spawn]) return map.spawns[spawn];
     if (map.spawns.entry) return map.spawns.entry;
     if (map.spawns.start) return map.spawns.start;
@@ -405,7 +415,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         const w = bd.door.w ?? 1;
         const cx = (bd.door.x + w / 2) * 16;
         const cy = (bd.door.y + 1) * 16 + 2;
-        this.staticLights.push({ x: cx, y: cy, r: id === 'casino' ? 70 : 34, color: id === 'casino' ? 0xffc870 : 0xffd9a0 });
+        this.staticLights.push({ x: cx, y: cy, r: id === 'casino' ? 70 : 30, color: id === 'casino' ? 0xffc870 : 0xffd9a0, strength: id === 'casino' ? 0.9 : 0.7 });
       }
       if (id === 'casino') {
         const yb = (bd.y + bd.h) * 16 - 10;
@@ -1056,7 +1066,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   private sitOnBench(it: Interactable): void {
     const p = this.player!;
-    p.setPos(it.x * 16 + 8, it.y * 16 + 14);
+    p.setPos(it.x * 16 + it.w * 8, it.y * 16 + 14);
     p.setSitting(true, 'down');
     p.fixedDepth = (it.y + 1) * 16 + 1;
     this.benchSit = true;

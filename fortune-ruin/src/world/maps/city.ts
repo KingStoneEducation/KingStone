@@ -298,6 +298,13 @@ export function buildCityMap(): CityMap {
   for (const [name, s] of Object.entries(CITY_SPOTS)) b.spot(name, s.x, s.y, s.face ?? 'down');
   b.spawn('start', 7, 75, 'down');
 
+  // benches can be sat on; the basketball court is open for a game
+  for (const p of b.data.props) {
+    if (p.id !== 'bench' || p.interact) continue;
+    b.interactable(`bench@${p.x},${p.y}`, p.x, p.y, 2, 1, { kind: 'bench', label: '长椅' });
+  }
+  b.interactable('court', 62, 66, 9, 6, { kind: 'exercise', label: '河滨公园篮球场' });
+
   const data = b.finish() as CityMap;
   data.lanes = [
     { dir: 'left', fixed: HAVE.y0 + 0.5, from: HAVE.x1 + 1, to: -3 },

@@ -136,7 +136,7 @@ def({
   w: 12,
   h: 42,
   foot: { w: 1, h: 1 },
-  light: { x: 6, y: 6, r: 52, color: '#ffd88a' },
+  light: { x: 6, y: 6, r: 46, color: '#ffd88a' },
   draw: (ctx) => {
     shadow(ctx, 6, 40, 4, 2);
     rect(ctx, 5, 8, 2, 32, '#2a2e38');
