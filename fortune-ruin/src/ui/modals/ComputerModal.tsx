@@ -1,50 +1,17 @@
 import { useState } from 'react';
 import { store } from '../store';
 import { useCore } from '../hooks';
-import { AmountInput, GV, Modal, Tabs, useFeedback } from '../components';
+import { AmountInput, GV, ItemIcon, Modal, useFeedback } from '../components';
 import { HOMES, HOME_ORDER } from '../../data/housing';
 import { JOBS } from '../../data/jobs';
 import { formatClock, WEEKDAY_SHORT } from '../../core/calendar';
 import { G, formatG, mulRatio } from '../../core/money';
-import { MarketView } from './MarketView';
-import { BusinessView } from '../panels/BusinessPanel';
-import { BillsTab } from './MoneyModals';
 import { TIERS, TIER_INDEX } from '../../casino/tables';
 import { CLUB_ANNUAL_FEE, LUMIERE_BOOKING_FEE } from '../../systems/ServicesSystem';
 import { SHOPS, ITEMS } from '../../data/items';
 import { effectText } from './ShopModal';
 
-type Tab = 'housing' | 'jobs' | 'invest' | 'bills' | 'life' | 'payday' | 'shop';
-
-export function ComputerModal(props: { tab?: Tab }): JSX.Element {
-  const [tab, setTab] = useState<Tab>(props.tab ?? 'housing');
-  return (
-    <Modal title="电脑" sub="家里的旧笔记本电脑" wide="x">
-      <Tabs<Tab>
-        tabs={[
-          { id: 'housing', label: '房屋' },
-          { id: 'jobs', label: '招聘' },
-          { id: 'invest', label: '证券' },
-          { id: 'bills', label: '网上银行' },
-          { id: 'life', label: '生活服务' },
-          { id: 'payday', label: '随借 App' },
-          { id: 'shop', label: '商铺' },
-        ]}
-        value={tab}
-        onChange={setTab}
-      />
-      <div style={{ paddingTop: 12 }}>
-        {tab === 'housing' && <HousingTab />}
-        {tab === 'jobs' && <JobsTab />}
-        {tab === 'invest' && <MarketView />}
-        {tab === 'bills' && <BillsTab />}
-        {tab === 'life' && <LifeTab />}
-        {tab === 'payday' && <PaydayTab />}
-        {tab === 'shop' && <BusinessView />}
-      </div>
-    </Modal>
-  );
-}
+/* The pages of the home computer; the desktop (ui/computer/Desktop.tsx) shows each in its own window. */
 
 function moveTo(homeId: string): void {
   const core = store.core!;
@@ -54,7 +21,7 @@ function moveTo(homeId: string): void {
   store.toast(`搬家公司花了两个小时，你搬进了${HOMES[homeId].name}。`, 'good');
 }
 
-function HousingTab(): JSX.Element {
+export function HousingTab(): JSX.Element {
   const core = useCore();
   const h = core.state.housing;
   const hs = core.housing;
@@ -136,7 +103,7 @@ function HousingTab(): JSX.Element {
   );
 }
 
-function JobsTab(): JSX.Element {
+export function JobsTab(): JSX.Element {
   const core = useCore();
   const c = core.career;
   const [fb, say] = useFeedback();
@@ -197,12 +164,11 @@ function JobsTab(): JSX.Element {
   );
 }
 
-function LifeTab(): JSX.Element {
+export function LifeTab(): JSX.Element {
   const core = useCore();
   const sv = core.services;
   const [fb, say] = useFeedback();
   const clubErr = sv.clubCheck();
-  const furn = SHOPS.furniture;
   const res = Number(core.state.player.flags.lumiereReservation ?? -1);
   return (
     <div className="stack">
@@ -254,6 +220,18 @@ function LifeTab(): JSX.Element {
           )}
         </div>
       </div>
+      {fb}
+    </div>
+  );
+}
+
+/** The furniture web shop: delivered to the door. */
+export function FurnitureTab(): JSX.Element {
+  const core = useCore();
+  const [fb, say] = useFeedback();
+  const furn = SHOPS.furniture;
+  return (
+    <div className="stack">
       {furn && (
         <div className="card">
           <h3>家具网购（送货上门）</h3>
@@ -264,6 +242,7 @@ function LifeTab(): JSX.Element {
               const owned = core.housing.furniture().includes(id);
               return (
                 <div className="item" key={id}>
+                  <ItemIcon id={id} />
                   <div className="grow">
                     <div className="title">
                       {d.name} {owned && <span className="tag good">家里已有</span>}
@@ -297,7 +276,7 @@ function LifeTab(): JSX.Element {
   );
 }
 
-function PaydayTab(): JSX.Element {
+export function PaydayTab(): JSX.Element {
   const core = useCore();
   const [amount, setAmount] = useState(500);
   const [fb, say] = useFeedback();
@@ -334,13 +313,22 @@ function PaydayTab(): JSX.Element {
 
 export function CasinoMemberModal(): JSX.Element {
   const core = useCore();
+  return (
+    <Modal title="灰港大赌场 · 会员卡" sub={core.casino.tierInfo().name} wide>
+      <CasinoMemberView />
+    </Modal>
+  );
+}
+
+/** The member's card: points, handle, credit and the tier table (also the casino app on the computer). */
+export function CasinoMemberView(): JSX.Element {
+  const core = useCore();
   const cs = core.state.casino;
   const m = cs.membership;
-  const tier = core.casino.tierInfo();
   const next = core.casino.nextTier();
   const st = cs.stats;
   return (
-    <Modal title="灰港大赌场 · 会员卡" sub={tier.name} wide>
+    <>
       <div className="grid3">
         <div className="card">
           <h3>当前积分</h3>
@@ -394,6 +382,6 @@ export function CasinoMemberModal(): JSX.Element {
       <div className="note" style={{ marginTop: 10 }}>
         积分按下注额乘以该游戏的庄家优势累计。
       </div>
-    </Modal>
+    </>
   );
 }

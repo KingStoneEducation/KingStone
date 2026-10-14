@@ -7,7 +7,7 @@ import { DialogueModal } from './modals/DialogueModal';
 import { BusModal, CollapseModal, EventModal, EventResultModal, IntroModal, KitchenModal, ReadModal, ShiftModal, SleepModal, TextModal, WardrobeModal, WorkModal } from './modals/LifeModals';
 import { ShopModal } from './modals/ShopModal';
 import { AtmModal, BankModal, CashierModal } from './modals/MoneyModals';
-import { CasinoMemberModal, ComputerModal } from './modals/ComputerModal';
+import { CasinoMemberModal } from './modals/ComputerModal';
 import { SavesModal, SettingsModal } from './modals/SystemModals';
 import { PhonePanel } from './panels/PhonePanel';
 import { FinancePanel } from './panels/FinancePanel';
@@ -20,6 +20,7 @@ import { HelpPanel, MenuPanel } from './panels/MenuPanel';
 import { BusinessPanel } from './panels/BusinessPanel';
 import { TableUI } from './table/TableUI';
 import { ConciergeModal } from './modals/ConciergeModal';
+import { Desktop } from './computer/Desktop';
 
 function ModalHost(): JSX.Element | null {
   const m = store.modal;
@@ -42,11 +43,11 @@ function ModalHost(): JSX.Element | null {
     case 'wardrobe':
       return <WardrobeModal />;
     case 'computer':
-      return <ComputerModal />;
+      return <Desktop />;
     case 'housing':
-      return <ComputerModal tab="housing" />;
+      return <Desktop open="housing" />;
     case 'jobs':
-      return <ComputerModal tab="jobs" />;
+      return <Desktop open="jobs" />;
     case 'work':
       return <WorkModal jobId={m.jobId} />;
     case 'shift':
