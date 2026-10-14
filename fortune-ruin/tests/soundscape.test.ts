@@ -83,6 +83,14 @@ describe('the soundtrack files', () => {
   });
 });
 
+describe('no noise', () => {
+  it('the sound engine never generates noise: every effect is built from pitched tones or recorded instruments', () => {
+    const src = Object.values(import.meta.glob('../src/audio/Audio.ts', { query: '?raw', import: 'default', eager: true }) as Record<string, string>)[0];
+    expect(src).not.toMatch(/createBuffer\(/);
+    expect(src).not.toMatch(/Math\.random\(\) \* 2 - 1/);
+  });
+});
+
 describe('casino rooms', () => {
   it('every table stands in the room its rules say it belongs to', () => {
     for (const [id, pos] of Object.entries(CASINO_TABLES)) {

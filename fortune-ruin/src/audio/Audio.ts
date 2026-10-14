@@ -38,7 +38,6 @@ class AudioEngine {
   private sfxBus!: GainNode;
   private musicBus!: GainNode;
   private ambBus!: GainNode;
-  private noiseBuf: AudioBuffer | null = null;
   private vol: Volumes = { music: 0.5, sfx: 0.7, ambience: 0.6 };
   private wantMusic: TrackId | null = null;
   private wantAmb: SpotAmbience = null;
@@ -49,7 +48,8 @@ class AudioEngine {
   private resumeAt = new Map<TrackId, { pos: number; at: number }>();
   private stingers = new Map<StingerId, AudioBuffer>();
   private amb: { kind: SpotAmbience; timer: number } | null = null;
-  private whirr: { src: AudioBufferSourceNode; gain: GainNode; filter: BiquadFilterNode } | null = null;
+  /** the roulette wheel turning: two low tones that slow down, and the ball ticking over the frets */
+  private whirr: { oscs: OscillatorNode[]; gain: GainNode; timer: number } | null = null;
 
   /** Must be called from a user gesture (browsers block audio until then). */
   unlock(): void {
@@ -79,10 +79,6 @@ class AudioEngine {
     this.ambBus = c.createGain();
     for (const b of [this.sfxBus, this.musicBus, this.ambBus]) b.connect(this.master);
     this.applyVolumes(this.vol);
-    const len = c.sampleRate;
-    this.noiseBuf = c.createBuffer(1, len, c.sampleRate);
-    const d = this.noiseBuf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     for (const [id, url] of Object.entries(STINGERS) as [StingerId, string][]) {
       void this.decode(url).then((b) => b && this.stingers.set(id, b));
     }
@@ -209,14 +205,6 @@ class AudioEngine {
 
   // ------------------------------------------------------------------ effects
 
-  private noise(): AudioBufferSourceNode | null {
-    if (!this.ctx || !this.noiseBuf) return null;
-    const s = this.ctx.createBufferSource();
-    s.buffer = this.noiseBuf;
-    s.loop = true;
-    return s;
-  }
-
   private tone(freq: number, start: number, dur: number, type: OscillatorType, gain: number, bus: AudioNode, attack = 0.005): void {
     const c = this.ctx!;
     const o = c.createOscillator();
@@ -231,20 +219,20 @@ class AudioEngine {
     o.stop(start + dur + 0.05);
   }
 
-  private burst(start: number, dur: number, freq: number, q: number, gain: number, bus: AudioNode, type: BiquadFilterType = 'bandpass'): void {
+  /** A short pitched chirp sliding from one frequency to another: clicks and flicks without noise. */
+  private chirp(f0: number, f1: number, start: number, dur: number, type: OscillatorType, gain: number, bus: AudioNode): void {
     const c = this.ctx!;
-    const s = this.noise();
-    if (!s) return;
-    const f = c.createBiquadFilter();
-    f.type = type;
-    f.frequency.value = freq;
-    f.Q.value = q;
+    const o = c.createOscillator();
     const g = c.createGain();
-    g.gain.setValueAtTime(gain, start);
+    o.type = type;
+    o.frequency.setValueAtTime(f0, start);
+    o.frequency.exponentialRampToValueAtTime(f1, start + dur);
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(gain, start + 0.003);
     g.gain.exponentialRampToValueAtTime(0.0008, start + dur);
-    s.connect(f).connect(g).connect(bus);
-    s.start(start, Math.random() * 0.5);
-    s.stop(start + dur + 0.05);
+    o.connect(g).connect(bus);
+    o.start(start);
+    o.stop(start + dur + 0.03);
   }
 
   private stinger(id: StingerId, gain = 1): boolean {
@@ -265,8 +253,9 @@ class AudioEngine {
     const b = this.sfxBus;
     switch (name) {
       case 'card':
-        this.burst(t, 0.05, 3200, 0.8, 0.45, b, 'highpass');
-        this.burst(t + 0.01, 0.07, 1800, 1.5, 0.22, b);
+        // a card flicked onto the felt: a soft falling chirp and a tap
+        this.chirp(2200, 700, t, 0.045, 'triangle', 0.07, b);
+        this.tone(180, t + 0.03, 0.06, 'sine', 0.08, b);
         break;
       case 'chip':
         this.tone(2600 + Math.random() * 300, t, 0.05, 'sine', 0.16, b);
@@ -304,10 +293,11 @@ class AudioEngine {
         break;
       case 'door':
         this.tone(90, t, 0.25, 'sine', 0.22, b, 0.01);
-        this.burst(t, 0.16, 400, 2, 0.12, b);
+        this.tone(140, t + 0.02, 0.12, 'triangle', 0.05, b, 0.01);
         break;
       case 'shuffle':
-        for (let i = 0; i < 14; i++) this.burst(t + i * 0.035, 0.04, 2400 + Math.random() * 1600, 1, 0.16, b);
+        // the riffle: a run of small pitched ticks
+        for (let i = 0; i < 14; i++) this.chirp(1700 + Math.random() * 600, 600, t + i * 0.035, 0.025, 'triangle', 0.045, b);
         break;
       case 'cash':
         this.tone(1318, t, 0.12, 'triangle', 0.08, b);
@@ -336,28 +326,36 @@ class AudioEngine {
     }
   }
 
-  /** Roulette wheel rumble: starts with the spin, fades when the ball settles. */
+  /** Roulette wheel: a soft low hum that slows with the wheel, and the ball ticking over the frets. */
   wheel(on: boolean): void {
     if (!this.ctx) return;
     const c = this.ctx;
     if (on && !this.whirr) {
-      const src = this.noise();
-      if (!src) return;
-      const filter = c.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.value = 900;
-      filter.Q.value = 2.5;
       const gain = c.createGain();
       gain.gain.value = 0;
-      gain.gain.linearRampToValueAtTime(0.12, c.currentTime + 0.3);
-      src.connect(filter).connect(gain).connect(this.sfxBus);
-      src.start();
-      filter.frequency.linearRampToValueAtTime(380, c.currentTime + 6);
-      this.whirr = { src, gain, filter };
+      gain.gain.linearRampToValueAtTime(0.05, c.currentTime + 0.3);
+      gain.connect(this.sfxBus);
+      const oscs = [118, 121].map((f) => {
+        const o = c.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(f, c.currentTime);
+        o.frequency.linearRampToValueAtTime(f * 0.55, c.currentTime + 6);
+        o.connect(gain);
+        o.start();
+        return o;
+      });
+      const t0 = c.currentTime;
+      const timer = window.setInterval(() => {
+        // the ticks thin out as the ball slows
+        const age = c.currentTime - t0;
+        if (Math.random() < Math.max(0.15, 1 - age / 7)) this.tone(2900 + Math.random() * 500, c.currentTime + 0.01, 0.018, 'sine', 0.025, this.sfxBus);
+      }, 70);
+      this.whirr = { oscs, gain, timer };
     } else if (!on && this.whirr) {
       const w = this.whirr;
+      clearInterval(w.timer);
       w.gain.gain.setTargetAtTime(0, c.currentTime, 0.25);
-      w.src.stop(c.currentTime + 1.2);
+      for (const o of w.oscs) o.stop(c.currentTime + 1.2);
       this.whirr = null;
     }
   }
