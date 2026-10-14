@@ -7,6 +7,7 @@ import { LOCATIONS } from '../data/locations';
 import { emptyOldTown } from './OldTownSystem';
 import { emptyAuction } from './AuctionSystem';
 import { emptyMarina } from './MarinaSystem';
+import { emptyIsle } from './IsleSystem';
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -73,6 +74,7 @@ export function migrate(state: GameState): GameState {
   s.oldtown ??= emptyOldTown();
   s.auction ??= emptyAuction();
   s.marina ??= emptyMarina();
+  s.isle ??= emptyIsle();
   s.meta.version = SAVE_VERSION;
   return s;
 }

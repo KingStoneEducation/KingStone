@@ -54,7 +54,7 @@ export function SleepModal(): JSX.Element {
       ) : (
         <div className="stack">
           <div className="muted" style={{ fontSize: 12 }}>
-            床越舒适，恢复越快（{core.isAtHome() ? '当前居所' : '天穹层套房'}舒适度 {Math.round(core.sleepComfort() * 100)}%）。睡眠时时间快进，账单、消息与 NPC 的生活照常进行。
+            床越舒适，恢复越快（{core.sleepPlace()}舒适度 {Math.round(core.sleepComfort() * 100)}%）。睡眠时时间快进，账单、消息与 NPC 的生活照常进行。
           </div>
           {shifts.length > 0 && (
             <div className="note">

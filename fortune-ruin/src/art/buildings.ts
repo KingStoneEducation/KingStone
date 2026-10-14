@@ -46,6 +46,13 @@ const SPECS: Record<BuildingStyle, Spec> = {
   pawn: { wall: '#2f4a3a', material: 'wood', roof: 'flat', roofColor: P.roofDark, facade: 4, windows: 'small', ground: 'shop', trim: '#c9a24a', sign: { bg: '#141a14', fg: P.goldLight, border: '#c9a24a' }, lit: 0.5, litColor: '#ffd28a' },
   kitchen: { wall: '#d8c4a0', material: 'stucco', roof: 'flat', roofColor: P.roofRedDark, facade: 4, windows: 'grid', ground: 'shop', trim: '#5a7a9a', awning: ['#2f5a8a', '#f4ead2'], sign: { bg: '#2f5a8a', fg: '#ffffff' }, lit: 0.6, litColor: P.windowLitWarm },
   bakery: { wall: '#e8cfa0', material: 'stucco', roof: 'flat', roofColor: P.roofRedDark, facade: 4, windows: 'grid', ground: 'closed', trim: '#8a5a36', awning: ['#8a5a36', '#e8cfa0'], sign: { bg: '#5a3a24', fg: '#f4e2c0' }, lit: 0.05, litColor: P.windowLit },
+  // Whitestone Bay: weathered fishermen's houses, a blue diner, a whitewashed guesthouse, the resort, the co-op's shed, the ferry hall
+  fisher: { wall: '#8a9aa4', material: 'wood', roof: 'pitched', roofColor: '#5a6a7a', facade: 3, windows: 'small', ground: 'house', trim: '#e8e4da', lit: 0.55, litColor: '#ffd98a' },
+  diner: { wall: '#3a6a8a', material: 'wood', roof: 'pitched', roofColor: '#a8302a', facade: 3, windows: 'small', ground: 'shop', trim: '#f4f1ea', awning: ['#f4f1ea', '#3a6a8a'], sign: { bg: '#f4f1ea', fg: '#a8302a', border: '#3a6a8a' }, lit: 0.6, litColor: P.windowLitWarm },
+  guesthouse: { wall: '#f2efe6', material: 'stucco', roof: 'pitched', roofColor: '#2a5a8a', facade: 4, windows: 'small', ground: 'house', trim: '#2a5a8a', sign: { bg: '#2a5a8a', fg: '#ffffff' }, lit: 0.55, litColor: '#ffe2a0' },
+  resort: { wall: '#f6f3ec', material: 'stucco', roof: 'flat', roofColor: '#c8b898', facade: 5, windows: 'tall', ground: 'grand', trim: '#c9a24a', sign: { bg: '#f6f3ec', fg: '#8a6a2a', border: '#c9a24a' }, lit: 0.6, litColor: '#ffe8b8' },
+  coop: { wall: '#7a6a5a', material: 'wood', roof: 'pitched', roofColor: '#4a4a52', facade: 3, windows: 'small', ground: 'warehouse', trim: '#c8b48a', sign: { bg: '#2a5a3a', fg: '#f4f1ea' }, lit: 0.2, litColor: '#ffe2a0' },
+  ferry_hall: { wall: '#e8ece8', material: 'metal', roof: 'flat', roofColor: '#2a7a5a', facade: 3, windows: 'band', ground: 'shop', trim: '#2a7a5a', sign: { bg: '#2a7a5a', fg: '#ffffff' }, lit: 0.5, litColor: '#fff2cf' },
 };
 
 // ------------------------------------------------------------------ materials

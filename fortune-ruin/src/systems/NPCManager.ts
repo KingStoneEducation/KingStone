@@ -4,7 +4,51 @@ import { hashString } from '../core/rng';
 import { DAYS_PER_MONTH, MINUTES_PER_DAY, toDate } from '../core/calendar';
 import type { NpcRuntime } from '../core/state';
 import { NPCS, NPC_BY_ID, type NpcDef, type ScheduleBlock } from '../data/npcs';
-import { locationAnchor, travelMinutes } from '../world/maps/cityLayout';
+import { FERRY_PIER, locationAnchor, travelMinutes } from '../world/maps/cityLayout';
+import { ISLE_PIER, isleAnchor, onIsle } from '../world/maps/isleLayout';
+import { FERRY_LATE, FERRY_MINUTES, nextDeparture } from './IsleSystem';
+
+type Trip = NonNullable<NpcRuntime['travel']>;
+
+type Pt = { x: number; y: number };
+
+/**
+ * A trip from one place to another setting out at t (a and b are where they are in
+ * Greyhaven, ia and ib where they are on the island). Across the bay it is the walk to the
+ * ferry pier, the wait there for the next boat on the timetable, the forty minutes on the
+ * water and the walk from the pier on the other side.
+ */
+export function planTrip(from: string | null, to: string | null, a: Pt, b: Pt, t: number, ia: Pt = ISLE_PIER.board, ib: Pt = ISLE_PIER.board): Trip {
+  if (onIsle(from) === onIsle(to)) return { from, to, depart: t, arrive: t + travelMinutes(a, b) };
+  const toIsle = onIsle(to);
+  const pier = t + (toIsle ? travelMinutes(a, FERRY_PIER.board) : travelMinutes(ia, ISLE_PIER.board));
+  return boardAt({ from, to, depart: t, arrive: 0 }, pier, toIsle ? travelMinutes(ISLE_PIER.board, ib) : travelMinutes(FERRY_PIER.board, b));
+}
+
+/** Catch the first boat that leaves after reaching the pier at `pier`; on landing, walk `walk` minutes. */
+function boardAt(trip: Trip, pier: number, walk: number): Trip {
+  const boat = nextDeparture(onIsle(trip.to) ? 'city' : 'isle', pier);
+  const land = boat + FERRY_MINUTES;
+  return { ...trip, pier, boat, land, arrive: land + walk };
+}
+
+/**
+ * Someone held up on the way (talking with the player) sets off a minute later: on foot the
+ * whole walk shifts, at the pier they still wait for the same boat unless they have missed it.
+ */
+function holdUp(trip: Trip, t: number): void {
+  if (trip.boat === undefined || trip.pier === undefined || trip.land === undefined) {
+    trip.depart += 1;
+    trip.arrive += 1;
+    return;
+  }
+  if (t < trip.pier) {
+    trip.depart += 1;
+    const walk = trip.arrive - trip.land;
+    if (trip.pier + 1 > trip.boat + FERRY_LATE) Object.assign(trip, boardAt(trip, trip.pier + 1, walk));
+    else trip.pier += 1;
+  } else if (t >= trip.land) trip.arrive += 1;
+}
 
 export interface Whereabouts {
   loc: string | null;
@@ -118,10 +162,7 @@ export class NPCManager {
       const rt = this.rt(def.id);
       // someone talking with the player stays put (a traveller's walk is paused, not skipped)
       if (rt.flags.talkHold === true || Number(rt.flags.talkHoldUntil ?? -1) > t) {
-        if (rt.travel) {
-          rt.travel.depart += 1;
-          rt.travel.arrive += 1;
-        }
+        if (rt.travel) holdUp(rt.travel, t);
         continue;
       }
       if (rt.travel) {
@@ -139,9 +180,8 @@ export class NPCManager {
       if (w.loc !== rt.location) {
         const from = locationAnchor(rt.location, rt.spot, def.district);
         const to = locationAnchor(w.loc, w.spot, def.district);
-        const minutes = travelMinutes(from, to);
         const prev = rt.location;
-        rt.travel = { from: prev, to: w.loc, depart: t, arrive: t + minutes };
+        rt.travel = planTrip(prev, w.loc, from, to, t, isleAnchor(prev, rt.spot), isleAnchor(w.loc, w.spot));
         rt.location = null;
         rt.activity = 'travel';
         this.core.bus.emit('npc:departed', { id: def.id, from: prev, to: w.loc });

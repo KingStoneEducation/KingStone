@@ -5,9 +5,13 @@ import { hashString } from '../core/rng';
 import { CharacterSprite } from './CharacterSprite';
 import { findPath, type Pt } from './pathfinding';
 import type { MapData, SpotDef } from './maps/types';
-import { locationAnchor } from './maps/cityLayout';
+import { FERRY_PIER, locationAnchor } from './maps/cityLayout';
+import { ISLE, ISLE_PIER, isleAnchor, onIsle } from './maps/isleLayout';
+import { FERRY_LATE } from '../systems/IsleSystem';
 import type { CharDir } from '../art/characters';
-import type { Encounter } from '../core/state';
+import type { Encounter, NpcRuntime } from '../core/state';
+
+type Trip = NonNullable<NpcRuntime['travel']>;
 import { encounterLines, type EncounterBeat } from './encounterLines';
 
 export interface WorldHost {
@@ -29,6 +33,8 @@ interface Traveller {
   path: Pt[];
   depart: number;
   arrive: number;
+  /** after the walk: standing at the end of it until then (waiting on the pier for the ferry) */
+  until: number;
   lengths: number[];
   total: number;
 }
@@ -53,6 +59,12 @@ function tilePx(p: Pt): { x: number; y: number } {
   return { x: p.x * 16 + 8, y: p.y * 16 + 14 };
 }
 
+/** Where someone waits on a ferry pier for the boat (one of a few places, so not everyone on one tile). */
+function pierWait(id: string, side: 'city' | 'isle'): Pt {
+  const w = side === 'city' ? FERRY_PIER.wait : ISLE_PIER.wait;
+  return w[hashString(id) % w.length];
+}
+
 /** Keeps named NPC sprites in sync with the simulation (presence, spots, travel). */
 export class NpcDirector {
   readonly sprites = new Map<string, CharacterSprite>();
@@ -69,6 +81,8 @@ export class NpcDirector {
   private engaged = new Set<string>();
   /** when someone stopped by the player goes back to where they were heading (game minutes) */
   private returnAt = new Map<string, number>();
+  /** where each traveller set out from (to bring them in through the right door when they arrive) */
+  private cameFrom = new Map<string, string | null>();
 
   constructor(private host: WorldHost) {}
 
@@ -187,12 +201,20 @@ export class NpcDirector {
     }
   }
 
+  /** The tile outside this map's door into a location (on the island: the diner, the guesthouse, the resort). */
+  private doorTo(loc: string | null | undefined): Pt | null {
+    if (!loc || this.host.map.id === 'city') return null;
+    const d = this.host.map.doors.find((x) => x.target === loc);
+    return d ? { x: d.x + Math.floor((d.w - 1) / 2), y: d.y + (this.host.map.outdoor ? 1 : -1) } : null;
+  }
+
   /** Reconcile sprites with simulation state; animate arrivals, departures and spot changes. */
   update(dt: number, now: number, nowF: number): void {
     const loc = this.host.map.id;
     const core = this.core;
     for (const def of NPCS) {
       const rt = core.state.npcs[def.id];
+      if (rt.travel) this.cameFrom.set(def.id, rt.travel.from);
       const here = rt.location === loc && !rt.travel;
       const sprite = this.sprites.get(def.id);
       // talking with the player: no arriving, leaving or wandering
@@ -207,12 +229,16 @@ export class NpcDirector {
         const goal = seat ? { x: Math.floor(seat.x / 16), y: Math.floor(seat.y / 16) } : { x: spot.x, y: spot.y };
         // someone who just crossed town on foot carries on from where their walk ended; someone who got
         // there while time skipped ahead (a night's sleep, a shift) is simply there
-        const crossed = loc === 'city' ? this.travellers.get(def.id) : undefined;
+        const crossed = loc === 'city' || loc === ISLE ? this.travellers.get(def.id) : undefined;
+        const came = this.cameFrom.get(def.id);
         const startTile = crossed
           ? { x: Math.floor(crossed.sprite.x / 16), y: Math.floor((crossed.sprite.y - 3) / 16) }
           : loc === 'city'
             ? { x: spot.x, y: spot.y }
-            : this.host.regionEntry(goal.x, goal.y);
+            : loc === ISLE && came !== undefined && !onIsle(came)
+              ? { ...ISLE_PIER.board }
+              : (this.doorTo(came) ?? this.host.regionEntry(goal.x, goal.y));
+        this.cameFrom.delete(def.id);
         const p = tilePx(startTile);
         s.setPos(p.x, p.y);
         const path = findPath(this.host.map, startTile.x, startTile.y, goal.x, goal.y, loc === 'city') ?? [];
@@ -224,8 +250,15 @@ export class NpcDirector {
         this.leaving.add(def.id);
         sprite.fixedDepth = null;
         sprite.setSitting(false);
+        // off the island: the walk down to the ferry is drawn on the clock (see updateTravellers)
+        if (loc === ISLE && rt.travel && !onIsle(rt.travel.to)) {
+          sprite.destroy();
+          this.sprites.delete(def.id);
+          this.leaving.delete(def.id);
+          continue;
+        }
         const from = { x: Math.floor(sprite.x / 16), y: Math.floor(sprite.y / 16) };
-        const exit = loc === 'city' ? this.cityAnchorTile(rt.travel?.to ?? null, def.district) : this.host.regionEntry(from.x, from.y);
+        const exit = loc === 'city' ? this.cityAnchorTile(rt.travel?.to ?? null, def.district) : (this.doorTo(rt.travel?.to) ?? this.host.regionEntry(from.x, from.y));
         const path = exit ? findPath(this.host.map, from.x, from.y, exit.x, exit.y, loc === 'city') ?? [] : [];
         sprite.walkPath(path.slice(0, loc === 'city' ? 14 : 80), WALK_SPEED + 8, () => {
           sprite.destroy();
@@ -256,7 +289,7 @@ export class NpcDirector {
     }
     this.updateEncounters(now);
     for (const s of this.sprites.values()) s.update(dt, now);
-    if (loc === 'city') this.updateTravellers(dt, now, nowF);
+    if (loc === 'city' || loc === ISLE) this.updateTravellers(dt, now, nowF);
     this.updateLabels();
   }
 
@@ -408,31 +441,65 @@ export class NpcDirector {
     return { x: a.x, y: a.y + (loc && loc !== 'city' ? 1 : 0) };
   }
 
-  /** NPCs crossing town are drawn along a walkway path, timed by the simulation. */
+  /**
+   * The part of a trip drawn on this map, by the clock: when the walk starts and ends, and how long
+   * they then stand at the end of it (on a ferry pier, waiting for the boat). Greyhaven sees walks
+   * across town and to or from its ferry pier; the island sees the walks to and from its own pier
+   * (walks about the village are drawn by the people themselves, door to door).
+   */
+  private legWindow(tr: Trip): { walkFrom: number; walkTo: number; until: number } | null {
+    const fromIsle = onIsle(tr.from);
+    const toIsle = onIsle(tr.to);
+    if (this.host.map.id === ISLE ? fromIsle === toIsle : fromIsle && toIsle) return null;
+    if (!fromIsle && !toIsle) return { walkFrom: tr.depart, walkTo: tr.arrive, until: tr.arrive };
+    if (tr.pier === undefined || tr.boat === undefined || tr.land === undefined) return null;
+    // setting off for the boat, or coming off it on this side
+    const outbound = this.host.map.id === ISLE ? fromIsle : toIsle;
+    return outbound ? { walkFrom: tr.depart, walkTo: tr.pier, until: tr.boat + FERRY_LATE } : { walkFrom: tr.land, walkTo: tr.arrive, until: tr.arrive };
+  }
+
+  /** Where that walk goes, in this map's tiles. */
+  private legEnds(rt: NpcRuntime, tr: Trip): { start: Pt; end: Pt } {
+    const fromIsle = onIsle(tr.from);
+    const toIsle = onIsle(tr.to);
+    // a walk to somewhere outdoors ends at that spot, not at their home's door
+    const toSpot = this.core.npcs.target(rt.id, tr.arrive).spot;
+    if (this.host.map.id === ISLE) {
+      return fromIsle ? { start: isleAnchor(tr.from, rt.spot), end: pierWait(rt.id, 'isle') } : { start: { ...ISLE_PIER.board }, end: isleAnchor(tr.to, toSpot) };
+    }
+    const def = NPC_BY_ID[rt.id];
+    const a = locationAnchor(tr.from, tr.from === 'city' ? rt.spot : null, def.district);
+    const b = locationAnchor(tr.to, tr.to === 'city' ? toSpot : null, def.district);
+    // off the ferry at the pier's end; to the ferry, a place on the pier to wait for her
+    return {
+      start: fromIsle ? { ...FERRY_PIER.board } : { x: a.x, y: a.y + (tr.from && tr.from !== 'city' ? 1 : 0) },
+      end: toIsle ? pierWait(rt.id, 'city') : { x: b.x, y: b.y + (tr.to && tr.to !== 'city' ? 1 : 0) },
+    };
+  }
+
+  /** NPCs crossing town (or the island, to and from the ferry) are drawn along a path, timed by the simulation. */
   private updateTravellers(dt: number, now: number, nowF: number): void {
     const core = this.core;
     const active = new Set<string>();
     for (const rt of core.npcs.travelling()) {
-      if (!rt.travel) continue;
+      const tr = rt.travel;
+      if (!tr) continue;
+      const leg = this.legWindow(tr);
+      if (!leg || nowF < leg.walkFrom || nowF > leg.until) continue;
+      const { walkFrom, walkTo, until } = leg;
       active.add(rt.id);
       const def = NPC_BY_ID[rt.id];
       let t = this.travellers.get(rt.id);
       let fresh = false;
-      if (!t || t.depart !== rt.travel.depart) {
+      if (!t || t.depart !== walkFrom) {
         fresh = true;
         t?.sprite.destroy();
-        const fromLoc = rt.travel.from;
-        const toLoc = rt.travel.to;
-        const a = locationAnchor(fromLoc, fromLoc === 'city' ? rt.spot : null, def.district);
-        // a walk to somewhere outdoors ends at that spot, not at their home's door
-        const b = locationAnchor(toLoc, toLoc === 'city' ? core.npcs.target(rt.id, rt.travel.arrive).spot : null, def.district);
-        const start = { x: a.x, y: a.y + (fromLoc && fromLoc !== 'city' ? 1 : 0) };
-        const end = { x: b.x, y: b.y + (toLoc && toLoc !== 'city' ? 1 : 0) };
+        const { start, end } = this.legEnds(rt, tr);
         const path = [start, ...(findPath(this.host.map, start.x, start.y, end.x, end.y, true, 20000) ?? [end])];
         const lengths: number[] = [0];
         for (let i = 1; i < path.length; i++) lengths.push(lengths[i - 1] + Math.abs(path[i].x - path[i - 1].x) + Math.abs(path[i].y - path[i - 1].y));
         const sprite = new CharacterSprite(this.host.hostScene, def.look, start.x * 16 + 8, start.y * 16 + 14, 'down');
-        t = { sprite, path, depart: rt.travel.depart, arrive: rt.travel.arrive, lengths, total: lengths[lengths.length - 1] };
+        t = { sprite, path, depart: walkFrom, arrive: walkTo, until, lengths, total: lengths[lengths.length - 1] };
         this.travellers.set(rt.id, t);
       }
       const f = Math.max(0, Math.min(1, (nowF - t.depart) / Math.max(1, t.arrive - t.depart)));
@@ -453,7 +520,12 @@ export class NpcDirector {
       const k = fresh ? 1 : Math.min(1, dt / 120);
       t.sprite.setPos(t.sprite.x + dx * k, t.sprite.y + dy * k);
       t.sprite.setMoving(moving && f < 1, dir);
-      t.sprite.alpha = f > 0.97 ? Math.max(0, (1 - f) / 0.03) : f < 0.03 ? f / 0.03 : 1;
+      const waiting = t.until > t.arrive;
+      // waiting on the pier, facing the boat; gone when she leaves
+      if (waiting && f >= 1) t.sprite.face('right');
+      const fadeIn = f < 0.03 ? f / 0.03 : 1;
+      const fadeOut = waiting ? Math.max(0, Math.min(1, t.until - nowF)) : f > 0.97 ? Math.max(0, (1 - f) / 0.03) : 1;
+      t.sprite.alpha = Math.min(fadeIn, fadeOut);
       t.sprite.update(dt, now);
     }
     for (const [id, t] of this.travellers) {

@@ -1,6 +1,6 @@
 import { hash2 } from '../../art/canvas';
 import { tileIndex } from '../../art/tiles';
-import { BUILDINGS, BUS_STOPS, CITY_H, CITY_SPOTS, CITY_W, MARINA } from './cityLayout';
+import { BUILDINGS, BUS_STOPS, CITY_H, CITY_SPOTS, CITY_W, FERRY_PIER, MARINA } from './cityLayout';
 import { MapBuilder, type MapData } from './types';
 
 export interface Lane {
@@ -349,8 +349,27 @@ export function buildCityMap(): CityMap {
   for (const y of [M.berths.tour + 2, M.berths.club + 2, M.berths.own + 2]) b.prop('bollard', M.x1, y);
   for (const y of [M.berths.tour + 2, M.berths.own + 3]) b.prop('lamp', M.x0, y);
 
+  // the ferry pier to Whitestone Bay, south of the marina
+  const F = FERRY_PIER;
+  const fdeck = new Set<number>();
+  for (let y = F.y0; y <= F.y1; y++) {
+    for (let x = F.x0; x <= F.x1; x++) {
+      b.set(x, y, y === F.y1 ? 'deck_s' : 'deck', false);
+      fdeck.add(b.idx(x, y));
+    }
+  }
+  for (const y of [F.gangway, F.gangway + 1]) b.set(107, y, 'deck', false);
+  b.data.water = b.data.water.filter((i) => !fdeck.has(i));
+  b.prop('ferry', F.berth.x, F.berth.y, { kind: 'isle', label: '灰港—白石湾渡轮', data: { act: 'ferry', present: 'ferry_city' } }, { when: 'ferry_city' });
+  b.prop('ferry_booth', F.x0, F.y0 + 1, { kind: 'isle', label: '渡轮售票亭', data: { act: 'ferry' } });
+  b.staff(F.x1 - 1, F.board.y - 1, 'down', 4303, '渡轮船员', 'ferry_crew', 'ferry_city');
+  b.prop('bench', F.x0, F.y0 + 6);
+  for (const y of [F.y0 + 2, F.board.y + 2]) b.prop('bollard', F.x1, y);
+  b.prop('lamp', F.x0, F.y1 - 1);
+
   // NPC spots and spawns
   for (const [name, s] of Object.entries(CITY_SPOTS)) b.spot(name, s.x, s.y, s.face ?? 'down', s.sit);
+  b.spawn('ferry', FERRY_PIER.board.x, FERRY_PIER.board.y, 'right');
   b.spawn('start', 7, 75, 'down');
 
   // benches can be sat on; the basketball court is open for a game

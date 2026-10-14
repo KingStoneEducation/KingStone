@@ -141,6 +141,20 @@ export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
       { id: 'guitar_used', name: '二手木吉他', kind: 'gift', price: G(320), desc: '琴颈上刻着前主人名字的缩写，音色还很亮。', giftTags: ['music'], resale: 0.4 },
       // the community kitchen (free)
       food('kitchen_meal', '食堂热饭', 0, '米饭、一勺炖菜和一碗例汤。管饱。', { hunger: -55, mood: 2 }, 20),
+      // Whitestone Bay: the fishermen's diner, the fish market, the beach shack and the resort's restaurant
+      food('isle_congee', '海鲜粥', 14, '早上第一锅，虾、蛤蜊和鱼片，撒一把葱。', { hunger: -38, mood: 3, health: 1 }, 15),
+      food('isle_fish_rice', '炸鱼饭', 22, '当天的鱼裹面糊炸透，配一碗白饭和腌萝卜。', { hunger: -48, mood: 4 }, 15),
+      food('isle_scallops', '蒜蓉蒸扇贝（六只）', 36, '粉丝垫底，蒜蓉堆得冒尖。', { hunger: -24, mood: 7 }, 15),
+      food('isle_platter', '海鲜大拼盘', 88, '一大盘：螃蟹、濑尿虾、蛏子和一条清蒸鱼。够三个人吃。', { hunger: -60, mood: 10, social: 4 }, 30),
+      { id: 'isle_fish', name: '新鲜海鱼', kind: 'grocery', price: G(28), desc: '渔船下午刚带回来的海鱼，带回家可以做 3 餐。', meals: 3, effects: { hunger: -50, mood: 6, health: 3 }, useMinutes: 45 },
+      { id: 'isle_crab', name: '花蟹（两只）', kind: 'grocery', price: G(46), desc: '还在吐泡泡。带回家清蒸，可以做 2 餐。', meals: 2, effects: { hunger: -42, mood: 9, health: 2 }, useMinutes: 40 },
+      drink('isle_coconut', '冰镇椰子', 9, '插一根吸管，椰子水很甜。', { energy: 4, mood: 3 }, 8),
+      drink('isle_beer', '冰啤酒', 8, '海边小屋冰箱里的瓶装啤酒。', { mood: 4, stress: -4, drunk: 12 }, 12),
+      food('isle_squid', '烤鱿鱼', 15, '整只鱿鱼刷上酱烤，切成圈。', { hunger: -24, mood: 4 }, 10),
+      drink('isle_mojito', '莫吉托', 26, '青柠、薄荷和朗姆酒，杯沿插着一片青柠。', { mood: 6, stress: -4, drunk: 14 }, 15),
+      food('isle_lobster', '芝士焗龙虾', 420, '整只本地龙虾，配黄油和白葡萄酒汁。', { hunger: -48, mood: 14, confidence: 3 }, 40),
+      food('isle_tasting', '主厨海鲜套餐', 680, '六道菜，从生蚝到海胆，每道配一杯酒。', { hunger: -60, mood: 18, confidence: 4, drunk: 10 }, 90),
+      drink('isle_champagne', '香槟（杯）', 120, '酒店酒窖里的年份香槟。', { mood: 6, drunk: 10 }, 15),
 
       // boutique gifts
       { id: 'perfume', name: '香水', kind: 'gift', price: G(160), desc: '精致的礼物。', giftTags: ['luxury', 'beauty'] },
@@ -392,6 +406,35 @@ export const SHOPS: Record<string, ShopDef> = {
     items: ['hair_clip', 'vinyl_record', 'flowers'],
     accepts: ['cash'],
     greeting: '随便挑，看中了可以讲价——开玩笑的，不讲价。',
+  },
+  // Whitestone Bay
+  isle_diner: {
+    id: 'isle_diner',
+    name: '老船长食堂',
+    items: ['isle_congee', 'isle_fish_rice', 'isle_scallops', 'isle_platter', 'nm_beer'],
+    accepts: ['cash'],
+    greeting: '随便坐。鱼都是码头上买的，船一回来就送到后厨。',
+  },
+  isle_market: {
+    id: 'isle_market',
+    name: '白石湾鱼市',
+    items: ['isle_fish', 'isle_crab'],
+    accepts: ['cash'],
+    greeting: '刚上岸的！要鱼还是要蟹？',
+  },
+  isle_shack: {
+    id: 'isle_shack',
+    name: '海滩小屋 SHACK',
+    items: ['isle_coconut', 'isle_beer', 'isle_squid', 'isle_mojito'],
+    accepts: ['cash', 'card'],
+    greeting: '要冰的还是要更冰的？',
+  },
+  isle_restaurant: {
+    id: 'isle_restaurant',
+    name: '灯塔海景餐厅',
+    items: ['isle_lobster', 'isle_tasting', 'isle_champagne'],
+    accepts: ['card', 'cash'],
+    greeting: '您好。龙虾是本地渔船捞的，每天现做。',
   },
   furniture: {
     id: 'furniture',

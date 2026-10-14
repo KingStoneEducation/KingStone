@@ -177,6 +177,12 @@ export const FACT_LINES: Record<string, Partial<Record<Attitude, string[]>>> = {
     prudent: ['你拍下的那件{item}，价格已经超过估价了。收藏要有耐心。'],
     neutral: ['上次的{item}，你出价出得真狠。'],
   },
+  fishing_labor: {
+    caring: ['{src}你跟渔船出海了？海上风浪大，要小心。'],
+    snob: ['{src}你在白石湾的渔船上打工……'],
+    prudent: ['出海一天两百多，是辛苦钱。别把身体搞垮了。'],
+    neutral: ['{src}你去白石湾跟船拉网？手上的茧是那时候磨的吧。'],
+  },
   day_labor: {
     caring: ['{src}你在码头扛货？别把腰累坏了。'],
     snob: ['{src}你在码头做苦力……'],

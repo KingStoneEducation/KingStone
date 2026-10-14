@@ -274,6 +274,8 @@ export const NPCS: NpcDef[] = [
       // art as an asset class: she comes to look, rarely to buy
       { days: [6], from: hm(15), to: hm(17), loc: 'hotel', spot: 'auc_seat4', act: 'shop', chance: 0.35 },
       { days: [2], from: hm(19, 30), to: hm(20, 30), loc: 'hotel', spot: 'tea_chair1', act: 'eat', chance: 0.4 },
+      // Sunday brunch at the resort
+      { days: [6], from: hm(9, 30), to: hm(13, 45), loc: 'isle_resort', spot: 'isle_resort_t1', act: 'eat', chance: 0.5 },
     ],
     circle: ['alexander', 'grace', 'lillian'],
     initial: { met: false, knowsName: false },
@@ -455,6 +457,8 @@ export const NPCS: NpcDef[] = [
       { days: [5], from: hm(14), to: hm(18), loc: 'boutique', spot: 'boutique_rack', act: 'shop', chance: 0.6 },
       { days: [5], from: hm(21), to: hm(25), loc: 'casino', spot: 'roulette_watch', act: 'gamble', chance: 0.5 },
       { days: [0], from: hm(19), to: hm(21), loc: 'city', spot: 'nm_seat4', act: 'eat', chance: 0.5 },
+      // Sundays at the beach on Whitestone Bay, for the photos
+      { days: [6], from: hm(9, 20), to: hm(16, 40), loc: 'isle', spot: 'isle_beach1', act: 'leisure', chance: 0.6 },
     ],
     circle: ['isabella', 'daniel', 'raymond', 'tommy'],
     initial: { met: true, knowsName: true, affection: 18, trust: 8, respect: 8, familiarity: 44, status: 'acquaintance' },
@@ -546,6 +550,8 @@ export const NPCS: NpcDef[] = [
       // the Sunday sale at the Grand Hotel, and tea in its lounge on Thursdays
       { days: [6], from: hm(14, 30), to: hm(17), loc: 'hotel', spot: 'auc_seat1', act: 'shop', chance: 0.8 },
       { days: [3], from: hm(15), to: hm(17), loc: 'hotel', spot: 'tea_sofa', act: 'eat', chance: 0.6 },
+      // Saturday lunch by the resort's pool
+      { days: [5], from: hm(9, 15), to: hm(13, 40), loc: 'isle', spot: 'isle_pool1', act: 'leisure', chance: 0.6 },
     ],
     circle: ['alexander', 'victor', 'sophia', 'isabella'],
     initial: { met: false, knowsName: false },
@@ -593,6 +599,8 @@ export const NPCS: NpcDef[] = [
       { days: [0, 1, 2, 3, 4, 5], from: hm(6), to: hm(7, 45), loc: 'city', spot: 'pier7', act: 'leisure', chance: 0.6 },
       { days: [0, 2, 4], from: hm(12), to: hm(13), loc: 'community_kitchen', spot: 'ck_table1', act: 'eat', chance: 0.6 },
       { days: [1, 3, 5, 6], from: hm(19), to: hm(21, 30), loc: 'city', spot: 'nm_seat1', act: 'eat', chance: 0.55 },
+      // Wednesdays across the bay with the fishermen he used to sail with
+      { days: [2], from: hm(6, 50), to: hm(13, 45), loc: 'isle', spot: 'isle_chess', act: 'leisure', chance: 0.6 },
     ],
     circle: ['eileen', 'margaret', 'ben'],
     initial: { met: true, knowsName: false, familiarity: 10, affection: 5, trust: 5, respect: 5 },
@@ -766,6 +774,8 @@ export const NPCS: NpcDef[] = [
       { days: [5, 6], from: hm(12), to: hm(15), loc: 'cafe', spot: 'cafe_table3', act: 'leisure', chance: 0.4 },
       // his nights off: playing for the night market crowd
       { days: [0, 1], from: hm(19, 30), to: hm(23), loc: 'city', spot: 'nm_busk', act: 'busk', chance: 0.7 },
+      // Monday afternoons playing for the beach shack on the island
+      { days: [0], from: hm(12, 15), to: hm(16, 45), loc: 'isle', spot: 'isle_busk', act: 'busk', chance: 0.5 },
     ],
     circle: ['daniel', 'eileen', 'kiki', 'marco', 'natasha'],
     initial: { met: false, knowsName: false },

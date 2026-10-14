@@ -272,7 +272,7 @@ describe('the pontoon', () => {
     for (const boat of ['tour', 'club', 'own']) expect(m.interactables.some((it) => it.interact.kind === 'marina' && it.interact.data?.boat === boat), boat).toBe(true);
   });
 
-  it('the map can send a taxi to the marina, the night market and Pier 7', () => {
+  it('the map can send a taxi to the marina, the night market, Pier 7 and the ferry pier', () => {
     for (const [id, p] of Object.entries(OUTDOOR_PLACES)) expect(ok(p.tile.x, p.tile.y), id).toBe(true);
     const c = newCore();
     expect(c.services.taxiQuote('marina')).not.toBeNull();

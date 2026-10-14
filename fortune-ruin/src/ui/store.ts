@@ -6,6 +6,7 @@ import type { WorldApi } from '../world/WorldScene';
 import type { TableApi, TablePhase } from '../tables/TableScene';
 import type { Money } from '../core/money';
 import type { TripReport } from '../systems/MarinaSystem';
+import type { CrossingReport } from '../systems/IsleSystem';
 
 export interface TableUiState {
   /** selected chip denomination, whole G */
@@ -49,13 +50,19 @@ export type Modal =
   | { type: 'fortune' }
   | { type: 'auction'; tab: AuctionTab; lot?: number }
   | { type: 'marina'; tab: MarinaTab }
-  | { type: 'cruise'; report: TripReport };
+  | { type: 'cruise'; report: TripReport }
+  | { type: 'ferry' }
+  | { type: 'crossing'; report: CrossingReport }
+  | { type: 'beach'; tab: BeachTab }
+  | { type: 'fishing' }
+  | { type: 'lodging'; place: 'guesthouse' | 'resort' };
 
 export type ConciergeTab = 'suite' | 'spa' | 'car' | 'dining' | 'store' | 'perks';
 export type PawnTab = 'pawn' | 'tickets' | 'sell' | 'shelf';
 export type CharityTab = 'meal' | 'volunteer' | 'donate';
 export type AuctionTab = 'live' | 'catalogue' | 'collection' | 'results';
 export type MarinaTab = 'cruise' | 'charter' | 'own';
+export type BeachTab = 'lounger' | 'swim' | 'pool' | 'private';
 
 export interface Toast {
   id: number;

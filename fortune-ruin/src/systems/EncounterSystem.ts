@@ -4,6 +4,7 @@ import { hashString, Rng } from '../core/rng';
 import type { Encounter, EncounterKind, NpcRuntime } from '../core/state';
 import { NPCS, NPC_BY_ID } from '../data/npcs';
 import { CITY_SPOTS } from '../world/maps/cityLayout';
+import { ISLE_SPOTS } from '../world/maps/isleLayout';
 import { MEMORY_TEXT, tieKey } from './SocialSystem';
 
 /** How often (game minutes) the world checks who bumps into whom. */
@@ -62,9 +63,10 @@ export class EncounterSystem {
 
   /** Whether two NPCs at the same location are actually close enough to meet. */
   private near(a: NpcRuntime, b: NpcRuntime): boolean {
-    if (a.location !== 'city') return true;
-    const pa = a.spot ? CITY_SPOTS[a.spot] : null;
-    const pb = b.spot ? CITY_SPOTS[b.spot] : null;
+    const spots = a.location === 'city' ? CITY_SPOTS : a.location === 'isle' ? ISLE_SPOTS : null;
+    if (!spots) return true;
+    const pa = a.spot ? spots[a.spot] : null;
+    const pb = b.spot ? spots[b.spot] : null;
     if (!pa || !pb) return false;
     return Math.abs(pa.x - pb.x) + Math.abs(pa.y - pb.y) <= CITY_RANGE;
   }

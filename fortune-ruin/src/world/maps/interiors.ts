@@ -3,10 +3,10 @@ import { buildCasinoMap } from './casinoMap';
 
 /**
  * Interiors are drawn from small ASCII plans:
- *  '#' wall, 'D' exit door (to the city), ' ' void, other characters map to
- *  floor tiles through the legend.
+ *  '#' wall, 'D' exit door (to the city, or to the island for its rooms),
+ *  ' ' void, other characters map to floor tiles through the legend.
  */
-export function fromAscii(id: string, rows: string[], legend: Record<string, string>, wallStyle: string): MapBuilder {
+export function fromAscii(id: string, rows: string[], legend: Record<string, string>, wallStyle: string, outside = 'city'): MapBuilder {
   const h = rows.length;
   const w = Math.max(...rows.map((r) => r.length));
   rows.forEach((r, i) => {
@@ -33,7 +33,7 @@ export function fromAscii(id: string, rows: string[], legend: Record<string, str
   if (doorTiles.length) {
     const x0 = Math.min(...doorTiles.map((d) => d.x));
     const y0 = doorTiles[0].y;
-    b.data.doors.push({ x: x0, y: y0, w: doorTiles.length, target: 'city', spawn: `door:${id}`, label: '出口' });
+    b.data.doors.push({ x: x0, y: y0, w: doorTiles.length, target: outside, spawn: `door:${id}`, label: '出口' });
     b.spawn('entry', x0 + Math.floor((doorTiles.length - 1) / 2), y0 - 1, 'up');
   }
   return b;
@@ -917,6 +917,171 @@ const communityKitchen: Builder = () => {
 };
 
 
+// ------------------------------------------------------------------ Whitestone Bay
+
+const isleDiner: Builder = () => {
+  const b = fromAscii(
+    'isle_diner',
+    [
+      '################',
+      '################',
+      '#;;;;;;;;;;;;;;#',
+      '#;;;;;;;;;;;;;;#',
+      '#..............#',
+      '#..............#',
+      '#..............#',
+      '#..............#',
+      '#..............#',
+      '#..............#',
+      '#######DD#######',
+    ],
+    { '.': 'wood_mid', ';': 'tile_kitchen' },
+    'wood',
+    'isle',
+  );
+  b.prop('stove', 2, 2);
+  b.prop('stove', 3, 2);
+  b.prop('sink', 5, 2);
+  b.prop('shelf', 7, 2);
+  b.prop('counter', 11, 2);
+  b.prop('counter', 12, 2);
+  b.prop('fridge', 14, 2);
+  b.prop('window', 3, 1, undefined, { oy: -2 });
+  b.prop('window', 12, 1, undefined, { oy: -2 });
+  b.prop('clock', 9, 1, undefined, { oy: -6 });
+  for (let x = 1; x <= 14; x++) b.prop('counter', x, 4, x === 7 || x === 8 ? { kind: 'order', label: '点菜 · 老船长食堂', data: { shop: 'isle_diner' } } : undefined);
+  b.staff(3, 3, 'down', 6201, '厨师', 'cook');
+  b.staff(8, 3, 'down', 6202, '老船长', 'captain');
+  b.prop('long_bench', 2, 5, undefined, { noBlock: true });
+  b.prop('long_table', 2, 6);
+  b.prop('long_bench', 2, 7, undefined, { noBlock: true });
+  b.prop('long_bench', 9, 5, undefined, { noBlock: true });
+  b.prop('long_table', 9, 6);
+  b.prop('long_bench', 9, 7, undefined, { noBlock: true });
+  b.prop('table_round', 3, 9);
+  b.prop('chair_cafe', 2, 9);
+  b.prop('table_round', 12, 9);
+  b.prop('chair_cafe', 13, 9);
+  b.prop('fish_tank', 13, 5);
+  b.prop('plant', 1, 9);
+  b.spot('isle_diner_t1', 3, 5, 'down', true);
+  b.spot('isle_diner_t2', 10, 7, 'up', true);
+  b.spot('isle_diner_t3', 13, 9, 'left', true);
+  b.spot('isle_diner_counter', 7, 5, 'up');
+  b.data.ambient = { day: 1, night: 0.8, color: 0x140c0a };
+  return b.finish();
+};
+
+const isleGuesthouse: Builder = () => {
+  const b = fromAscii(
+    'isle_guesthouse',
+    [
+      '##############',
+      '##############',
+      '#.....##;;;;;#',
+      '#.....##;;;;;#',
+      '#............#',
+      '#.....##;;;;;#',
+      '#.....########',
+      '#.....,,,,,,,#',
+      '#.....,,,,,,,#',
+      '###D##########',
+    ],
+    { '.': 'wood_light', ';': 'carpet_beige', ',': 'tile_kitchen' },
+    'pastel',
+    'isle',
+  );
+  // the front room: the landlady's desk, a sofa
+  b.prop('counter', 2, 3);
+  b.prop('counter', 3, 3, { kind: 'isle', label: '民宿前台', data: { act: 'lodging', place: 'guesthouse' } });
+  b.prop('counter', 4, 3);
+  b.staff(3, 2, 'down', 6301, '老板娘', 'innkeeper');
+  b.prop('clock', 2, 1, undefined, { oy: -6 });
+  b.prop('sofa', 1, 6);
+  b.prop('plant', 5, 8);
+  // the room you let, behind the desk: a single bed under the window
+  b.prop('window', 10, 1, undefined, { oy: -2 });
+  b.prop('bed_single', 12, 3, { kind: 'bed', label: '民宿的床', data: { lodging: 'guesthouse' } });
+  b.prop('side_table', 11, 3);
+  b.prop('chair', 9, 2);
+  b.prop('rug_blue', 9, 4);
+  b.prop('plant', 12, 5);
+  // the family's kitchen
+  b.prop('counter', 9, 7);
+  b.prop('sink', 10, 7);
+  b.prop('stove', 11, 7);
+  b.prop('fridge', 12, 7);
+  b.prop('table_round', 7, 8);
+  b.prop('chair', 8, 8);
+  b.spot('isle_inn_desk', 3, 4, 'up');
+  b.data.ambient = { day: 0.95, night: 0.7, color: 0x120e16 };
+  return b.finish();
+};
+
+const isleResort: Builder = () => {
+  const b = fromAscii(
+    'isle_resort',
+    [
+      '########################',
+      '########################',
+      '#::::::::::#,,,,,,,,,,,#',
+      '#::::::::::#,,,,,,,,,,,#',
+      '#::::::::::#,,,,,,,,,,,#',
+      '#::::::::::::,,,,,,,,,,#',
+      '#::::::::::::,,,,,,,,,,#',
+      '#::::::::::#,,,,,,,,,,,#',
+      '#::::::::::######==#####',
+      '#::::::::::######==#####',
+      '#::::::::::#;;;;;;;;;;;#',
+      '#::::::::::#;;;;;;;;;;;#',
+      '#::::::::::#;;;;;;;;;;;#',
+      '#####DD#################',
+    ],
+    { ':': 'marble', ',': 'carpet_blue', ';': 'carpet_beige', '=': 'carpet_beige' },
+    'white',
+    'isle',
+  );
+  // the lobby: the front desk, a lounge under the chandelier
+  b.prop('concierge_desk', 3, 3, { kind: 'isle', label: '酒店前台', data: { act: 'lodging', place: 'resort' } });
+  b.staff(4, 2, 'down', 6401, '前台', 'reception');
+  b.prop('window', 8, 1, undefined, { oy: -2 });
+  b.prop('painting', 2, 1, undefined, { oy: -4 });
+  b.prop('rug_round', 3, 9);
+  b.prop('sofa_navy', 3, 8);
+  b.prop('armchair_navy', 1, 10);
+  b.prop('armchair_navy', 7, 10);
+  b.prop('orchid', 10, 2);
+  b.prop('orchid', 1, 12);
+  b.prop('flower_vase', 10, 12);
+  b.prop('lamp_floor', 9, 7);
+  // the restaurant: the sea through the windows, the breakfast buffet, the maitre d's stand
+  for (const x of [13, 17, 21]) b.prop('window', x, 1, undefined, { oy: -2 });
+  for (const [x, y] of [[13, 3], [17, 3], [13, 6], [17, 6]] as [number, number][]) {
+    b.prop('dining_table', x, y);
+    b.prop('chair', x - 1, y);
+    b.prop('chair', x + 2, y);
+  }
+  b.prop('high_table', 21, 3, { kind: 'order', label: '灯塔海景餐厅', data: { shop: 'isle_restaurant' } });
+  b.staff(22, 3, 'left', 6402, '餐厅领班', 'maitre');
+  b.prop('buffet', 21, 6, { kind: 'isle', label: '自助早餐（住客）', data: { act: 'breakfast' } });
+  b.prop('buffet_sweet', 21, 7);
+  // the guests' wing behind the keycard door
+  b.block(17, 8, 2, 2);
+  b.prop('suite_door', 17, 9);
+  b.interactable('gate_room', 17, 8, 2, 2, { kind: 'gate', label: '客房区 · 住客刷卡', data: { area: 'resort', inside: '17,10', outside: '17,7' } });
+  b.prop('bed_luxury', 19, 11, { kind: 'bed', label: '海景房的床', data: { lodging: 'resort' } });
+  b.prop('armchair_navy', 13, 10);
+  b.prop('side_table', 14, 10);
+  b.prop('lamp_floor', 22, 10);
+  b.prop('orchid', 12, 12);
+  b.spot('isle_resort_desk', 4, 4, 'up');
+  b.spot('isle_resort_t1', 12, 3, 'right', true);
+  b.spot('isle_resort_t2', 19, 6, 'left', true);
+  b.spot('isle_resort_lounge', 4, 8, 'down', true);
+  b.data.ambient = { day: 1, night: 0.85, color: 0x0e1018 };
+  return b.finish();
+};
+
 // ------------------------------------------------------------------ the Grand Hotel
 
 /** Where the lots stand in the ballroom during the preview (lot index → easel). */
@@ -1024,6 +1189,9 @@ const BUILDERS: Record<string, Builder> = {
   motors,
   pawn: pawnShop,
   community_kitchen: communityKitchen,
+  isle_diner: isleDiner,
+  isle_guesthouse: isleGuesthouse,
+  isle_resort: isleResort,
   hotel: grandHotel,
   casino: buildCasinoMap,
 };

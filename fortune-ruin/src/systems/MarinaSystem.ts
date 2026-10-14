@@ -76,10 +76,10 @@ const ANSWERS: Record<string, { yes: (core: GameCore) => boolean; line: string; 
 };
 
 export type TripKind = 'cruise' | 'charter' | 'own';
-export type CardScene = 'skyline' | 'open_sea' | 'homecoming';
+export type CardScene = 'skyline' | 'open_sea' | 'homecoming' | 'to_isle' | 'to_city';
 export type TimeOfDay = 'day' | 'dusk' | 'night';
 /** the deck in the photos: the tour boat's rail, a sailing yacht's teak, a motor yacht's aft sofa */
-export type BoatModel = 'tour' | 'sail' | 'motor';
+export type BoatModel = 'tour' | 'sail' | 'motor' | 'ferry';
 
 export interface TripReport {
   kind: TripKind;

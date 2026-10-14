@@ -3273,6 +3273,461 @@ def({
   },
 });
 
+// ------------------------------------------------------------------ Whitestone Bay
+
+/** A coconut palm, leaning a little seaward. */
+def({
+  id: 'palm_tree',
+  w: 44,
+  h: 66,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 24, 63, 12, 3);
+    // the trunk curves up and to the left, ringed
+    for (let y = 63; y > 18; y--) {
+      const t = (63 - y) / 45;
+      const x = Math.round(22 - t * t * 7);
+      rect(ctx, x - 2, y, 4, 1, (y % 4 === 0) ? '#6a4a2a' : '#8a6a42');
+      px(ctx, x - 2, y, '#5a3e22');
+    }
+    // coconuts
+    for (const [x, y] of [[13, 21], [17, 22], [15, 24]] as [number, number][]) circle(ctx, x, y, 2, '#5a3a1a');
+    // fronds: arcs out from the crown, darker underneath
+    const cx = 15;
+    const cy = 18;
+    const fronds: [number, number][] = [[-2.8, 18], [-2.2, 20], [-1.6, 15], [-0.9, 19], [-0.3, 17], [0.3, 20], [0.9, 16], [-3.1, 14]];
+    for (const [a0, len] of fronds) {
+      for (let r = 1; r < len; r++) {
+        const a = a0 + (r / len) * 0.5 * (Math.cos(a0) > 0 ? 1 : -1);
+        const x = Math.round(cx + Math.cos(a) * r);
+        const y = Math.round(cy + Math.sin(a) * r * 0.75 + (r * r) / 26);
+        px(ctx, x, y, r < len * 0.5 ? '#2f6a2e' : '#4f8f3a');
+        px(ctx, x, y + 1, '#24502a');
+        if (r % 3 === 0) px(ctx, x, y + 2, '#3f7a34');
+      }
+    }
+    circle(ctx, cx, cy, 2, '#3f7a34');
+  },
+});
+
+function beachUmbrella(id: string, a: string, b: string): void {
+  def({
+    id,
+    w: 32,
+    h: 36,
+    foot: { w: 1, h: 1 },
+    draw: (ctx) => {
+      shadow(ctx, 18, 34, 12, 3);
+      vline(ctx, 16, 10, 25, '#e8e2d0');
+      vline(ctx, 17, 10, 25, '#b8b2a0');
+      // the canopy in eight stripes
+      for (let j = 0; j < 10; j++) {
+        const half = 3 + j * 1.3;
+        for (let x = Math.round(16 - half); x <= Math.round(16 + half); x++) {
+          const stripe = Math.floor(((x - 16) / (half + 0.01)) * 4 + 4);
+          px(ctx, x, 2 + j, stripe % 2 === 0 ? a : b);
+        }
+      }
+      hline(ctx, 3, 12, 27, shade(a, -0.3));
+      for (let x = 4; x < 30; x += 4) px(ctx, x, 13, shade(a, -0.3));
+      px(ctx, 16, 1, '#e8e2d0');
+    },
+  });
+}
+beachUmbrella('beach_umbrella', '#d8342a', '#f4f1ea');
+beachUmbrella('beach_umbrella_b', '#2a6ab0', '#f4f1ea');
+beachUmbrella('resort_parasol', '#f4f1ea', '#e8dcc0');
+
+/** A sun lounger with a folded towel. */
+function lounger(id: string, frame: string, towel: string): void {
+  def({
+    id,
+    w: 32,
+    h: 18,
+    foot: { w: 2, h: 1 },
+    draw: (ctx) => {
+      shadow(ctx, 16, 16, 14, 2);
+      // the slatted bed, its raised back on the left
+      rect(ctx, 6, 8, 24, 4, frame);
+      for (let x = 7; x < 30; x += 3) vline(ctx, x, 8, 4, shade(frame, -0.18));
+      for (let k = 0; k < 6; k++) rect(ctx, 1 + k, 7 - k, 2, 5, frame);
+      hline(ctx, 6, 12, 24, shade(frame, -0.35));
+      for (const x of [7, 27]) vline(ctx, x, 12, 4, shade(frame, -0.4));
+      vline(ctx, 2, 8, 6, shade(frame, -0.4));
+      rect(ctx, 18, 6, 9, 3, towel);
+      hline(ctx, 18, 6, 9, shade(towel, 0.2));
+      hline(ctx, 18, 8, 9, shade(towel, -0.25));
+    },
+  });
+}
+lounger('lounger', '#f4f1ea', '#2a8ac0');
+lounger('lounger_teak', '#b8864e', '#f4f1ea');
+
+def({
+  id: 'lifeguard_tower',
+  w: 40,
+  h: 56,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 20, 54, 16, 2);
+    // stilts and a ladder
+    for (const x of [6, 31]) rect(ctx, x, 30, 3, 24, '#c8a878');
+    for (let y = 34; y < 54; y += 4) hline(ctx, 15, y, 9, '#a8885a');
+    vline(ctx, 15, 32, 22, '#a8885a');
+    vline(ctx, 23, 32, 22, '#a8885a');
+    // the hut, its window and its name
+    rect(ctx, 1, 14, 38, 17, '#f4f1ea');
+    rect(ctx, 1, 21, 38, 3, '#d8342a');
+    rect(ctx, 7, 16, 26, 4, '#3a5a7a');
+    strokeRect(ctx, 1, 14, 38, 17, O);
+    for (let i = 0; i < 6; i++) hline(ctx, i, 13 - i, 40 - i * 2, i === 0 ? O : '#d8342a');
+    drawText(ctx, 'LIFEGUARD', 3, 25, '#2a2a2e', '3x5');
+    // the flag
+    vline(ctx, 33, 0, 8, '#5a5a62');
+    rect(ctx, 34, 0, 3, 3, '#d8342a');
+    rect(ctx, 34, 3, 3, 2, '#f2c94c');
+  },
+});
+
+/** The beach shack: a thatched kiosk with a counter of drinks. Frame 1 is shuttered for the night. */
+def({
+  id: 'beach_bar',
+  w: 64,
+  h: 50,
+  foot: { w: 4, h: 1 },
+  frames: 2,
+  shut: true,
+  light: { x: 32, y: 30, r: 40, color: '#ffc87a' },
+  draw: (ctx, f) => {
+    shadow(ctx, 32, 48, 30, 2);
+    for (const x of [4, 58]) rect(ctx, x, 14, 3, 33, '#7a5a34');
+    // counter
+    box(ctx, 2, 30, 60, 4, 13, '#a8703f', '#8a5a30');
+    for (let x = 4; x < 60; x += 6) vline(ctx, x, 35, 12, '#6a4424');
+    // thatch roof
+    for (let i = 0; i < 12; i++) hline(ctx, 6 - Math.floor(i / 2), 4 + i, 52 + Math.floor(i / 2) * 2, i % 3 === 0 ? '#c8a050' : '#d8b468');
+    for (let x = 1; x < 63; x += 3) vline(ctx, x, 14, 3, '#b8903e');
+    hline(ctx, 0, 16, 64, '#8a6a2a');
+    // sign
+    rect(ctx, 20, 17, 24, 7, '#2a6ab0');
+    drawText(ctx, 'SHACK', 23, 18, '#f4f1ea', '3x5');
+    if (f === 0) {
+      // bottles, coconuts, a blender
+      for (let x = 9; x < 19; x += 3) rect(ctx, x, 25, 2, 5, ['#3a8a4a', '#c8a050', '#8a3a2a', '#3a6a9a'][(x / 3) % 4 | 0]);
+      circle(ctx, 46, 28, 2, '#6a4a2a');
+      circle(ctx, 51, 28, 2, '#6a4a2a');
+      rect(ctx, 26, 24, 4, 6, '#c8ccd4');
+    } else {
+      // the shutter down
+      rect(ctx, 6, 24, 52, 7, '#8a6a42');
+      for (let y = 25; y < 31; y += 2) hline(ctx, 6, y, 52, '#6a4a2a');
+    }
+  },
+  night: (ctx, f) => {
+    if (f !== 0) return;
+    rect(ctx, 20, 17, 24, 7, '#3a8ae0');
+    for (const x of [8, 20, 32, 44, 56]) {
+      circle(ctx, x, 15, 1, '#ffe2a0');
+    }
+  },
+});
+
+/** A fish market stall: an awning, ice and the morning's catch. Frame 1 is packed up. */
+def({
+  id: 'fish_stall',
+  w: 48,
+  h: 40,
+  foot: { w: 3, h: 1 },
+  frames: 2,
+  shut: true,
+  draw: (ctx, f) => {
+    shadow(ctx, 24, 38, 22, 2);
+    for (const x of [2, 44]) rect(ctx, x, 6, 2, 31, '#5a5a62');
+    for (let x = 0; x < 48; x++) rect(ctx, x, 3, 1, 6, Math.floor(x / 6) % 2 === 0 ? '#2a6ab0' : '#f4f1ea');
+    hline(ctx, 0, 9, 48, '#1c4a80');
+    box(ctx, 4, 22, 40, 4, 11, '#c8ccd4', '#9aa0aa');
+    if (f === 0) {
+      // ice and fish
+      rect(ctx, 6, 20, 36, 4, '#e8f4fa');
+      for (let i = 0; i < 6; i++) {
+        const x = 8 + i * 6;
+        ellipse(ctx, x + 2, 21, 3, 1, i % 3 === 0 ? '#8a9aaa' : i % 3 === 1 ? '#c86a5a' : '#6a7a8a');
+        px(ctx, x - 1, 21, '#2a2a2e');
+        px(ctx, x + 5, 20, i % 3 === 1 ? '#a85a4a' : '#5a6a7a');
+        px(ctx, x + 5, 22, i % 3 === 1 ? '#a85a4a' : '#5a6a7a');
+      }
+      // a crab and a price board
+      ellipse(ctx, 40, 17, 3, 2, '#d8542a');
+      rect(ctx, 6, 12, 10, 6, '#2a2a2e');
+      for (const y of [14, 16]) hline(ctx, 8, y, 6, '#f4f1ea');
+    } else {
+      // a tarp over the counter
+      rect(ctx, 4, 16, 40, 8, '#3a6a5a');
+      for (let x = 6; x < 44; x += 5) vline(ctx, x, 16, 8, '#2f5a4a');
+    }
+  },
+});
+
+/** A small fishing boat: wheelhouse, outrigger, nets. */
+def({
+  id: 'fishing_boat',
+  w: 70,
+  h: 46,
+  foot: { w: 4, h: 1 },
+  frames: 2,
+  draw: (ctx, f) => {
+    const y = f;
+    shadow(ctx, 35, 41 + y, 32, 4);
+    // hull, blue with a red waterline
+    rect(ctx, 4, 30 + y, 60, 9, '#2a5a8a');
+    for (let k = 0; k < 6; k++) vline(ctx, 64 + k, 30 + y, 8 - k, '#2a5a8a');
+    rect(ctx, 4, 36 + y, 60, 2, '#a8302a');
+    hline(ctx, 4, 30 + y, 66, '#f4f1ea');
+    strokeRect(ctx, 4, 30 + y, 60, 9, O);
+    drawText(ctx, 'BAY 7', 8, 32 + y, '#f4f1ea', '3x5');
+    // wheelhouse
+    rect(ctx, 38, 18 + y, 16, 12, '#f4f1ea');
+    rect(ctx, 40, 20 + y, 5, 4, '#3a5a7a');
+    rect(ctx, 47, 20 + y, 5, 4, '#3a5a7a');
+    strokeRect(ctx, 38, 18 + y, 16, 12, O);
+    rect(ctx, 37, 16 + y, 18, 2, '#a8302a');
+    // mast, boom and a net hanging off it
+    vline(ctx, 24, 2 + y, 28, '#6a4a2a');
+    for (let k = 0; k < 18; k++) px(ctx, 24 - k, 6 + y + Math.round(k * 0.6), '#5a5a62');
+    for (let j = 0; j < 12; j++) for (let i = 0; i < 8; i++) if ((i + j) % 2 === 0) px(ctx, 10 + i + Math.round(j * 0.3), 14 + y + j, '#7a8a6a');
+    // a buoy and a crate on deck
+    circle(ctx, 60, 28 + y, 2, '#e86a2a');
+    rect(ctx, 28, 26 + y, 6, 4, '#c9a26a');
+  },
+  night: (ctx, f) => {
+    rect(ctx, 40, 20 + f, 5, 4, '#ffd88a');
+    px(ctx, 24, 2 + f, '#ff5a4a');
+  },
+});
+
+/** Fishing nets hung up to dry between poles. */
+def({
+  id: 'nets',
+  w: 48,
+  h: 30,
+  foot: { w: 3, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 24, 28, 22, 2);
+    for (const x of [2, 23, 44]) rect(ctx, x, 4, 2, 24, '#6a4a2a');
+    for (let x = 3; x < 45; x++) {
+      const sag = Math.round(Math.sin(((x - 3) % 21) / 21 * Math.PI) * 4);
+      for (let y = 5 + sag; y < 22 + sag; y++) if ((x + y) % 3 === 0 || (x - y) % 3 === 0) px(ctx, x, y, (x + y) % 6 === 0 ? '#5a7a5a' : '#7a9a6a');
+    }
+    // a float or two
+    circle(ctx, 12, 9, 1, '#e86a2a');
+    circle(ctx, 34, 10, 1, '#f2c94c');
+  },
+});
+
+/** The lighthouse on the point: white and red, with its lamp lit after dark. */
+def({
+  id: 'lighthouse',
+  w: 48,
+  h: 120,
+  foot: { w: 3, h: 2 },
+  light: { x: 24, y: 14, r: 90, color: '#fff2c0', always: false },
+  draw: (ctx) => {
+    shadow(ctx, 26, 116, 20, 4);
+    // the keeper's hut at its foot
+    rect(ctx, 2, 98, 16, 16, '#e8e2d4');
+    for (let i = 0; i < 4; i++) hline(ctx, 1 + i, 97 - i, 18 - i * 2, i === 0 ? O : '#4a5a6a');
+    rect(ctx, 7, 105, 5, 9, '#5a3a24');
+    strokeRect(ctx, 2, 98, 16, 16, O);
+    // the tower, tapering, in bands
+    for (let y = 24; y < 114; y++) {
+      const t = (y - 24) / 90;
+      const half = Math.round(7 + t * 6);
+      const band = Math.floor((y - 24) / 15) % 2 === 1;
+      hline(ctx, 26 - half, y, half * 2, band ? '#c8283a' : '#f4f1ea');
+      px(ctx, 26 - half, y, O);
+      px(ctx, 25 + half, y, O);
+      px(ctx, 24 + half, y, band ? '#a01c2c' : '#d8d4ca');
+    }
+    // windows up the tower
+    for (const y of [40, 64, 88]) rect(ctx, 25, y, 3, 5, '#3a4a5a');
+    // gallery, lamp room, cap
+    rect(ctx, 14, 21, 24, 3, '#2a2a2e');
+    for (let x = 15; x < 38; x += 3) vline(ctx, x, 17, 4, '#3a3a40');
+    rect(ctx, 19, 9, 14, 9, '#fff2c0');
+    for (const x of [19, 23, 28, 32]) vline(ctx, x, 9, 9, '#3a3a40');
+    for (let i = 0; i < 6; i++) hline(ctx, 18 + i, 8 - i, 16 - i * 2, '#2a2a2e');
+    px(ctx, 26, 1, '#e0b13e');
+  },
+  night: (ctx) => {
+    rect(ctx, 19, 9, 14, 9, '#fffbe0');
+    for (let k = 0; k < 4; k++) hline(ctx, 33 + k * 2, 12 + Math.floor(k / 2), 6, 'rgba(255,246,200,0.5)');
+    for (const y of [40, 64, 88]) rect(ctx, 25, y, 3, 5, '#ffd88a');
+    rect(ctx, 7, 105, 5, 9, '#ffd88a');
+  },
+});
+
+/** The Greyhaven–Whitestone ferry: two decks of windows, a green stripe, a funnel. */
+def({
+  id: 'ferry',
+  w: 128,
+  h: 56,
+  foot: { w: 8, h: 1 },
+  frames: 2,
+  draw: (ctx, f) => {
+    const y = f;
+    shadow(ctx, 64, 50 + y, 60, 4);
+    // hull
+    rect(ctx, 4, 34 + y, 116, 13, '#f4f1ea');
+    for (let k = 0; k < 8; k++) vline(ctx, 120 + k, 34 + y, 12 - k, '#f4f1ea');
+    rect(ctx, 4, 42 + y, 117, 3, '#2a7a5a');
+    rect(ctx, 4, 45 + y, 116, 2, '#1c2a3a');
+    hline(ctx, 4, 34 + y, 124, O);
+    hline(ctx, 4, 47 + y, 116, O);
+    vline(ctx, 3, 34 + y, 14, O);
+    for (let k = 0; k < 8; k++) px(ctx, 120 + k, 46 + y - k, O);
+    drawText(ctx, 'WHITESTONE FERRY', 18, 36 + y, '#2a7a5a', '3x5');
+    // main deck saloon with a row of windows
+    rect(ctx, 10, 22 + y, 100, 12, '#e8e4da');
+    for (let x = 13; x < 107; x += 7) rect(ctx, x, 25 + y, 5, 5, '#3a6a8a');
+    strokeRect(ctx, 10, 22 + y, 100, 12, O);
+    // upper deck: rail, the bridge forward, the first-class lounge aft
+    rect(ctx, 22, 13 + y, 70, 9, '#f4f1ea');
+    for (let x = 25; x < 60; x += 6) rect(ctx, x, 15 + y, 4, 4, '#3a5a7a');
+    rect(ctx, 76, 15 + y, 14, 4, '#1a2a3a');
+    strokeRect(ctx, 22, 13 + y, 70, 9, O);
+    hline(ctx, 8, 21 + y, 14, '#c8ccd4');
+    for (const x of [8, 13, 18]) vline(ctx, x, 18 + y, 4, '#c8ccd4');
+    hline(ctx, 22, 11 + y, 70, '#c8ccd4');
+    for (let x = 22; x < 92; x += 6) vline(ctx, x, 11 + y, 2, '#c8ccd4');
+    // funnel
+    rect(ctx, 64, 2 + y, 9, 11, '#2a7a5a');
+    rect(ctx, 64, 5 + y, 9, 2, '#f4f1ea');
+    strokeRect(ctx, 64, 2 + y, 9, 11, O);
+    // a life ring on the saloon
+    circle(ctx, 110, 28 + y, 2, '#e86a2a');
+  },
+  night: (ctx, f) => {
+    for (let x = 13; x < 107; x += 7) rect(ctx, x, 25 + f, 5, 5, '#ffd88a');
+    for (let x = 25; x < 60; x += 6) rect(ctx, x, 15 + f, 4, 4, '#ffe2a8');
+    px(ctx, 125, 38 + f, '#5aff7a');
+    px(ctx, 6, 36 + f, '#ff5a4a');
+  },
+});
+
+/** The ferry's ticket booth with its timetable. */
+def({
+  id: 'ferry_booth',
+  w: 32,
+  h: 40,
+  foot: { w: 2, h: 1 },
+  light: { x: 16, y: 22, r: 28, color: '#ffe2a0' },
+  draw: (ctx) => {
+    shadow(ctx, 16, 38, 14, 2);
+    rect(ctx, 2, 12, 28, 26, '#2a7a5a');
+    for (let i = 0; i < 5; i++) hline(ctx, 1 + i, 7 + i, 30 - i * 2, i === 0 ? O : '#f4f1ea');
+    rect(ctx, 0, 11, 32, 2, '#1c5a42');
+    rect(ctx, 5, 15, 22, 9, '#3a6a8a');
+    rect(ctx, 5, 21, 22, 3, '#2a2a2e');
+    rect(ctx, 4, 24, 24, 2, '#a8703f');
+    // the timetable
+    rect(ctx, 6, 28, 20, 8, '#f4f1ea');
+    for (const y of [30, 32, 34]) hline(ctx, 8, y, 16, '#5a5a62');
+    strokeRect(ctx, 2, 12, 28, 26, O);
+    // the name board on the roof
+    rect(ctx, 5, 0, 22, 7, '#f4f1ea');
+    strokeRect(ctx, 5, 0, 22, 7, O);
+    drawText(ctx, 'FERRY', 7, 1, '#1c5a42', '3x5');
+  },
+  night: (ctx) => {
+    rect(ctx, 5, 15, 22, 6, '#ffd88a');
+    rect(ctx, 6, 1, 20, 5, '#fff4d8');
+    drawText(ctx, 'FERRY', 7, 1, '#1c5a42', '3x5');
+  },
+});
+
+/** The white garden gate in the resort's hedge, with its little brass plate. */
+def({
+  id: 'resort_gate',
+  w: 32,
+  h: 30,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 16, 28, 15, 2);
+    for (const x of [0, 28]) {
+      rect(ctx, x, 4, 4, 24, '#f4f1ea');
+      strokeRect(ctx, x, 4, 4, 24, O);
+      rect(ctx, x - 1, 2, 6, 3, '#e8e2d4');
+    }
+    for (const y of [10, 22]) hline(ctx, 4, y, 24, '#e8e2d4');
+    for (let x = 6; x < 28; x += 4) {
+      vline(ctx, x, 8, 18, '#f4f1ea');
+      px(ctx, x, 7, '#e8e2d4');
+    }
+    rect(ctx, 11, 14, 10, 5, '#c9a24a');
+    strokeRect(ctx, 11, 14, 10, 5, '#8a6a2a');
+    hline(ctx, 13, 16, 6, '#8a6a2a');
+  },
+});
+
+/** The diner's tank of live seafood: fish, a lobster, crabs in the bubbles. */
+def({
+  id: 'fish_tank',
+  w: 32,
+  h: 30,
+  foot: { w: 2, h: 1 },
+  frames: 2,
+  light: { x: 16, y: 12, r: 22, color: '#8ad8f0', always: true },
+  draw: (ctx, f) => {
+    shadow(ctx, 16, 28, 14, 2);
+    box(ctx, 1, 20, 30, 3, 7, '#5a3a24', '#3a2416');
+    rect(ctx, 2, 4, 28, 16, '#2a6a8a');
+    rect(ctx, 2, 4, 28, 3, '#4a8aaa');
+    for (let x = 3; x < 29; x += 2) px(ctx, x, 18 - ((x + f) % 3), '#c8b07a');
+    // the catch
+    ellipse(ctx, 9 + f, 10, 3, 1, '#c8d4dc');
+    px(ctx, 6 + f, 10, '#1a1a1e');
+    ellipse(ctx, 20 - f, 13, 3, 1, '#e8a04a');
+    ellipse(ctx, 24, 17, 3, 2, '#c8302a');
+    px(ctx, 21, 16, '#c8302a');
+    px(ctx, 27, 16, '#c8302a');
+    // bubbles
+    for (const [x, y] of [[13, 15 - f * 3], [14, 11 - f * 2], [13, 7]] as [number, number][]) px(ctx, x, y, '#dff4fc');
+    strokeRect(ctx, 1, 3, 30, 18, O);
+    hline(ctx, 2, 4, 28, '#a8d8e8');
+  },
+});
+
+/** A sandcastle someone built this morning. */
+def({
+  id: 'sandcastle',
+  w: 20,
+  h: 16,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    ellipse(ctx, 10, 13, 9, 2, '#c8b07a');
+    rect(ctx, 4, 7, 12, 6, '#d8c38e');
+    for (const x of [4, 8, 12]) rect(ctx, x, 5, 3, 2, '#d8c38e');
+    rect(ctx, 8, 2, 4, 5, '#e2d09e');
+    px(ctx, 9, 9, '#8a7448');
+    vline(ctx, 10, 0, 2, '#5a5a62');
+    px(ctx, 11, 0, '#d8342a');
+  },
+});
+
+/** A beach towel spread on the sand. */
+def({
+  id: 'beach_towel',
+  w: 16,
+  h: 28,
+  foot: { w: 1, h: 2 },
+  ground: true,
+  draw: (ctx) => {
+    rect(ctx, 2, 2, 12, 24, '#e86a8a');
+    for (let y = 4; y < 26; y += 4) hline(ctx, 2, y, 12, '#f4f1ea');
+    strokeRect(ctx, 2, 2, 12, 24, '#b84a6a');
+  },
+});
+
 // ------------------------------------------------------------------ registry & build
 
 export const PROPS: Record<string, PropDef> = Object.fromEntries(defs.map((d) => [d.id, d]));

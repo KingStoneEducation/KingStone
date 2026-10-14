@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { buildCityMap } from '../src/world/maps/city';
+import { buildIsleMap } from '../src/world/maps/isle';
 import { allInteriorIds, interiorMap } from '../src/world/maps/interiors';
 import { FEET, gateSide, reachable } from '../src/world/gates';
 import type { Interactable, MapData } from '../src/world/maps/types';
 
-const MAPS: MapData[] = [buildCityMap(), ...allInteriorIds().map((id) => interiorMap(id))];
+const MAPS: MapData[] = [buildCityMap(), buildIsleMap(), ...allInteriorIds().map((id) => interiorMap(id))];
+const BY_ID: Record<string, MapData> = Object.fromEntries(MAPS.map((m) => [m.id, m]));
 
 const free = (m: MapData, x: number, y: number) => x >= 0 && y >= 0 && x < m.w && y < m.h && m.blocked[y * m.w + x] === 0;
 
@@ -71,15 +73,25 @@ describe('maps: nobody gets stuck', () => {
         expect(start, 'no entry/start spawn').toBeTruthy();
         expect(free(m, start.x, start.y)).toBe(true);
         const acc = accessible(m);
-        if (m.id !== 'city') {
-          const exits = m.doors.filter((d) => d.target === 'city');
-          expect(exits.length).toBeGreaterThan(0);
+        if (!m.outdoor) {
+          // the way out leads to the outdoor map whose door leads in here
+          const outside = MAPS.find((o) => o.outdoor && o.doors.some((d) => d.target === m.id))?.id ?? 'city';
+          const exits = m.doors.filter((d) => d.target === outside);
+          expect(exits.length, `exit to ${outside}`).toBeGreaterThan(0);
           expect(exits.some((d) => acc[d.y * m.w + d.x] === 1), 'exit door unreachable').toBe(true);
         } else {
           for (const d of m.doors) {
             const tiles = Array.from({ length: d.w }, (_, i) => d.y * m.w + d.x + i);
             expect(tiles.some((i) => acc[i] === 1), `door to ${d.target} unreachable`).toBe(true);
           }
+        }
+      });
+
+      it('every door brings you out somewhere that exists on the other side', () => {
+        for (const d of m.doors) {
+          const other = BY_ID[d.target];
+          if (!other) continue;
+          expect(other.spawns[d.spawn], `${m.id} → ${d.target}: spawn ${d.spawn}`).toBeTruthy();
         }
       });
 

@@ -400,8 +400,11 @@ export interface NpcRuntime {
   location: LocationId | null;
   spot: string | null;
   activity: string;
-  /** set while travelling between locations */
-  travel: { from: LocationId | null; to: LocationId | null; depart: number; arrive: number } | null;
+  /**
+   * set while travelling between locations; across the bay also when they reach the
+   * ferry pier, when the boat they take leaves and when it lands on the other side
+   */
+  travel: { from: LocationId | null; to: LocationId | null; depart: number; arrive: number; pier?: number; boat?: number; land?: number } | null;
   mood: number;
   stress: number;
   money: Money;
@@ -644,6 +647,22 @@ export interface GameState {
   auction?: AuctionState;
   /** the marina: cruises, charters and the player's boat; absent in old saves */
   marina?: MarinaState;
+  /** Whitestone Bay across the water: the room you hold there, the boats; absent in old saves */
+  isle?: IsleState;
+}
+
+export interface IsleState {
+  /** a room on the island, let until checkout */
+  room: { kind: 'guesthouse' | 'resort' | 'suite'; until: number; paid: Money } | null;
+  crossings: number;
+  nights: number;
+  fishingDay: number;
+  fishingTrips: number;
+  fishingEarned: Money;
+  swimDay: number;
+  loungerUntil: number;
+  breakfastDay: number;
+  visited: boolean;
 }
 
 export interface MarinaState {

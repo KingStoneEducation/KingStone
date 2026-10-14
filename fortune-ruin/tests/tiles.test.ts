@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { buildCityMap } from '../src/world/maps/city';
+import { buildIsleMap } from '../src/world/maps/isle';
 import { allInteriorIds, interiorMap } from '../src/world/maps/interiors';
 import { TILE_INDEX, displayTile } from '../src/art/tiles';
 import { isWallTile } from '../src/world/shading';
 import type { MapData } from '../src/world/maps/types';
 
-const MAPS: MapData[] = [buildCityMap(), ...allInteriorIds().map((id) => interiorMap(id))];
+const MAPS: MapData[] = [buildCityMap(), buildIsleMap(), ...allInteriorIds().map((id) => interiorMap(id))];
 const NAME = Object.fromEntries(Object.entries(TILE_INDEX).map(([n, i]) => [i, n]));
 
 describe('floor variants', () => {

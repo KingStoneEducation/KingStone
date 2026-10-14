@@ -1,6 +1,7 @@
 import type { GameCore } from '../core/GameCore';
 import type { Patron } from '../core/state';
 import { formatClock, toDate } from '../core/calendar';
+import { FISHING, boatsIn } from '../systems/IsleSystem';
 
 function pick<T>(arr: T[], seed: number): T {
   return arr[((seed % arr.length) + arr.length) % arr.length];
@@ -153,6 +154,35 @@ export function staffLine(role: string, core: GameCore): string {
     }
     case 'deckhand':
       return pick(['上船请扶好栏杆。', '船票在这边买，现金、刷卡都行。', '今天风小，坐上层看得最远。'], r);
+    // Whitestone Bay
+    case 'ferry_crew': {
+      const next = core.isle.nextFerry();
+      return pick([`下一班 ${formatClock(toDate(next).minuteOfDay)} 开，开船前二十分钟检票。`, '头等舱在上层，有咖啡。', '末班船八点从白石湾开回来，别错过了。'], r);
+    }
+    case 'keeper':
+      return pick(['这灯塔一百二十年了，我是第四个守塔的。', '晚上的光能照到对岸的灰港。', '起雾的时候，渔船全靠它回家。'], r);
+    case 'skipper': {
+      const d = toDate(core.now());
+      if (d.weekday === 6) return pick(['礼拜天不出海，船也要歇歇。', '明天四点半来，五点半开船。'], r);
+      if (d.minuteOfDay >= FISHING.from && d.minuteOfDay <= FISHING.until) return pick(['要跟船的过来，五点半开船。', '今天风浪不大，上船吧。'], r);
+      return boatsIn(core.now()) ? pick(['船都靠岸了，想跟船明早四点半来。', '今天的鱼都卖到鱼市去了。'], r) : pick(['船都出去了，下午两点半才回来。', '明天四点半再来。'], r);
+    }
+    case 'fishmonger':
+      return pick(['刚上岸的，还在蹦！', '带两条回去？清蒸最好吃。', '六点以前来，晚了就只剩小鱼了。'], r);
+    case 'shack':
+      return pick(['椰子刚冰好。', '来杯莫吉托？看着海喝最好。', '晚上有人在这边弹吉他。'], r);
+    case 'lifeguard':
+      return core.isle.lifeguardOn()
+        ? pick(['别游出浮标。', '喝了酒的不能下水。', '今天的浪不大，可以游。'], r)
+        : pick(['下班了，现在不能下水。', '明天九点再来游吧。'], r);
+    case 'beach_waiter':
+      return pick(['需要毛巾吗？', '饮料单夹在伞柄上。', '下午的日落从这里看最好。'], r);
+    case 'captain':
+      return pick(['我出了四十年的海，现在只管炒菜。', '鱼要吃新鲜的，不新鲜的我不卖。', '下午船一回来，鱼就送到我后厨。'], r);
+    case 'innkeeper':
+      return core.isle.room()?.kind === 'guesthouse'
+        ? pick(['房间收拾好了，热水十点以前有。', '明早十一点前退房就行。'], r)
+        : pick(['住一晚吗？一百二。', '错过末班船的人，都来我这儿。', '酒店那边一晚上，够在我这住两个礼拜了。'], r);
     case 'guard_booth':
     default:
       return '你好。';

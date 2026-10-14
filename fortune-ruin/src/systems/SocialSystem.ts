@@ -5,6 +5,7 @@ import type { Rng } from '../core/rng';
 import type { Belief, Memory, MemorySource, RelDims, Relationship } from '../core/state';
 import { INITIAL_TIES, NPCS, NPC_BY_ID, type NpcDef, type Traits } from '../data/npcs';
 import { CITY_SPOTS } from '../world/maps/cityLayout';
+import { ISLE_SPOTS } from '../world/maps/isleLayout';
 import { HOMES } from '../data/housing';
 
 export type Facet =
@@ -124,6 +125,7 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   volunteered: () => '在社区食堂做义工',
   donated_kitchen: (m) => `给社区食堂捐了 ${formatG(Number(m.data.amount ?? 0))}`,
   day_labor: () => '在码头打零工卸货',
+  fishing_labor: () => '在白石湾跟渔船出海打零工',
   yacht_trip: () => '请我坐游艇出海',
   outbid_me: (m) => `在拍卖会上抢走了我想要的${m.data.item ?? '拍品'}`,
   casino_night: (m) => `和我一起去了赌场${Number(m.data.net ?? 0) ? `（我${Number(m.data.net) > 0 ? '赢' : '输'}了 ${formatG(Math.abs(Number(m.data.net)))}）` : ''}`,
@@ -484,16 +486,18 @@ export class SocialSystem {
     return present;
   }
 
-  /** Named NPCs at the player's location; in the city only those nearby. */
+  /** Named NPCs at the player's location; outdoors (in the city, on the island) only those nearby. */
   presentNpcs(radiusTiles = 14): string[] {
     const loc = this.core.state.world.location;
+    const spots = loc === 'city' ? CITY_SPOTS : loc === 'isle' ? ISLE_SPOTS : null;
     const out: string[] = [];
     for (const rt of this.core.npcs.npcsAt(loc)) {
-      if (loc === 'city') {
-        const spot = rt.spot ? CITY_SPOTS[rt.spot] : null;
+      if (spots) {
+        const spot = rt.spot ? spots[rt.spot] : null;
         if (!spot) continue;
-        const px = this.core.state.world.x / 16;
-        const py = this.core.state.world.y / 16;
+        // world.x / world.y are already tile coordinates
+        const px = this.core.state.world.x;
+        const py = this.core.state.world.y;
         if (Math.abs(spot.x - px) + Math.abs(spot.y - py) > radiusTiles) continue;
       }
       out.push(rt.id);

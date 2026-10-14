@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import type { GameCore } from '../core/GameCore';
-import { store, type AuctionTab, type CharityTab, type MarinaTab, type PawnTab } from '../ui/store';
+import { store, type AuctionTab, type BeachTab, type CharityTab, type MarinaTab, type PawnTab } from '../ui/store';
 import { buildCityMap, type CityMap } from './maps/city';
+import { buildIsleMap } from './maps/isle';
+import { ISLE_DISTRICTS } from './maps/isleLayout';
 import { interiorMap } from './maps/interiors';
 import { ownShopMap } from './maps/ownShop';
 import { BIZ_TYPES } from '../data/business';
@@ -33,6 +35,7 @@ import { sfx } from '../audio/Audio';
 import { nightMarketOpen } from '../systems/OldTownSystem';
 import { pieceCanvas } from '../art/artworks';
 import type { TripKind } from '../systems/MarinaSystem';
+import { FISHING, boatsIn, type FareClass } from '../systems/IsleSystem';
 
 const DIR_VEC: Record<CharDir, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
@@ -75,6 +78,7 @@ const VERBS: Record<InteractKind, string> = {
   fortune: '看相（20 G）',
   auction: '拍卖会',
   marina: '游艇会',
+  isle: '查看',
 };
 
 /** Where people stand on each boat's deck (image pixels): the deck line and the spots along it, the first one yours. */
@@ -83,6 +87,7 @@ const DECKS: Record<string, { y: number; xs: number[] }> = {
   yacht_club: { y: 37, xs: [12, 44, 50, 18, 38] },
   yacht_seagull: { y: 37, xs: [12, 44, 50, 18, 38, 24, 54, 8, 32] },
   yacht_aurora: { y: 25, xs: [10, 82, 22, 72, 64, 30, 88, 40, 56] },
+  ferry: { y: 33, xs: [40, 24, 56, 72, 88] },
 };
 
 const WALK_SPEED = 58;
@@ -100,12 +105,14 @@ const DISTRICTS: { name: string; x0: number; y0: number; x1: number; y1: number 
   { name: '旧码头', x0: 0, y0: 79, x1: 52, y1: 89 },
   { name: '河滨公园', x0: 53, y0: 64, x1: 103, y1: 89 },
   { name: '灰港游艇会', x0: 107, y0: 39, x1: 119, y1: 58 },
+  { name: '渡轮码头', x0: 107, y0: 59, x1: 119, y1: 70 },
   { name: '河滨步道', x0: 104, y0: 26, x1: 119, y1: 89 },
 ];
 
-function districtAt(x: number, y: number): string {
-  for (const d of DISTRICTS) if (x >= d.x0 && x <= d.x1 && y >= d.y0 && y <= d.y1) return d.name;
-  return '灰港';
+function districtAt(x: number, y: number, map = 'city'): string {
+  const list = map === 'isle' ? ISLE_DISTRICTS : DISTRICTS;
+  for (const d of list) if (x >= d.x0 && x <= d.x1 && y >= d.y0 && y <= d.y1) return d.name;
+  return map === 'isle' ? '白石湾' : '灰港';
 }
 
 function inputFocused(): boolean {
@@ -182,6 +189,8 @@ export interface WorldApi {
   casinoArea(): CasinoArea | null;
   /** walk aboard at the marina and go out on the water */
   sail(kind: TripKind, method?: 'cash' | 'card'): Promise<void>;
+  /** take the ferry across the bay */
+  ferry(cls: FareClass, method?: 'cash' | 'card'): Promise<void>;
 }
 
 export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
@@ -189,6 +198,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   map!: MapData;
   private attract = false;
   private cityCache: CityMap | null = null;
+  private isleCache: CityMap | null = null;
   private objects: Phaser.GameObjects.GameObject[] = [];
   private tilemaps: Phaser.Tilemaps.Tilemap[] = [];
   private ground: Phaser.Tilemaps.TilemapLayer | null = null;
@@ -371,7 +381,14 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   private loadMap(id: string, spawn: string | null, tile?: Pt, face?: Face): void {
     this.clearMap();
-    const map = id === 'city' ? (this.cityCache ??= buildCityMap()) : id === 'own_shop' ? ownShopMap(this.core?.state.business ?? null) : interiorMap(id);
+    const map =
+      id === 'city'
+        ? (this.cityCache ??= buildCityMap())
+        : id === 'isle'
+          ? (this.isleCache ??= buildIsleMap())
+          : id === 'own_shop'
+            ? ownShopMap(this.core?.state.business ?? null)
+            : interiorMap(id);
     this.map = map;
     this.buildTiles(map);
     this.buildShade(map);
@@ -384,7 +401,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       this.player = new CharacterSprite(this, playerLook(this.core), pos.x * 16 + 8, pos.y * 16 + 14, pos.face);
       this.player.depthBias = 0.2;
     }
-    if (map.id === 'city') this.city = new CityLife(this, map as CityMap, () => this.playerPos());
+    // street life: traffic and passers-by in Greyhaven, people strolling on the island (no cars there)
+    if (map.id === 'city' || map.id === 'isle') this.city = new CityLife(this, map as CityMap, () => this.playerPos());
     if (!this.attract) {
       if (map.id === 'casino') {
         this.floor = new CasinoFloor(this, this.core, map, this.entryTile());
@@ -661,7 +679,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     if (time > this.spotCheckAt) {
       this.spotCheckAt = time + 1000;
       this.checkSpots();
-      this.updateDistrict();
+      // not from the deck of a boat coming in: the banner waits until you step ashore
+      if (!this.transitioning) this.updateDistrict();
     }
     if (this.ring && this.ring.visible && time > this.ringUntil) this.ring.setVisible(false);
   }
@@ -874,6 +893,26 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         return owned === 'aurora';
       case 'no_yacht':
         return owned === null;
+      case 'ferry_city':
+        return this.core.isle.ferryAt('city');
+      case 'ferry_isle':
+        return this.core.isle.ferryAt('isle');
+      case 'boats_in':
+        return boatsIn(this.core.now());
+      case 'fishing_hire': {
+        const d = toDate(this.core.now());
+        return d.weekday !== 6 && d.minuteOfDay >= FISHING.from && d.minuteOfDay <= FISHING.until;
+      }
+      case 'fish_market':
+        return this.core.isle.marketOpen();
+      case 'shack':
+        return this.core.isle.shackOpen();
+      case 'lifeguard':
+        return this.core.isle.lifeguardOn();
+      case 'resort_day': {
+        const m = toDate(this.core.now()).minuteOfDay;
+        return m >= 7 * 60 && m < 22 * 60;
+      }
     }
   }
 
@@ -904,7 +943,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const first = v.shown === null;
     const p = this.player;
     const near = !!p && Math.abs(p.x - v.x0) < 420 && Math.abs(p.y - v.img.y) < 280;
-    if (first || !near || v.when !== 'tour_in') {
+    const boat = v.when === 'tour_in' || v.when === 'ferry_city' || v.when === 'ferry_isle' || v.when === 'boats_in';
+    if (first || !near || !boat) {
       this.showProp(v, on);
       return;
     }
@@ -956,12 +996,12 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   }
 
   private updateDistrict(): void {
-    if (this.map.id !== 'city' || !this.player) return;
-    const d = districtAt(Math.floor(this.player.x / 16), Math.floor(this.player.y / 16));
+    if ((this.map.id !== 'city' && this.map.id !== 'isle') || !this.player) return;
+    const d = districtAt(Math.floor(this.player.x / 16), Math.floor(this.player.y / 16), this.map.id);
     if (d !== this.district) {
       const first = this.district === '';
       this.district = d;
-      if (!first) store.banner(d, '灰港 · Greyhaven');
+      if (!first) store.banner(d, this.map.id === 'isle' ? '白石湾 · Whitestone Bay' : '灰港 · Greyhaven');
     }
   }
 
@@ -982,8 +1022,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   private useDoor(d: Door): void {
     const p = this.player!;
-    if (d.target === 'city') {
-      this.travel('city', d.spawn);
+    if (d.target === 'city' || d.target === 'isle') {
+      this.travel(d.target, d.spawn);
       return;
     }
     const refusal = entryRefusal(this.core, d.target);
@@ -1034,9 +1074,10 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private onArrive(from: string | null, to: string): void {
     const core = this.core;
     const loc = LOCATIONS[to];
-    if (to === 'city') {
+    if (to === 'city' || to === 'isle') {
       this.updateDistrict();
-      store.banner(this.district || '灰港', from ? `离开${LOCATIONS[from]?.name ?? ''}` : '灰港 · Greyhaven');
+      const home = to === 'isle' ? '白石湾 · Whitestone Bay' : '灰港 · Greyhaven';
+      store.banner(this.district || (to === 'isle' ? '白石湾' : '灰港'), from && from !== 'city' && from !== 'isle' ? `离开${LOCATIONS[from]?.name ?? ''}` : home);
     } else if (loc) {
       const biz = to === 'own_shop' ? this.core?.state.business : null;
       const sub = biz ? (biz.phase === 'open' ? `你的${BIZ_TYPES[biz.type].name}` : '装修中') : loc.hours ? `营业时间 ${hoursText(loc)}` : loc.desc.slice(0, 26);
@@ -1109,6 +1150,31 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       verb = it.interact.data?.tab === 'shelf' ? '看二手货' : '典当 / 赎当';
     } else if (k === 'elevator') {
       verb = it.interact.data?.floor === 'sky' ? '上楼' : '下楼';
+    } else if (k === 'isle') {
+      const act = it.interact.data?.act;
+      const isle = this.core.isle;
+      verb =
+        act === 'ferry'
+          ? isle.boarding() !== null
+            ? '买票上船'
+            : '看时刻表'
+          : act === 'beach'
+            ? '租躺椅 / 游泳'
+            : act === 'swim'
+              ? '下海游泳'
+              : act === 'fishing'
+                ? '跟船出海'
+                : act === 'lighthouse'
+                  ? '眺望'
+                  : act === 'lodging'
+                    ? '入住 / 前台'
+                    : act === 'breakfast'
+                      ? '吃早餐'
+                      : act === 'pool'
+                        ? '下水游泳'
+                        : act === 'private'
+                          ? '躺一会儿'
+                          : '查看';
     } else if (k === 'marina') {
       const d = it.interact.data ?? {};
       const m = this.core.marina;
@@ -1287,13 +1353,16 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         store.openModal({ type: 'computer' });
         break;
       case 'shop':
-      case 'order':
-        if (d.when === 'night_market' && !nightMarketOpen(core.now())) {
-          store.openModal({ type: 'text', title: it.interact.label, text: '摊子用油布盖着，还没摆出来。夜市每天 18:00 开张，周五、周六开到凌晨两点。' });
+      case 'order': {
+        // stalls and counters that keep hours (the night market, the fish market, the beach shack)
+        const when = d.when as StaffWhen | undefined;
+        if (when && !this.whenActive(when)) {
+          store.openModal({ type: 'text', title: it.interact.label, text: String(d.closed ?? '摊子用油布盖着，还没摆出来。夜市每天 18:00 开张，周五、周六开到凌晨两点。') });
           break;
         }
         store.openModal({ type: 'shop', shopId: String(d.shop), consume: it.interact.kind === 'order' });
         break;
+      }
       case 'table':
         this.sitAtTable(String(d.table));
         break;
@@ -1377,6 +1446,23 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       case 'marina':
         store.openModal({ type: 'marina', tab: String(d.tab ?? 'cruise') as MarinaTab });
         break;
+      case 'isle': {
+        const act = String(d.act ?? '');
+        if (act === 'ferry') store.openModal({ type: 'ferry' });
+        else if (act === 'beach' || act === 'swim' || act === 'pool' || act === 'private') {
+          const tab: BeachTab = act === 'beach' ? 'lounger' : act;
+          store.openModal({ type: 'beach', tab });
+        } else if (act === 'fishing') store.openModal({ type: 'fishing' });
+        else if (act === 'lodging') store.openModal({ type: 'lodging', place: d.place === 'resort' ? 'resort' : 'guesthouse' });
+        else if (act === 'breakfast') {
+          const r = core.isle.breakfast();
+          store.toast(r.ok ? r.message : r.error, r.ok ? 'good' : 'warn');
+        } else if (act === 'lighthouse') {
+          const r = core.isle.lighthouse();
+          store.openModal({ type: 'text', title: it.interact.label, text: r.ok ? r.message : r.error });
+        }
+        break;
+      }
       case 'door':
         break;
     }
@@ -1438,6 +1524,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         const victor = this.core.social.rel('victor');
         const invited = Number(this.core.state.player.flags.officeInviteUntil ?? -1) >= this.core.today();
         if (!invited && !(victor.met && victor.familiarity >= 35 && this.core.casino.tierAtLeast('platinum'))) err = '保安拦住了你：「经理办公室，非请勿入。」';
+      } else if (area === 'resort') {
+        err = this.core.isle.resortAccess();
       } else err = this.core.casino.areaAccess(area as 'high' | 'vip');
       if (err) {
         store.toast(err, 'warn');
@@ -1448,8 +1536,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.cameras.main.flash(120, 10, 6, 18);
     p.setPos(target.x * 16 + 8, target.y * 16 + 14);
     p.face(going ? (target.y < outside.y ? 'up' : target.x < outside.x ? 'left' : 'right') : 'down');
-    if (going && area === 'suite') sfx('door');
-    if (going) store.banner(area === 'vip' ? 'VIP 私人厅' : area === 'high' ? '高额投注区' : area === 'suite' ? '1201 套房' : '经理办公室', area === 'vip' ? '仅限受邀贵宾' : area === 'high' ? 'High Limit Salon' : area === 'suite' ? '天穹层' : '');
+    if (going && (area === 'suite' || (area === 'resort' && this.map.id !== 'isle'))) sfx('door');
+    if (going && area === 'resort') store.banner(this.map.id === 'isle' ? '泳池与住客海滩' : '客房区', '白石湾度假酒店 · 住客专享');
+    else if (going) store.banner(area === 'vip' ? 'VIP 私人厅' : area === 'high' ? '高额投注区' : area === 'suite' ? '1201 套房' : '经理办公室', area === 'vip' ? '仅限受邀贵宾' : area === 'high' ? 'High Limit Salon' : area === 'suite' ? '天穹层' : '');
   }
 
   // ------------------------------------------------------------------ the members' lift
@@ -1713,6 +1802,115 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     }
     this.npcDir?.disembark(guestIds);
     for (const id of guestIds) this.core.social.observePlayer(id);
+    core.paused.delete('transition');
+    this.transitioning = false;
+  }
+
+  // ------------------------------------------------------------------ the ferry
+
+  private ferryView(): PropView | null {
+    return this.props.find((v) => v.def.id === 'ferry') ?? null;
+  }
+
+  /**
+   * Across the bay: walk out to the end of the pier and step aboard, the
+   * horn, and she pulls away and out of sight; the crossing passes over a
+   * postcard of where you are going; then the other map, the ferry coming in
+   * with you on deck, and you step off onto the pier.
+   */
+  async ferry(cls: FareClass, method: 'cash' | 'card' = 'cash'): Promise<void> {
+    if (this.transitioning || !this.player || (this.map.id !== 'city' && this.map.id !== 'isle')) return;
+    const core = this.core;
+    const err = core.isle.boardCheck(cls, method);
+    if (err) {
+      store.toast(err, 'warn');
+      sfx('deny');
+      return;
+    }
+    const fromSide = core.isle.side();
+    const dest: 'city' | 'isle' = fromSide === 'city' ? 'isle' : 'city';
+    const deck = DECKS.ferry;
+    const v = this.ferryView();
+    store.closeAll();
+    const p = this.player;
+    const scene = this.scene;
+    this.transitioning = true;
+    core.paused.add('transition');
+    this.setFocus(null);
+    this.marker?.setVisible(false);
+    p.stop();
+    p.path = [];
+    this.arriveAction = null;
+    if (this.benchSit) this.standUpFromBench();
+    const cam = this.cameras.main;
+    const board = this.map.spawns.ferry ?? null;
+    if (v && board && v.shown !== false) {
+      v.sailing = true;
+      await Promise.race([this.walkSpriteTo(p, board), this.wait(7000)]);
+      p.stop();
+      p.fixedDepth = v.img.depth + 0.05;
+      p.noShadow = true;
+      p.setMoving(true, 'right');
+      await this.tweenTo(p, { x: v.img.x + deck.xs[0], y: v.img.y + deck.y }, 380);
+      p.setMoving(false, 'down');
+      p.face('down');
+      await this.wait(300);
+      sfx('horn');
+      await this.wait(700);
+      await this.sailBoat(v, v.x0 + (this.map.w * 16 - v.x0) + 40, 3600, 'Sine.easeIn', [{ s: p, dx: deck.xs[0] }]);
+    }
+    cam.fadeOut(420, 8, 6, 14);
+    await this.wait(460);
+    if (!scene.isActive()) return;
+    const r = core.isle.cross(cls, method);
+    if (!r.ok) {
+      // nothing happened: back on the pier
+      store.toast(r.error, 'warn');
+      if (v) {
+        this.moveBoat(v, v.x0, []);
+        v.sailing = false;
+      }
+      p.fixedDepth = null;
+      p.noShadow = false;
+      if (board) p.setPos(board.x * 16 + 8, board.y * 16 + 14);
+      cam.fadeIn(420, 8, 6, 14);
+      core.paused.delete('transition');
+      this.transitioning = false;
+      return;
+    }
+    store.openModal({ type: 'crossing', report: r.report });
+    await this.untilModalClosed();
+    if (!scene.isActive()) return;
+    // the other side of the bay
+    const from = this.map.id;
+    core.setLocation(dest, -1, -1);
+    this.loadMap(dest, 'ferry');
+    this.syncState();
+    const v2 = this.ferryView();
+    const p2 = this.player!;
+    const land = this.map.spawns.ferry;
+    if (v2 && land) {
+      v2.sailing = true;
+      this.showProp(v2, true);
+      const riders = [{ s: p2, dx: deck.xs[0] }];
+      p2.fixedDepth = v2.img.depth + 0.05;
+      p2.noShadow = true;
+      p2.setPos(v2.img.x + deck.xs[0], v2.img.y + deck.y);
+      this.moveBoat(v2, v2.x0 + (this.map.w * 16 - v2.x0) + 40, riders);
+      cam.centerOn(p2.x, p2.y - 12);
+      cam.fadeIn(520, 8, 6, 14);
+      await this.sailBoat(v2, v2.x0, 3200, 'Sine.easeOut', riders);
+      await this.wait(250);
+      p2.setMoving(true, 'left');
+      await this.tweenTo(p2, { x: land.x * 16 + 8, y: land.y * 16 + 14 }, 380);
+      p2.setMoving(false, 'left');
+      p2.face('down');
+      p2.fixedDepth = null;
+      p2.noShadow = false;
+      v2.sailing = false;
+    } else cam.fadeIn(520, 8, 6, 14);
+    this.syncState();
+    this.onArrive(from, dest);
     core.paused.delete('transition');
     this.transitioning = false;
   }

@@ -185,7 +185,8 @@ export class InventorySystem {
         this.core.housing.addFurniture(item.id);
         break;
       case 'grocery':
-        this.add(item.id === 'groceries_fresh' ? MEAL_FRESH : MEAL_BASIC, (item.meals ?? 1) * qty);
+        // fresh produce and the island's fish and crabs make the healthier home meals
+        this.add(item.id === 'groceries_fresh' || item.id.startsWith('isle_') ? MEAL_FRESH : MEAL_BASIC, (item.meals ?? 1) * qty);
         break;
       default:
         this.add(item.id, qty);

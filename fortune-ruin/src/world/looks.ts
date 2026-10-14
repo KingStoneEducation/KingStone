@@ -69,6 +69,16 @@ const UNIFORMS: Record<string, Partial<CharacterLook>> = {
   // the marina
   dockmaster: { style: 'uniform', top: '#f4f1ea', topShade: '#cfcabe', bottom: '#1c2a4a', shoes: '#2a1a12', accent: '#e0b13e', hat: 'cap' },
   deckhand: { style: 'shirt', top: '#2a4a8a', topShade: '#1c3466', bottom: '#e8e4da', shoes: '#f4f1ea', accent: '#f4f1ea' },
+  // Whitestone Bay
+  ferry_crew: { style: 'uniform', top: '#2a7a5a', topShade: '#1c5a42', bottom: '#1c2a3a', shoes: '#111111', accent: '#f4f1ea', hat: 'cap' },
+  keeper: { style: 'jacket', top: '#2a3a5a', topShade: '#1c2a44', bottom: '#3a3a42', shoes: '#2a1a12', accent: '#c9a24a', hat: 'beanie' },
+  skipper: { style: 'jacket', top: '#e88a2a', topShade: '#b86a1a', bottom: '#2a3a4a', shoes: '#2a2a2e', accent: '#f2d24a', hat: 'beanie' },
+  fishmonger: { style: 'apron', top: '#3a5a6a', topShade: '#2a4450', bottom: '#2a2a30', shoes: '#e8e4da', accent: '#c8ccd4' },
+  shack: { style: 'shirt', top: '#e8584a', topShade: '#b8443a', bottom: '#d8c38e', shoes: '#8a6a42', accent: '#f2d24a' },
+  lifeguard: { style: 'tee', top: '#d8342a', topShade: '#a82a22', bottom: '#f2d24a', shoes: '#c8a878', accent: '#f4f1ea', hat: 'cap' },
+  beach_waiter: { style: 'shirt', top: '#f4f1ea', topShade: '#d0ccc2', bottom: '#e8e2d0', shoes: '#c8a878', accent: '#c9a24a' },
+  captain: { style: 'jacket', top: '#1c2a44', topShade: '#121c30', bottom: '#2a2a30', shoes: '#2a1a12', accent: '#f4f1ea', hat: 'cap' },
+  innkeeper: { style: 'apron', top: '#c86a8a', topShade: '#a8526e', bottom: '#3a3a46', shoes: '#2a2a2e', accent: '#f4f1ea', body: 'f' },
 };
 
 /** Generic staff and extras get a uniform matching their role. */

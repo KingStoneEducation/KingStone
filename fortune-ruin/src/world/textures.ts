@@ -3,7 +3,7 @@ import { AtlasBuilder } from '../art/atlas';
 import { buildTileset } from '../art/tiles';
 import { buildPropImages, CAR_COLORS, carImage } from '../art/props';
 import { drawBuilding } from '../art/buildings';
-import { BUILDINGS } from './maps/cityLayout';
+import { ALL_BUILDINGS } from './maps/cityLayout';
 import { buildCharacterSheet, CHAR_H, CHAR_W, DIRS, randomLook } from '../art/characters';
 import { circle, ellipse, makeCanvas, px, rect, strokeRect } from '../art/canvas';
 import { P } from '../art/palette';
@@ -95,7 +95,7 @@ export function registerTextures(scene: Phaser.Scene): void {
   scene.textures.addCanvas('tiles', tiles)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
   buildPropImages((name, c) => atlas.add(name, c));
-  for (const b of BUILDINGS) {
+  for (const b of ALL_BUILDINGS) {
     const art = drawBuilding(b);
     atlas.add(`bld:${b.id}`, art.day);
     atlas.add(`bld:${b.id}:n`, art.night);

@@ -12,6 +12,7 @@ import { initialMarket } from '../systems/MarketSystem';
 import { emptyOldTown } from '../systems/OldTownSystem';
 import { emptyAuction } from '../systems/AuctionSystem';
 import { emptyMarina } from '../systems/MarinaSystem';
+import { emptyIsle } from '../systems/IsleSystem';
 import { BASE_IMPULSIVITY } from '../systems/PlayerSystem';
 import { GameCore } from './GameCore';
 
@@ -212,6 +213,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
     oldtown: emptyOldTown(),
     auction: emptyAuction(),
     marina: emptyMarina(),
+    isle: emptyIsle(),
   };
 
   // relationships

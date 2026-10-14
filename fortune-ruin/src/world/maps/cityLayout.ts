@@ -1,3 +1,5 @@
+import { ISLE_BUILDINGS, onIsle } from './isleLayout';
+
 /**
  * Pure data describing Greyhaven's layout (tile coordinates, 16 px tiles).
  * Used by the renderer to build the map and by the simulation to estimate
@@ -32,7 +34,14 @@ export type BuildingStyle =
   | 'pharmacy'
   | 'bakery'
   | 'pawn'
-  | 'kitchen';
+  | 'kitchen'
+  // Whitestone Bay
+  | 'fisher'
+  | 'diner'
+  | 'guesthouse'
+  | 'resort'
+  | 'coop'
+  | 'ferry_hall';
 
 export interface BuildingDef {
   id: string;
@@ -98,9 +107,11 @@ export const BUILDINGS: BuildingDef[] = [
   { id: 'riverside_towers', name: '河畔塔楼', sign: 'RIVERSIDE', style: 'river_tower', x: 92, y: 64, w: 12, h: 15, door: { x: 97, y: 78, w: 2 }, target: 'home_river', extraHeight: 5 },
 ];
 
-export const BUILDING_BY_ID: Record<string, BuildingDef> = Object.fromEntries(BUILDINGS.map((b) => [b.id, b]));
+/** Every building on both maps (Greyhaven's and Whitestone Bay's) by id: the ids are unique across the two. */
+export const BUILDING_BY_ID: Record<string, BuildingDef> = Object.fromEntries([...BUILDINGS, ...ISLE_BUILDINGS].map((b) => [b.id, b]));
+export const ALL_BUILDINGS: BuildingDef[] = [...BUILDINGS, ...ISLE_BUILDINGS];
 
-/** Location → the building whose door leads there. */
+/** Location → the building whose door leads there (Greyhaven's; the island is reached from the ferry pier). */
 export const LOCATION_BUILDING: Record<string, string> = Object.fromEntries(BUILDINGS.filter((b) => b.target).map((b) => [b.target!, b.id]));
 
 /** Named outdoor spots NPC schedules refer to. */
@@ -143,6 +154,9 @@ export const CITY_SPOTS: Record<string, { x: number; y: number; face?: 'down' | 
 /** The old pier where the night market sets up its stalls (where its music plays). */
 export const NIGHT_MARKET_AREA = { x0: 26, x1: 51, y0: 78, y1: 89 };
 
+/** Greyhaven's ferry pier, south of the marina: the Whitestone ferry moors along its river side. */
+export const FERRY_PIER = { x0: 108, x1: 111, y0: 61, y1: 69, gangway: 64, berth: { x: 112, y: 65 }, board: { x: 111, y: 65 }, wait: [{ x: 109, y: 64 }, { x: 108, y: 65 }, { x: 109, y: 66 }, { x: 110, y: 66 }, { x: 110, y: 68 }, { x: 109, y: 68 }] };
+
 /** The marina's pontoon off the river promenade, and its four berths (anchor row of each boat). */
 export const MARINA = { x0: 108, x1: 111, y0: 40, y1: 57, gangway: 47, berths: { tour: 42, club: 46, own: 51, whitmore: 56 }, boatX: 112 };
 
@@ -157,6 +171,13 @@ export const OUTDOOR_PLACES: Record<string, { name: string; short: string; tile:
   },
   night_market: { name: '旧码头夜市', short: '夜市', tile: { x: 36, y: 81 }, desc: '老城区水边的夜市：炒档、烤串、糖水、旧书和看相。只收现金。', hours: '每天 18:00–24:00，周五、周六到凌晨 2:00' },
   pier7: { name: '7 号码头', short: '7 号码头', tile: { x: 12, y: 87 }, desc: '清早在这里招临时工卸货，当场结钱。', hours: '周一至周六 5:30 起招工' },
+  ferry: {
+    name: '渡轮码头',
+    short: '渡轮',
+    tile: { x: 106, y: 64 },
+    desc: '去海湾对面白石湾的渡轮从这里开，单程 40 分钟。普通舱 25 G，头等舱 80 G。',
+    hours: '去程 7:30、10:00、13:00、16:00、19:00 · 回程末班 20:00',
+  },
 };
 
 export const BUS_STOPS: { id: string; name: string; x: number; y: number }[] = [
@@ -182,9 +203,10 @@ export function doorTile(buildingId: string): { x: number; y: number } {
   return { x: b.door.x, y: b.door.y };
 }
 
-/** Outdoor anchor of a location (door tile, or the spot itself for city spots). */
+/** Outdoor anchor of a location on Greyhaven's map (door tile, the spot itself for city spots, the ferry pier for the island). */
 export function locationAnchor(loc: string | null, spot: string | null, district = '老城区'): { x: number; y: number } {
   if (loc === 'city' && spot && CITY_SPOTS[spot]) return CITY_SPOTS[spot];
+  if (onIsle(loc)) return FERRY_PIER.board;
   if (loc && LOCATION_BUILDING[loc]) return doorTile(LOCATION_BUILDING[loc]);
   return doorTile(DISTRICT_HOME[district] ?? 'dockside_rooms');
 }

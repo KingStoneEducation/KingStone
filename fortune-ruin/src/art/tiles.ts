@@ -1,5 +1,5 @@
 import { P } from './palette';
-import { dither, hash2, hline, makeCanvas, mix, px, rect, shade, speckle, vline, type Ctx } from './canvas';
+import { dither, ellipse, hash2, hline, makeCanvas, mix, px, rect, shade, speckle, vline, type Ctx } from './canvas';
 
 export const TILE = 16;
 const COLS = 32;
@@ -434,6 +434,52 @@ def('sand', (ctx, x, y) => {
   speckle(ctx, x, y, 16, 16, shade(P.sand, 0.1), 0.08, 32);
 });
 def('dock', planks('#8a6a4a', '#5e4630', '#4a3624', true, 3));
+// Whitestone Bay: the fishing village's cobbles, the rocks of the point, the resort's pool and the harbour quay
+def('cobble', (ctx, x, y) => {
+  rect(ctx, x, y, 16, 16, '#8a8478');
+  for (let j = 0; j < 4; j++) {
+    for (let i = 0; i < 4; i++) {
+      const cx = x + i * 4 + (j % 2) * 2;
+      const cy = y + j * 4;
+      const c = hash2(i + x, j + y, 301) < 0.5 ? '#a49c8e' : '#9a9284';
+      rect(ctx, cx, cy, 3, 3, c);
+      px(ctx, cx, cy, shade(c, 0.12));
+      px(ctx, cx + 2, cy + 2, shade(c, -0.18));
+    }
+  }
+});
+def('rock', (ctx, x, y) => {
+  rect(ctx, x, y, 16, 16, '#5a5a62');
+  for (let k = 0; k < 5; k++) {
+    const cx = x + 2 + Math.floor(hash2(k, x, 311) * 12);
+    const cy = y + 2 + Math.floor(hash2(y, k, 312) * 12);
+    ellipse(ctx, cx, cy, 3, 2, '#6e6e78');
+    hline(ctx, cx - 2, cy - 1, 3, '#86868e');
+    hline(ctx, cx - 1, cy + 2, 4, '#46464e');
+  }
+  speckle(ctx, x, y, 16, 16, '#3a3a42', 0.08, 313);
+});
+def('pool', (ctx, x, y) => {
+  rect(ctx, x, y, 16, 16, '#3ab0d0');
+  for (const k of [0, 8]) {
+    hline(ctx, x, y + k, 16, '#56c4e0');
+    vline(ctx, x + k, y, 16, '#56c4e0');
+  }
+  hline(ctx, x + 3, y + 5, 4, '#a8e8f4');
+  hline(ctx, x + 10, y + 12, 3, '#a8e8f4');
+});
+def('pool_edge', (ctx, x, y) => {
+  rect(ctx, x, y, 16, 16, '#efece4');
+  for (const k of [0, 8]) vline(ctx, x + k, y, 16, '#d8d4c8');
+  hline(ctx, x, y, 16, '#ffffff');
+  hline(ctx, x, y + 15, 16, '#c8c4b8');
+});
+def('quay', (ctx, x, y) => {
+  pavers('#8a8a84', '#6a6a64', '#a4a49c', 8, 321)(ctx, x, y);
+  // the quay's stone edge and the iron ring of a mooring
+  rect(ctx, x, y, 16, 3, '#5a5a56');
+  hline(ctx, x, y + 3, 16, '#3a3a38');
+});
 // the marina's floating pontoons: teak boards, the south edge showing the float and a white fender strip
 def('deck', planks('#bf9160', '#9a7044', '#6e4c2c', false, 5));
 def('deck_s', (ctx, x, y) => {

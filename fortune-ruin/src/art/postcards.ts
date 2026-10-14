@@ -20,6 +20,8 @@ export interface CardSpec {
   party: boolean;
   model: BoatModel;
   guests: string[];
+  /** crossing to the island while the fishing boats are out at sea */
+  boatsOut?: boolean;
 }
 
 const SKY: Record<TimeOfDay, string[]> = {
@@ -218,9 +220,9 @@ function gulls(ctx: Ctx, rng: Rng, horizon: number): void {
   }
 }
 
-/** The things friends leave on deck. */
-function guestThings(ctx: Ctx, guests: string[], y: number): void {
-  let x = 6;
+/** The things friends (or fellow passengers) leave on deck, from x0 along to about x1. */
+function guestThings(ctx: Ctx, guests: string[], y: number, x0 = 6, x1 = 40): void {
+  let x = x0;
   for (const g of guests) {
     if (g === 'tommy') {
       // a guitar against the rail
@@ -248,7 +250,7 @@ function guestThings(ctx: Ctx, guests: string[], y: number): void {
       hline(ctx, x + 2, y - 2, 5, '#b8283a');
       x += 12;
     }
-    if (x > 40) break;
+    if (x > x1) break;
   }
 }
 
@@ -256,6 +258,19 @@ function guestThings(ctx: Ctx, guests: string[], y: number): void {
 function deck(ctx: Ctx, tod: TimeOfDay, model: BoatModel, party: boolean, guests: string[]): void {
   const dark = tod === 'night';
   const y = CARD_H - 9;
+  if (model === 'ferry') {
+    // the ferry's green rail and a bench of passengers' bags
+    rect(ctx, 0, y + 2, CARD_W, 7, dark ? '#24302c' : '#e8e4da');
+    hline(ctx, 0, y + 2, CARD_W, dark ? '#2a7a5a' : '#2a7a5a');
+    hline(ctx, 0, y - 5, CARD_W, dark ? '#3a6a5a' : '#3a8a6a');
+    for (let x = 6; x < CARD_W; x += 14) vline(ctx, x, y - 5, 7, dark ? '#2a5a4a' : '#2a7a5a');
+    rect(ctx, 10, y - 2, 7, 4, dark ? '#3a3a42' : '#8a5a36');
+    rect(ctx, 70, y - 3, 6, 5, dark ? '#2a3a4a' : '#3a6a8a');
+    ellipse(ctx, 84, y, 4, 2, dark ? '#3a3a2a' : '#c8b07a');
+    // whoever you know on the same boat: Tommy's guitar, Kiki's camera...
+    guestThings(ctx, guests, y + 1, 22, 56);
+    return;
+  }
   if (model === 'tour') {
     // the tour boat's white rail, a life ring hung on it
     rect(ctx, 0, y + 3, CARD_W, 6, dark ? '#3a3e4a' : '#e8e4da');
@@ -385,10 +400,81 @@ function homecomingCard(ctx: Ctx, rng: Rng, c: CardSpec): void {
   if (c.tod !== 'night') gulls(ctx, rng, H - 10);
 }
 
+/** Whitestone Bay from the ferry: green hills, the fishing village at the water, the resort on the point, the lighthouse. */
+function toIsleCard(ctx: Ctx, rng: Rng, c: CardSpec): void {
+  const H = 34;
+  const dark = c.tod === 'night';
+  sky(ctx, rng, c.tod, H, rng.int(14, 40));
+  // the island's hills
+  const hill = c.tod === 'day' ? '#4a7a4a' : c.tod === 'dusk' ? '#3a3a4a' : '#141c26';
+  for (let x = 6; x < 86; x++) {
+    const h = Math.round(9 + 5 * Math.sin((x - 6) / 13) + 2 * Math.sin(x / 4.1));
+    vline(ctx, x, H - h, h, hill);
+  }
+  // the village: coloured houses along the water
+  const cols = ['#d8c8a8', '#8a9aa4', '#c86a5a', '#e8e4da', '#3a6a8a'];
+  const lights: { x: number; y: number; c: string }[] = [];
+  for (let i = 0; i < 9; i++) {
+    const x = 10 + i * 5;
+    const h = 3 + (i % 3);
+    rect(ctx, x, H - h, 4, h, dark ? '#20242e' : cols[i % cols.length]);
+    hline(ctx, x, H - h - 1, 4, dark ? '#181a22' : '#7a3a2a');
+    if (dark && rng.chance(0.6)) {
+      px(ctx, x + 1, H - 2, '#ffd88a');
+      lights.push({ x: x + 1, y: H - 2, c: '#ffd88a' });
+    } else if (!dark) px(ctx, x + 1, H - 2, '#3a4a5a');
+  }
+  // the resort's white terraces on the point
+  for (let k = 0; k < 3; k++) {
+    rect(ctx, 64 + k * 3, H - 10 + k * 3, 14 - k * 2, 3, dark ? '#3a3e48' : '#f6f3ec');
+    for (let x = 65 + k * 3; x < 76 - k; x += 2) {
+      if (dark) {
+        px(ctx, x, H - 9 + k * 3, '#ffe8b8');
+        lights.push({ x, y: H - 9 + k * 3, c: '#ffe8b8' });
+      } else px(ctx, x, H - 9 + k * 3, '#7a9ab4');
+    }
+  }
+  // the lighthouse on the rocks
+  lighthouse(ctx, c.tod, 88, H + 1);
+  bands(ctx, H + 1, CARD_H, SEA[c.tod]);
+  reflect(ctx, rng, lights, H, CARD_H - H);
+  waves(ctx, rng, c.tod, H + 2, CARD_H, 26);
+  if (!dark && c.boatsOut) {
+    // the fishing boats far out, hauling their nets
+    for (const x of [16, 82]) {
+      rect(ctx, x, H + 1, 4, 1, '#2a5a8a');
+      vline(ctx, x + 1, H - 2, 3, '#5a3a24');
+      px(ctx, x + 4, H, '#c8c2b0');
+    }
+  } else if (!dark) {
+    // the fishing boats in the harbour
+    for (const x of [30, 52]) {
+      rect(ctx, x, H + 4, 6, 2, '#2a5a8a');
+      vline(ctx, x + 2, H, 4, '#5a3a24');
+    }
+  }
+  if (c.tod !== 'night') gulls(ctx, rng, H);
+  deck(ctx, c.tod, 'ferry', false, c.guests);
+}
+
+/** Greyhaven from the ferry coming back: the whole waterfront, smaller than from the marina. */
+function toCityCard(ctx: Ctx, rng: Rng, c: CardSpec): void {
+  const H = 36;
+  sky(ctx, rng, c.tod, H, rng.int(56, 84));
+  const lights = waterfront(ctx, rng, c.tod, H, 0.85, 7);
+  bands(ctx, H + 1, CARD_H, SEA[c.tod]);
+  reflect(ctx, rng, lights, H, CARD_H - H);
+  waves(ctx, rng, c.tod, H + 2, CARD_H, 26);
+  if (c.tod !== 'night') gulls(ctx, rng, H);
+  deck(ctx, c.tod, 'ferry', false, c.guests);
+}
+
 export function drawCard(ctx: Ctx, c: CardSpec): void {
   const rng = new Rng(c.seed);
   if (c.scene === 'skyline') skylineCard(ctx, rng, c);
   else if (c.scene === 'open_sea') openSeaCard(ctx, rng, c);
+  else if (c.scene === 'to_isle') toIsleCard(ctx, rng, c);
+  else if (c.scene === 'to_city') toCityCard(ctx, rng, c);
   else homecomingCard(ctx, rng, c);
 }
 
@@ -396,7 +482,7 @@ const cache = new Map<string, string>();
 
 /** A postcard with a white border, as a data URL. */
 export function cardUrl(c: CardSpec): string {
-  const key = `${c.seed}:${c.scene}:${c.tod}:${c.party ? 1 : 0}:${c.model}:${c.guests.join(',')}`;
+  const key = `${c.seed}:${c.scene}:${c.tod}:${c.party ? 1 : 0}:${c.model}:${c.guests.join(',')}:${c.boatsOut ? 1 : 0}`;
   let u = cache.get(key);
   if (!u) {
     const { canvas, ctx } = makeCanvas(CARD_W + 6, CARD_H + 6);

@@ -24,6 +24,7 @@ import { Desktop } from './computer/Desktop';
 import { CharityModal, FortuneModal, LaborModal, PawnModal } from './modals/OldTownModals';
 import { AuctionModal } from './modals/AuctionModal';
 import { CruiseModal, MarinaModal } from './modals/MarinaModal';
+import { BeachModal, CrossingModal, FerryModal, FishingModal, LodgingModal } from './modals/IsleModals';
 import { venueTheme } from './theme';
 
 function ModalHost(): JSX.Element | null {
@@ -92,6 +93,16 @@ function ModalHost(): JSX.Element | null {
       return <MarinaModal tab={m.tab} />;
     case 'cruise':
       return <CruiseModal report={m.report} />;
+    case 'ferry':
+      return <FerryModal />;
+    case 'crossing':
+      return <CrossingModal report={m.report} />;
+    case 'beach':
+      return <BeachModal tab={m.tab} />;
+    case 'fishing':
+      return <FishingModal />;
+    case 'lodging':
+      return <LodgingModal place={m.place} />;
   }
 }
 

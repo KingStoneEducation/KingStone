@@ -3,10 +3,13 @@ import { store } from '../store';
 import { useCore } from '../hooks';
 import { GV, Modal, useFeedback } from '../components';
 import { buildCityMap } from '../../world/maps/city';
+import { buildIsleMap } from '../../world/maps/isle';
+import { ISLE_BUILDINGS, ISLE_H, ISLE_W, onIsle } from '../../world/maps/isleLayout';
+import { FERRY, FERRY_LATE, FERRY_MINUTES } from '../../systems/IsleSystem';
+import { formatClock, toDate } from '../../core/calendar';
 import { BUILDINGS, BUS_STOPS, CITY_H, CITY_W, OUTDOOR_PLACES } from '../../world/maps/cityLayout';
 import { TILE_INDEX } from '../../art/tiles';
 import { LOCATIONS, hoursText, isOpen } from '../../data/locations';
-import { toDate } from '../../core/calendar';
 import { HOMES } from '../../data/housing';
 import { Icon } from '../Icon';
 
@@ -23,38 +26,100 @@ function tileColor(name: string): string {
   if (name.startsWith('runner')) return '#8a1a2a';
   if (name === 'dock') return '#6a5038';
   if (name.startsWith('deck')) return '#a87a4a';
+  if (name === 'pool' || name === 'pool_edge') return name === 'pool' ? '#3ab0d0' : '#d8d4c8';
+  if (name === 'rock') return '#5a5a62';
+  if (name === 'cobble' || name === 'quay') return '#9a9284';
   if (name === 'rail') return '#222';
   return '#8a8478';
 }
 
-let cached: HTMLCanvasElement | null = null;
+const cached: Record<string, HTMLCanvasElement> = {};
 
-function renderMinimap(): HTMLCanvasElement {
-  if (cached) return cached;
-  const m = buildCityMap();
+function renderMinimap(which: 'city' | 'isle' = 'city'): HTMLCanvasElement {
+  if (cached[which]) return cached[which];
+  const m = which === 'isle' ? buildIsleMap() : buildCityMap();
+  const W = which === 'isle' ? ISLE_W : CITY_W;
+  const H = which === 'isle' ? ISLE_H : CITY_H;
   const names: string[] = [];
   for (const [n, i] of Object.entries(TILE_INDEX)) names[i] = n;
   const c = document.createElement('canvas');
-  c.width = CITY_W * S;
-  c.height = CITY_H * S;
+  c.width = W * S;
+  c.height = H * S;
   const ctx = c.getContext('2d')!;
-  for (let y = 0; y < CITY_H; y++) {
-    for (let x = 0; x < CITY_W; x++) {
-      ctx.fillStyle = tileColor(names[m.ground[y * CITY_W + x]] ?? '');
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      ctx.fillStyle = tileColor(names[m.ground[y * W + x]] ?? '');
       ctx.fillRect(x * S, y * S, S, S);
     }
   }
-  for (const b of BUILDINGS) {
+  for (const b of which === 'isle' ? ISLE_BUILDINGS : BUILDINGS) {
     ctx.fillStyle = b.target === 'casino' ? '#7a1830' : b.style === 'mansion' ? '#6a5a7a' : b.target?.startsWith('home') ? '#6a5848' : '#4a4058';
     ctx.fillRect(b.x * S, b.y * S, b.w * S, b.h * S);
     ctx.strokeStyle = 'rgba(0,0,0,0.5)';
     ctx.strokeRect(b.x * S + 0.5, b.y * S + 0.5, b.w * S - 1, b.h * S - 1);
   }
-  cached = c;
+  cached[which] = c;
   return c;
 }
 
+/** On the island: its own little map, the places on it, and the boats home (there are no taxis or buses). */
+function IsleMap(): JSX.Element {
+  const core = useCore();
+  const img = useMemo(() => renderMinimap('isle').toDataURL(), []);
+  const w = core.state.world;
+  const here = w.location === 'isle' ? { x: w.x, y: w.y } : (() => {
+    const b = ISLE_BUILDINGS.find((x) => x.target === w.location);
+    return b?.door ? { x: b.door.x, y: b.door.y + 1 } : { x: 29, y: 5 };
+  })();
+  const d = toDate(core.now());
+  const next = FERRY.isle.find((t) => t + FERRY_LATE >= d.minuteOfDay);
+  const places: { name: string; x: number; y: number }[] = [
+    { name: '渡轮码头', x: 29, y: 4 },
+    { name: '灯塔', x: 3, y: 9 },
+    { name: '鱼市', x: 38, y: 6 },
+    { name: '海滩', x: 20, y: 36 },
+    { name: '海滩小屋', x: 31, y: 28 },
+  ];
+  return (
+    <Modal title="白石湾地图" sub="海湾对面的渔港小镇 · 岛上没有出租车和公交" wide="x" onClose={() => store.closePanel()}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 270px', gap: 14 }}>
+        <div className="mapwrap">
+          <img src={img} style={{ width: '100%', imageRendering: 'pixelated', display: 'block' }} />
+          {ISLE_BUILDINGS.filter((b) => b.target && b.door).map((b) => (
+            <div key={b.id} className="mappin" style={{ left: `${((b.door!.x + 0.5) / ISLE_W) * 100}%`, top: `${(b.door!.y / ISLE_H) * 100}%` }}>
+              {LOCATIONS[b.target!]?.name ?? b.name}
+            </div>
+          ))}
+          {places.map((p) => (
+            <div key={p.name} className="mappin" style={{ left: `${((p.x + 0.5) / ISLE_W) * 100}%`, top: `${(p.y / ISLE_H) * 100}%` }}>
+              {p.name}
+            </div>
+          ))}
+          <div className="mappin you" style={{ left: `${((here.x + 0.5) / ISLE_W) * 100}%`, top: `${(here.y / ISLE_H) * 100}%` }}>
+            你
+          </div>
+        </div>
+        <div className="stack">
+          <h3 style={{ margin: 0, color: 'var(--gold-light)' }}>回灰港的渡轮</h3>
+          <div style={{ fontSize: 12 }}>{FERRY.isle.map((t) => formatClock(t)).join('、')} 从码头开，单程 {FERRY_MINUTES} 分钟。</div>
+          <div className="muted" style={{ fontSize: 12 }}>
+            {next !== undefined
+              ? `下一班 ${formatClock(next)}，末班 ${formatClock(FERRY.isle[FERRY.isle.length - 1])}。错过末班船的话，可以住海鸥民宿或者度假酒店。`
+              : `今天的船都开走了，明早 ${formatClock(FERRY.isle[0])} 有第一班。今晚可以住海鸥民宿或者度假酒店。`}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export function MapPanel(): JSX.Element {
+  const core = useCore();
+  if (onIsle(core.state.world.location)) return <IsleMap />;
+  return <CityMapPanel />;
+}
+
+function CityMapPanel(): JSX.Element {
   const core = useCore();
   const ref = useRef<HTMLDivElement>(null);
   const [sel, setSel] = useState<string | null>(() => {

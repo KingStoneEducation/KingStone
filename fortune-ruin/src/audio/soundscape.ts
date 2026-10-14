@@ -58,6 +58,8 @@ export function musicFor(c: SoundContext): TrackId | null {
     }
   }
   if (loc === 'city') return c.nightMarket ? 'night_market' : c.night ? 'city_night' : 'city_day';
+  // the island across the bay keeps the city's light: the morning tune by day, the slow one at night
+  if (loc === 'isle') return c.night ? 'city_night' : 'city_day';
   if (LUXURY_HOMES.has(loc)) return 'upscale';
   switch (c.ambience) {
     case 'home':
@@ -88,7 +90,7 @@ export function ambienceFor(c: SoundContext): SpotAmbience {
   if (c.screen !== 'game') return null;
   // no chips clicking on the quiet members' floor
   if (c.location === 'casino' && !c.table) return c.casinoArea && SKY_AREAS.has(c.casinoArea) ? null : 'casino';
-  if (c.location === 'city' && c.night) return 'city_night';
+  if ((c.location === 'city' || c.location === 'isle') && c.night) return 'city_night';
   if (c.ambience === 'cafe' || (c.ambience === 'restaurant' && c.location !== 'fine_dining')) return 'cafe';
   return null;
 }

@@ -481,6 +481,123 @@ const ICONS: Record<string, Draw> = {
     px(c, 9, 5, '#e0b13e');
   },
   // the night market
+  // Whitestone Bay
+  isle_congee: (c) => {
+    // a bowl of congee with a prawn on top
+    ellipse(c, 8, 9, 7, 3, O);
+    rect(c, 2, 9, 13, 4, O);
+    ellipse(c, 8, 13, 5, 2, O);
+    rect(c, 3, 9, 11, 3, '#e8e4dc');
+    ellipse(c, 8, 9, 6, 2, '#f2ead2');
+    px(c, 5, 8, '#4a8a3a');
+    px(c, 10, 9, '#4a8a3a');
+    for (let i = 0; i < 4; i++) px(c, 6 + i, 8 - (i % 2), '#e86a4a');
+  },
+  isle_fish_rice: (c) => {
+    plate(c);
+    ellipse(c, 6, 9, 3, 2, '#f4f1ea');
+    ellipse(c, 10, 8, 4, 2, '#c8903a');
+    hline(c, 7, 8, 6, '#e0b058');
+    px(c, 14, 8, '#c8903a');
+    px(c, 13, 7, '#c8903a');
+    px(c, 4, 9, '#e8c070');
+  },
+  isle_scallops: (c) => {
+    plate(c);
+    for (const x of [4, 8, 12]) {
+      ellipse(c, x, 9, 2, 2, '#e8c8a0');
+      px(c, x, 8, '#f4e8c8');
+      px(c, x - 1, 10, '#b89870');
+    }
+    px(c, 6, 7, '#4a8a3a');
+    px(c, 10, 7, '#4a8a3a');
+  },
+  isle_platter: (c) => {
+    plate(c);
+    ellipse(c, 6, 9, 3, 2, '#d8542a');
+    px(c, 3, 8, '#d8542a');
+    px(c, 9, 8, '#d8542a');
+    ellipse(c, 11, 9, 3, 1, '#8a9aaa');
+    px(c, 14, 9, '#6a7a8a');
+    rect(c, 8, 10, 3, 1, '#c8a878');
+    px(c, 5, 11, '#4a8a3a');
+  },
+  isle_fish: (c) => {
+    ellipse(c, 7, 8, 5, 3, O);
+    ellipse(c, 7, 8, 4, 2, '#8a9aaa');
+    hline(c, 4, 7, 6, '#b8c8d4');
+    px(c, 4, 8, '#1a1a1e');
+    rect(c, 12, 6, 1, 5, O);
+    rect(c, 13, 5, 1, 7, '#6a7a8a');
+    rect(c, 14, 4, 1, 9, O);
+    for (const x of [6, 8, 10]) px(c, x, 9, '#6a7a8a');
+  },
+  isle_crab: (c) => {
+    ellipse(c, 8, 9, 5, 3, O);
+    ellipse(c, 8, 9, 4, 2, '#d8542a');
+    hline(c, 6, 8, 5, '#e8845a');
+    for (const x of [3, 13]) {
+      rect(c, x - 1, 4, 3, 3, O);
+      px(c, x, 5, '#d8542a');
+    }
+    vline(c, 4, 6, 2, '#a8402a');
+    vline(c, 12, 6, 2, '#a8402a');
+    for (const x of [4, 6, 10, 12]) px(c, x, 12, '#a8402a');
+    px(c, 7, 7, '#1a1a1e');
+    px(c, 9, 7, '#1a1a1e');
+  },
+  isle_coconut: (c) => {
+    circle(c, 8, 9, 5, O);
+    circle(c, 8, 9, 4, '#7a5a34');
+    ellipse(c, 8, 6, 3, 1, '#f4f1ea');
+    px(c, 6, 10, '#5a3a1a');
+    vline(c, 10, 1, 6, '#e86a8a');
+    px(c, 11, 1, '#e86a8a');
+  },
+  isle_beer: (c) => bottle(c, '#4a7a3a', '#f2d24a', '#c8ccd4'),
+  isle_squid: (c) => {
+    vline(c, 8, 1, 14, O);
+    vline(c, 8, 2, 12, '#c9a26a');
+    for (let k = 0; k < 3; k++) {
+      ellipse(c, 8, 4 + k * 4, 3, 2, O);
+      ellipse(c, 8, 4 + k * 4, 2, 1, '#e8b880');
+      px(c, 8, 4 + k * 4, '#a86a3a');
+    }
+  },
+  isle_mojito: (c) => {
+    tumbler(c, '#d8f0c8', true);
+    px(c, 6, 10, '#3f8a3a');
+    px(c, 9, 11, '#3f8a3a');
+    rect(c, 10, 3, 3, 3, '#8ac83a');
+    px(c, 11, 4, '#d8f0a0');
+    vline(c, 6, 2, 5, '#f4f1ea');
+  },
+  isle_lobster: (c) => {
+    plate(c);
+    ellipse(c, 8, 9, 5, 2, '#c8302a');
+    hline(c, 5, 8, 7, '#f2c84a');
+    px(c, 2, 8, '#c8302a');
+    px(c, 14, 8, '#c8302a');
+    px(c, 3, 7, '#a8201a');
+    px(c, 13, 7, '#a8201a');
+    px(c, 8, 10, '#e8e4dc');
+  },
+  isle_tasting: (c) => {
+    // a long plate with three small courses
+    rect(c, 1, 9, 14, 4, O);
+    rect(c, 2, 9, 12, 3, WHITE);
+    circle(c, 4, 9, 1, '#e8b84a');
+    ellipse(c, 8, 9, 2, 1, '#c8302a');
+    px(c, 12, 9, '#3a3a3a');
+    px(c, 12, 8, '#e86a2a');
+    vline(c, 14, 2, 6, O);
+    rect(c, 13, 2, 3, 3, GLASS);
+  },
+  isle_champagne: (c) => {
+    glassStem(c, '#f8e4a0', 5, 'flute');
+    px(c, 7, 5, '#ffffff');
+    px(c, 8, 3, '#e0b13e');
+  },
   nm_noodles: (c) => {
     plate(c);
     ellipse(c, 8, 8, 5, 3, '#7a4a22');

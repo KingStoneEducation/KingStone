@@ -28,6 +28,7 @@ import { PawnSystem } from '../systems/PawnSystem';
 import { OldTownSystem } from '../systems/OldTownSystem';
 import { AuctionSystem } from '../systems/AuctionSystem';
 import { MarinaSystem } from '../systems/MarinaSystem';
+import { IsleSystem, onIsle } from '../systems/IsleSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -118,6 +119,7 @@ export class GameCore {
   oldtown: OldTownSystem;
   auction: AuctionSystem;
   marina: MarinaSystem;
+  isle: IsleSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -148,6 +150,7 @@ export class GameCore {
     this.oldtown = new OldTownSystem(this);
     this.auction = new AuctionSystem(this);
     this.marina = new MarinaSystem(this);
+    this.isle = new IsleSystem(this);
   }
 
   now(): number {
@@ -232,6 +235,7 @@ export class GameCore {
     this.career.tickMinute(t, activity);
     this.events.tickMinute(t);
     this.marina.tickMinute(t);
+    this.isle.tickMinute(t);
     this.casino.tickBackground(1);
     if (d.hour !== before.hour) this.onHour(d.hour);
     if (d.dayIndex !== before.dayIndex) this.onDay(d.dayIndex);
@@ -301,7 +305,12 @@ export class GameCore {
   // ------------------------------------------------------------ sleep & collapse
 
   canSleep(): string | null {
-    if (!this.isAtHome()) {
+    const loc = this.state.world.location;
+    if (onIsle(loc)) {
+      // a room you have taken on the island: the guesthouse or the resort
+      const err = this.isle.canSleep(loc);
+      if (err) return err;
+    } else if (!this.isAtHome()) {
       const err = this.sky.sleepRefusal();
       if (err) return err;
     }
@@ -309,9 +318,17 @@ export class GameCore {
     return null;
   }
 
-  /** How restful sleep is where the player is: their home, or the casino suite. */
+  /** How restful sleep is where the player is: their home, the casino suite, or a room on the island. */
   sleepComfort(): number {
+    if (onIsle(this.state.world.location)) return this.isle.comfort();
     return !this.isAtHome() && this.sky.inSuite() ? SUITE_COMFORT : this.housing.comfort();
+  }
+
+  /** Where tonight's bed is, for the sleep window. */
+  sleepPlace(): string {
+    const r = onIsle(this.state.world.location) ? this.isle.room() : null;
+    if (r) return r.kind === 'guesthouse' ? '海鸥民宿' : r.kind === 'suite' ? '灯塔套房' : '海景房';
+    return this.isAtHome() ? '当前居所' : '天穹层套房';
   }
 
   /** Sleep until the given hour (next occurrence) or for N hours. */

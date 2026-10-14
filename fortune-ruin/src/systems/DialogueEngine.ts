@@ -76,6 +76,7 @@ const FACT_MOOD: Record<string, Expression> = {
   donated_kitchen: 'smile',
   free_meal_rich: 'frown',
   day_labor: 'surprised',
+  fishing_labor: 'surprised',
   outbid_me: 'surprised',
   yacht_trip: 'smile',
 };
