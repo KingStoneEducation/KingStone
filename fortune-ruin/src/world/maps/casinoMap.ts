@@ -18,6 +18,17 @@ export const CASINO_TABLES: Record<string, { x: number; y: number; prop: string;
   pk2: { x: 17, y: 8, prop: 'poker_table', ox: 8, dealer: { x: 19, y: 6, face: 'down' } },
 };
 
+export type CasinoArea = 'floor' | 'poker' | 'vip' | 'high' | 'office';
+
+/** Which room of the casino a floor tile belongs to (matches the partitions drawn below). */
+export function casinoArea(tx: number, ty: number): CasinoArea {
+  if (tx >= 12 && tx <= 21 && ty >= 2 && ty <= 9) return 'poker';
+  if (tx >= 23 && tx <= 40 && ty >= 2 && ty <= 10) return 'vip';
+  if (tx >= 45 && tx <= 62 && ty >= 2 && ty <= 11) return 'high';
+  if (tx <= 9 && ty >= 37) return 'office';
+  return 'floor';
+}
+
 export function buildCasinoMap(): MapData {
   const W = 64;
   const H = 44;

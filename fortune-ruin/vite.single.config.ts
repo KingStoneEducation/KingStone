@@ -3,9 +3,9 @@ import type { OutputAsset } from 'rollup';
 import react from '@vitejs/plugin-react';
 
 /**
- * Builds the whole game into one self-contained HTML file (code, styles and
- * libraries inlined). All art and sound are generated at runtime, so the
- * file runs offline by simply opening it in a browser — no install, no server.
+ * Builds the whole game into one self-contained HTML file (code, styles,
+ * libraries and the soundtrack inlined; the art is generated at runtime), so
+ * the file runs offline by simply opening it in a browser — no install, no server.
  *
  *   npm run build:single   →   dist-single/fortune-ruin.html
  */

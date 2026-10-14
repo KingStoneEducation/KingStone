@@ -4,6 +4,8 @@ import { useStore } from '../hooks';
 import { Modal, useFeedback } from '../components';
 import { loadGame, saveGame, saves } from '../../game/session';
 import { SLOTS } from '../../systems/SaveManager';
+import { audio } from '../../audio/Audio';
+import { TRACKS } from '../../audio/tracks';
 
 export function SettingsModal(): JSX.Element {
   useStore();
@@ -19,6 +21,7 @@ export function SettingsModal(): JSX.Element {
     <Modal title="设置">
       <div className="stack">
         {slider('音乐', 'musicVolume')}
+        {audio.currentTrack() && <div className="muted" style={{ fontSize: 12, marginTop: -4 }}>正在播放：{TRACKS[audio.currentTrack()!].title}</div>}
         {slider('音效', 'sfxVolume')}
         {slider('环境声', 'ambienceVolume')}
         <div className="row between">

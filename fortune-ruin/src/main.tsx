@@ -10,8 +10,10 @@ import { RouletteScene } from './tables/RouletteScene';
 import { PokerScene } from './tables/PokerScene';
 import { setGame } from './game/session';
 import { audio, sfx } from './audio/Audio';
+import { ambienceFor, musicFor, type SoundContext } from './audio/soundscape';
 import { LOCATIONS } from './data/locations';
-import { daylight } from './core/calendar';
+import { TABLE_BY_ID } from './casino/tables';
+import { daylight, toDate } from './core/calendar';
 import './ui/styles.css';
 
 const game = new Phaser.Game({
@@ -47,25 +49,25 @@ game.events.on(Phaser.Core.Events.STEP, (time: number, delta: number) => {
   }
 });
 
-/** Music and ambience follow the screen, location and time of day. */
+/** Music and ambience follow the screen, the place, the casino room, the table and the time of day. */
 function updateSoundscape(): void {
   const s = store.settings;
   audio.applyVolumes({ music: s.musicVolume, sfx: s.sfxVolume, ambience: s.ambienceVolume });
   const core = store.core;
-  if (store.screen !== 'game' || !core) {
-    audio.setMusic(store.screen === 'boot' ? null : 'menu');
-    audio.setAmbience('city', true);
-    return;
-  }
-  const loc = core.state.world.location;
-  const def = LOCATIONS[loc];
-  const night = daylight(core.now()) < 0.35;
-  audio.setAmbience(def?.ambience ?? 'quiet', night);
-  if (loc === 'casino') audio.setMusic('casino');
-  else if (def?.ambience === 'home') audio.setMusic('home');
-  else if (def?.ambience === 'bar' || def?.ambience === 'club' || def?.ambience === 'restaurant') audio.setMusic('lounge');
-  else if (loc === 'city') audio.setMusic(night ? 'night' : 'day');
-  else audio.setMusic(null);
+  const inGame = store.screen === 'game' && !!core;
+  const loc = inGame ? core!.state.world.location : null;
+  const table = store.table ? TABLE_BY_ID[store.table.tableId] : null;
+  const ctx: SoundContext = {
+    screen: inGame ? 'game' : store.screen === 'game' ? 'menu' : store.screen,
+    location: loc,
+    ambience: loc ? (LOCATIONS[loc]?.ambience ?? null) : null,
+    hour: inGame ? toDate(core!.now()).hour : 21,
+    night: inGame ? daylight(core!.now()) < 0.35 : true,
+    casinoArea: inGame ? (store.world?.casinoArea() ?? null) : null,
+    table: table ? { game: table.game, area: table.area } : null,
+  };
+  audio.setMusic(musicFor(ctx));
+  audio.setAmbience(ambienceFor(ctx));
 }
 
 // browsers only allow audio after a user gesture
@@ -80,4 +82,4 @@ document.addEventListener('click', (e) => {
 createRoot(document.getElementById('ui-root')!).render(<App />);
 
 // handy for debugging and automated play-tests
-(window as unknown as Record<string, unknown>).__fr = { game, store };
+(window as unknown as Record<string, unknown>).__fr = { game, store, audio };

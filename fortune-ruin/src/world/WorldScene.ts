@@ -3,7 +3,7 @@ import type { GameCore } from '../core/GameCore';
 import { store } from '../ui/store';
 import { buildCityMap, type CityMap } from './maps/city';
 import { interiorMap } from './maps/interiors';
-import { CASINO_TABLES } from './maps/casinoMap';
+import { CASINO_TABLES, casinoArea, type CasinoArea } from './maps/casinoMap';
 import type { Door, Face, Interactable, InteractKind, MapData } from './maps/types';
 import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING } from './maps/cityLayout';
 import { PROPS, propFrameName, type PropDef } from '../art/props';
@@ -140,6 +140,8 @@ export interface WorldApi {
   refreshPlayerLook(): void;
   leaveTable(): boolean;
   openTable(tableId: string): void;
+  /** the casino room the player is standing in (null outside the casino) */
+  casinoArea(): CasinoArea | null;
 }
 
 export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
@@ -252,6 +254,11 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   seatFor(npcId: string): { x: number; y: number; dir: CharDir; depth: number } | null {
     return this.floor?.npcSeat(npcId) ?? null;
+  }
+
+  casinoArea(): CasinoArea | null {
+    if (this.map?.id !== 'casino' || !this.player) return null;
+    return casinoArea(Math.floor(this.player.x / 16), Math.floor((this.player.y - 3) / 16));
   }
 
   playerPos(): { x: number; y: number } {
