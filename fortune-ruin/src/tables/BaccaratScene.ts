@@ -179,7 +179,7 @@ export class BaccaratScene extends TableScene {
     const text = `${to === 'player' ? '闲' : '庄'} ${total}`;
     if (!this.totals[to]) {
       this.totals[to] = this.add
-        .text(b.x + b.w / 2, b.y - 3, text, { fontFamily: WORLD_FONT, fontSize: '8px', color: to === 'player' ? '#9cc4ff' : '#ff9aa8', backgroundColor: '#120d1fdd', padding: { x: 3, y: 0 }, resolution: 4 })
+        .text(b.x + b.w / 2, b.y - 3, text, { fontFamily: WORLD_FONT, fontSize: '6px', color: to === 'player' ? '#9cc4ff' : '#ff9aa8', backgroundColor: '#120d1fdd', padding: { x: 3, y: 0 }, resolution: 2 })
         .setOrigin(0.5, 1)
         .setDepth(150);
       smoothText(this.totals[to]!);

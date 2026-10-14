@@ -52,11 +52,11 @@ export function ShopModal(props: { shopId: string; consume: boolean }): JSX.Elem
             </button>
           )}
         </div>
-        <span className="muted" style={{ fontSize: 12.5 }}>
+        <span className="muted" style={{ fontSize: 12 }}>
           可用：<GV v={balance} />
         </span>
       </div>
-      {isCasinoBar && <div className="note" style={{ marginBottom: 8 }}>会员等级：{core.casino.tierInfo().name}。金卡及以上会员酒水免费招待——这是商业礼遇，与赌桌胜率无关。</div>}
+      {isCasinoBar && <div className="note" style={{ marginBottom: 8 }}>会员等级：{core.casino.tierInfo().name}。金卡及以上会员酒水免费。</div>}
       <div className="list">
         {shop.items.map((id) => {
           const d = ITEMS[id];

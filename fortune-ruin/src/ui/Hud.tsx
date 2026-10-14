@@ -6,6 +6,7 @@ import { formatClock, formatDate, MINUTES_PER_DAY, SEASON_NAMES, toDate, WEEKDAY
 import { LOCATIONS, isOpen } from '../data/locations';
 import { formatG, type Money } from '../core/money';
 import type { AccountId } from '../core/state';
+import { Icon } from './Icon';
 
 function Clock(): JSX.Element {
   const core = useCore();
@@ -25,9 +26,9 @@ function Clock(): JSX.Element {
         </span>
       </div>
       <div className="loc">
-        📍 {def?.name ?? loc}
+        <Icon name="pin" /> {def?.name ?? loc}
         <span className="muted">{status}</span>
-        {hide && <span className="dim" style={{ fontSize: 11 }}> · 这里看不到时钟</span>}
+        {hide && <span className="dim" style={{ fontSize: 12 }}> · 这里看不到时钟</span>}
       </div>
     </div>
   );
@@ -138,8 +139,8 @@ function Money(): JSX.Element {
         <MoneyLine label="现金" account="cash" value={eco.balance('cash')} />
         <MoneyLine label="存款" account="bank" value={eco.balance('bank')} />
         {(chips > 0 || inCasino) && <MoneyLine label="筹码" account="chips" value={chips} cls="chips" />}
-        <span className="k" style={{ fontSize: 11 }}>净资产</span>
-        <span className="v" style={{ fontSize: 11, fontWeight: 400 }}>
+        <span className="k" style={{ fontSize: 12 }}>净资产</span>
+        <span className="v" style={{ fontSize: 12, fontWeight: 400 }}>
           <GV v={eco.netWorth()} />
         </span>
       </div>

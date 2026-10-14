@@ -83,7 +83,7 @@ export function BarChart(props: { data: number[]; height?: number; labels?: stri
         +{formatG(max, { compact: true })}
       </text>
       <text x={pad.l - 6} y={H - pad.b} fill="#a99fb8" fontSize={10} textAnchor="end">
-        −{formatG(max, { compact: true })}
+        -{formatG(max, { compact: true })}
       </text>
       {d.map((v, i) => {
         const h = (Math.abs(v) / max) * half;

@@ -5,6 +5,7 @@ import { ITEMS, OUTFITS } from '../../data/items';
 import { MEAL_BASIC, MEAL_FRESH } from '../../systems/InventorySystem';
 import { effectText } from '../modals/ShopModal';
 import { mulRatio } from '../../core/money';
+import { Icon } from '../Icon';
 
 export function InventoryPanel(): JSX.Element {
   const core = useCore();
@@ -19,7 +20,9 @@ export function InventoryPanel(): JSX.Element {
         {vehicle && (
           <div className="item">
             <div className="grow">
-              <div className="title">🚗 {vehicle.name}</div>
+              <div className="title">
+                <Icon name="car" /> {vehicle.name}
+              </div>
               <div className="desc">
                 {vehicle.desc} · 估值 <GV v={inv.vehicleValue()} />
               </div>

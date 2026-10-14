@@ -26,7 +26,7 @@ export function MainMenu(): JSX.Element {
               }}
             >
               继续游戏
-              <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.8 }}>
+              <div style={{ fontSize: 12, fontWeight: 400, opacity: 0.8 }}>
                 {latest.name} · {latest.gameTime} · 净资产 {latest.netWorth}
               </div>
             </button>
@@ -48,11 +48,10 @@ export function MainMenu(): JSX.Element {
                 type: 'text',
                 title: '关于《夜色筹码》',
                 text:
-                  '一座会自己运转的港口城市——灰港。你在这里工作、生活、交朋友，也可以走进灰港大赌场，在按公开规则运行的牌桌上试试手气。\n\n' +
-                  '· 21 点、百家乐、欧式轮盘均按真实规则结算，不存在隐藏的胜率调整。\n' +
-                  '· 财富会改变别人对你的看法，但每个人在意的东西不一样。\n' +
-                  '· 赌博从来不是唯一的出路，也不是可靠的出路。\n\n' +
-                  '操作：WASD / 方向键移动，Shift 奔跑，E / 空格 互动，鼠标点击可寻路。P 手机，F 资产，R 人际，M 地图，J 日志，I 物品，T 统计，Esc 菜单。',
+                  '灰港是一座港口城市。你有一份普通的工作、一间出租公寓和几个朋友；城北的灰港大赌场二十四小时营业。\n\n' +
+                  '赌桌按公开的规则发牌和转盘，结果只取决于洗牌和随机数，会员等级不改变概率。\n\n' +
+                  '操作：WASD 或方向键移动，按住 Shift 奔跑，E 或空格互动，鼠标点地面寻路。\n' +
+                  'P 手机　F 资产　R 人际　M 地图　J 日志　I 物品　T 统计　Esc 菜单',
               })
             }
           >

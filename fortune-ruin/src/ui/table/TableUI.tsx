@@ -24,7 +24,6 @@ function limits(tableId: string): { min: Money; max: Money } {
 }
 
 export function rulesText(core: GameCore, tableId: string): string[] {
-  const cfg = TABLE_BY_ID[tableId];
   const t = core.casino.table(tableId);
   if (t.game === 'blackjack') {
     const r = t.s.rules;
@@ -74,7 +73,6 @@ export function rulesText(core: GameCore, tableId: string): string[] {
     r.laPartage ? 'La Partage：开出 0 时，外围平注退回一半' : '开出 0 时外围注全输',
     `每局最低合计 ${formatG(r.minTotal)} · 内围单注最高 ${formatG(r.maxInside)} · 外围单注最高 ${formatG(r.maxOutside)}`,
     `理论庄家优势 ${r.laPartage ? '平注 1.35%，其余 2.70%' : '2.70%'}`,
-    `${cfg.name}的转盘结果由公开的随机数决定，动画只是把这个结果演示出来`,
   ];
 }
 
@@ -174,7 +172,7 @@ function BjActions(props: { tableId: string }): JSX.Element {
       {(['hit', 'stand', 'double', 'split', 'surrender'] as BJE.BJAction[]).map((a) => (
         <button key={a} className={a === 'hit' || a === 'stand' ? 'primary' : ''} disabled={busy || !legal.includes(a)} onClick={() => api?.bjAct?.(a)}>
           {ACTION_NAMES[a]}
-          {a === 'double' || a === 'split' ? <span style={{ fontSize: 11, opacity: 0.8 }}> +{formatG(BJE.extraStakeFor(s, seat, a) || 0)}</span> : null}
+          {a === 'double' || a === 'split' ? <span style={{ fontSize: 12, opacity: 0.8 }}> +{formatG(BJE.extraStakeFor(s, seat, a) || 0)}</span> : null}
         </button>
       ))}
       {hint && (
@@ -205,7 +203,7 @@ function BacActions(props: { tableId: string }): JSX.Element {
           style={side === 'player' ? { borderColor: '#5a8aff' } : side === 'banker' ? { borderColor: '#ff5a6a' } : side === 'tie' ? { borderColor: '#4ad07a' } : undefined}
         >
           {SIDE_LABELS[side]}
-          {mine[side] > 0 && <div style={{ fontSize: 11, color: 'var(--gold-light)' }}>{formatG(mine[side])}</div>}
+          {mine[side] > 0 && <div style={{ fontSize: 12, color: 'var(--gold-light)' }}>{formatG(mine[side])}</div>}
         </button>
       ))}
       <button disabled={busy || total === 0} onClick={() => api?.clearBets()}>
@@ -384,7 +382,7 @@ function PkActions(props: { tableId: string }): JSX.Element {
           <button disabled={busy || topUp <= 0 || (live && seat.inHand)} onClick={() => api?.pkTopUp?.(topUp)} title={`补到最高买入 ${formatG(r.maxBuyIn)}`}>
             补码 +{formatG(Math.max(0, topUp))}
           </button>
-          <label className="row" style={{ gap: 4, fontSize: 12.5, alignItems: 'center' }}>
+          <label className="row" style={{ gap: 4, fontSize: 12, alignItems: 'center' }}>
             <input
               type="checkbox"
               checked={auto}
@@ -423,7 +421,7 @@ function PkHistory(props: { tableId: string }): JSX.Element {
       </div>
       {h.length === 0 && <div className="dim" style={{ fontSize: 12 }}>—</div>}
       {h.map((e) => (
-        <div key={e.hand} style={{ fontSize: 11.5, lineHeight: 1.5 }} className="muted">
+        <div key={e.hand} style={{ fontSize: 12, lineHeight: 1.5 }} className="muted">
           #{e.hand} 底池 {formatG(e.pot, { compact: true })}：
           {e.winners.map((w, i) => (
             <span key={i} style={{ color: w.who === 'player' ? 'var(--gold-light)' : undefined }}>
@@ -456,7 +454,7 @@ function BacRoads(props: { tableId: string }): JSX.Element {
           <span style={{ color: '#e8414f' }}>庄 {st.B}</span> · <span style={{ color: '#4a7dff' }}>闲 {st.P}</span> · <span style={{ color: '#3ac46a' }}>和 {st.T}</span>
         </span>
       </div>
-      <svg width={12 * 13} height={6 * 13} style={{ background: '#f4f1ea', borderRadius: 4, marginTop: 4 }}>
+      <svg width={12 * 13} height={6 * 13} style={{ background: '#fbf3df', border: '2px solid #3b2516', marginTop: 4 }}>
         {bead
           .filter((c) => c.col >= beadCols)
           .map((c, i) => (
@@ -468,7 +466,7 @@ function BacRoads(props: { tableId: string }): JSX.Element {
             </g>
           ))}
       </svg>
-      <svg width={22 * 9} height={6 * 9} style={{ background: '#f4f1ea', borderRadius: 4, marginTop: 4, display: 'block' }}>
+      <svg width={22 * 9} height={6 * 9} style={{ background: '#fbf3df', border: '2px solid #3b2516', marginTop: 4, display: 'block' }}>
         {big
           .filter((c) => c.col >= bigOff)
           .map((c, i) => (
@@ -495,13 +493,12 @@ function RlHistory(props: { tableId: string }): JSX.Element {
             key={i}
             className="num"
             style={{
-              width: 22,
+              width: 24,
               textAlign: 'center',
-              borderRadius: 4,
               fontSize: 12,
-              fontWeight: 700,
-              background: RLE.numberColor(n) === 'red' ? '#b8202f' : RLE.numberColor(n) === 'black' ? '#1b1a22' : '#1f8a4c',
-              border: i === 0 ? '1px solid var(--gold-light)' : '1px solid transparent',
+              color: '#fbefd2',
+              background: RLE.numberColor(n) === 'red' ? '#b8202f' : RLE.numberColor(n) === 'black' ? '#2b2420' : '#1f8a4c',
+              border: i === 0 ? '2px solid #e8b44c' : '2px solid #3b2516',
             }}
           >
             {n}
@@ -582,7 +579,7 @@ export function TableUI(): JSX.Element | null {
             </ul>
           )}
           {shoeInfo && hints && (
-            <div style={{ marginTop: 5, fontSize: 11.5 }} className="muted">
+            <div style={{ marginTop: 5, fontSize: 12 }} className="muted">
               牌靴剩余 {shoeInfo.left} 张
               <div className="bar" style={{ marginTop: 3, position: 'relative' }}>
                 <span style={{ width: `${shoeInfo.pct * 100}%`, background: '#8fb8ff' }} />
@@ -593,7 +590,7 @@ export function TableUI(): JSX.Element | null {
         </div>
         <div className="stack" style={{ alignItems: 'flex-end' }}>
           <div className="table-info">
-            <div className="money" style={{ fontSize: 13 }}>
+            <div className="money" style={{ fontSize: 12 }}>
               <span className="k">可用筹码</span>
               <span className="v chips">{formatG(core.casino.availableChips())}</span>
               {hints && (
@@ -620,7 +617,7 @@ export function TableUI(): JSX.Element | null {
         <div key={ui.result.t} className="result-pop" style={{ color: ui.result.net > 0 ? 'var(--good)' : ui.result.net < 0 ? 'var(--bad)' : 'var(--text)' }}>
           {ui.result.net > 0 ? '+' : ''}
           {ui.result.net !== 0 ? formatG(ui.result.net) : '±0'}
-          <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'center', color: 'var(--text)' }}>{ui.result.text}</div>
+          <div style={{ fontSize: 12, fontWeight: 600, textAlign: 'center', color: 'var(--text)' }}>{ui.result.text}</div>
         </div>
       )}
       <div

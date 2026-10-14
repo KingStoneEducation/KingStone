@@ -199,11 +199,11 @@ export abstract class TableScene extends Phaser.Scene {
       this.dealerBubble = this.add
         .text(TW / 2 + 34, 14, text, {
           fontFamily: WORLD_FONT,
-          fontSize: '8px',
+          fontSize: '6px',
           color: '#241b30',
           backgroundColor: '#f4f1eaee',
           padding: { x: 4, y: 2 },
-          resolution: 4,
+          resolution: 2,
         })
         .setOrigin(0, 0)
         .setDepth(500);
@@ -252,11 +252,11 @@ export abstract class TableScene extends Phaser.Scene {
     const label = this.add
       .text(pos.x, pos.y + 29, info.name, {
         fontFamily: WORLD_FONT,
-        fontSize: '7px',
+        fontSize: '6px',
         color: info.isPlayer ? '#24170a' : '#f4f1ea',
         backgroundColor: info.isPlayer ? '#e8bf55' : '#120d1fcc',
         padding: { x: 3, y: 1 },
-        resolution: 4,
+        resolution: 2,
       })
       .setOrigin(0.5, 0)
       .setDepth(41);
@@ -353,7 +353,7 @@ export abstract class TableScene extends Phaser.Scene {
           color: opts.mine ? '#ffe45c' : '#f4f1ea',
           stroke: '#120d1f',
           strokeThickness: 2,
-          resolution: 4,
+          resolution: 2,
         })
         .setOrigin(0.5, 1);
       smoothText(t);

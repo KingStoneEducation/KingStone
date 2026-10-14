@@ -248,7 +248,7 @@ export class PokerScene extends TableScene {
     const l = this.geom(seat).label;
     if (!v.stackText) {
       v.stackText = this.add
-        .text(l.x, l.y, text, { fontFamily: WORLD_FONT, fontSize: '7px', color: this.mine(seat) ? '#ffe45c' : '#e8e2d0', stroke: '#120d1f', strokeThickness: 2, resolution: 4 })
+        .text(l.x, l.y, text, { fontFamily: WORLD_FONT, fontSize: '6px', color: this.mine(seat) ? '#ffe45c' : '#e8e2d0', stroke: '#120d1f', strokeThickness: 2, resolution: 2 })
         .setOrigin(0.5, 0)
         .setDepth(42);
       smoothText(v.stackText);
@@ -269,7 +269,7 @@ export class PokerScene extends TableScene {
     const x = ox === 0 ? p.x - 10 : ox === 1 ? p.x + 10 : p.x;
     if (!v.action) {
       v.action = this.add
-        .text(x, p.y - 2, text, { fontFamily: WORLD_FONT, fontSize: '7px', color, backgroundColor: '#120d1fd9', padding: { x: 3, y: 1 }, resolution: 4 })
+        .text(x, p.y - 2, text, { fontFamily: WORLD_FONT, fontSize: '6px', color, backgroundColor: '#120d1fd9', padding: { x: 3, y: 1 }, resolution: 2 })
         .setOrigin(ox, 1)
         .setDepth(160);
       smoothText(v.action);
@@ -283,7 +283,7 @@ export class PokerScene extends TableScene {
     const y = c.y + 18;
     v.handName?.destroy();
     v.handName = this.add
-      .text(this.geom(seat).cards.x, y, text, { fontFamily: WORLD_FONT, fontSize: '7px', color: win ? '#24170a' : '#f4f1ea', backgroundColor: win ? '#e8bf55' : '#120d1fd9', padding: { x: 3, y: 1 }, resolution: 4 })
+      .text(this.geom(seat).cards.x, y, text, { fontFamily: WORLD_FONT, fontSize: '6px', color: win ? '#24170a' : '#f4f1ea', backgroundColor: win ? '#e8bf55' : '#120d1fd9', padding: { x: 3, y: 1 }, resolution: 2 })
       .setOrigin(0.5, 0)
       .setDepth(165);
     smoothText(v.handName);
@@ -296,7 +296,7 @@ export class PokerScene extends TableScene {
     const text = this.vPot > 0 ? `底池 ${g(this.vPot)}` : '';
     if (!this.potText) {
       this.potText = this.add
-        .text(PKT.pot.x, PKT.pot.y - 14, text, { fontFamily: WORLD_FONT, fontSize: '8px', color: '#ffe9a8', stroke: '#120d1f', strokeThickness: 3, resolution: 4 })
+        .text(PKT.pot.x, PKT.pot.y - 14, text, { fontFamily: WORLD_FONT, fontSize: '6px', color: '#ffe9a8', stroke: '#120d1f', strokeThickness: 3, resolution: 2 })
         .setOrigin(0.5, 1)
         .setDepth(56);
       smoothText(this.potText);
@@ -324,7 +324,7 @@ export class PokerScene extends TableScene {
     const c = this.geom(me).cards;
     if (!this.strength) {
       this.strength = this.add
-        .text(c.x + 32, c.y + 4, text, { fontFamily: WORLD_FONT, fontSize: '7px', color: '#ffe9a8', backgroundColor: '#120d1fd9', padding: { x: 3, y: 1 }, resolution: 4 })
+        .text(c.x + 32, c.y + 4, text, { fontFamily: WORLD_FONT, fontSize: '6px', color: '#ffe9a8', backgroundColor: '#120d1fd9', padding: { x: 3, y: 1 }, resolution: 2 })
         .setOrigin(0, 0.5)
         .setDepth(166);
       smoothText(this.strength);

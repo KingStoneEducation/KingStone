@@ -44,7 +44,7 @@ function bind(core: GameCore): void {
     bus.on('player:collapse', ({ text }) => store.openModal({ type: 'collapse', text })),
     bus.on('phone:message', ({ message }) => {
       const body = message.body.length > 30 ? `${message.body.slice(0, 30)}…` : message.body;
-      store.toast(`📱 ${message.fromName}：${body}`, 'info');
+      store.toast(`新消息 · ${message.fromName}：${body}`, 'info');
     }),
     bus.on('casino:tier', ({ tier }) => store.toast(`赌场会员等级变更：${tier}`, 'good')),
     bus.on('casino:watched', () => store.toast('你注意到天花板上的摄像头似乎一直对着你这张桌子……', 'warn')),

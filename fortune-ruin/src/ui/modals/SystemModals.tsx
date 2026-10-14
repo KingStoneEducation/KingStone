@@ -63,15 +63,15 @@ export function SettingsModal(): JSX.Element {
         </div>
         <label className="row" style={{ cursor: 'pointer' }}>
           <input type="checkbox" checked={s.casinoHints} onChange={(e) => set({ casinoHints: e.target.checked })} />
-          赌桌提示：规则说明、点数与牌型标签、赔率与操作提示（熟悉规则后可关闭，荷官照常报牌）
+          赌桌提示：规则、点数、牌型和操作提示
         </label>
         <label className="row" style={{ cursor: 'pointer' }}>
           <input type="checkbox" checked={s.fourColorDeck} onChange={(e) => set({ fourColorDeck: e.target.checked })} />
-          四色牌（黑桃黑、红心红、方块蓝、梅花绿）
+          四色牌：黑桃黑、红心红、方块蓝、梅花绿
         </label>
         <label className="row" style={{ cursor: 'pointer' }}>
           <input type="checkbox" checked={s.showCasinoClock} onChange={(e) => set({ showCasinoClock: e.target.checked })} />
-          在赌场内显示时间（真实的赌场里通常看不到时钟）
+          在赌场里显示时间
         </label>
         <label className="row" style={{ cursor: 'pointer' }}>
           <input type="checkbox" checked={s.reduceFlashing} onChange={(e) => set({ reduceFlashing: e.target.checked })} />
@@ -90,7 +90,7 @@ export function SavesModal(props: { mode: 'save' | 'load' }): JSX.Element {
   const list = saves.list();
   const inGame = !!store.core;
   return (
-    <Modal title={props.mode === 'save' ? '保存游戏' : '读取存档'} sub="存档保存在本机浏览器中，可导出为文本备份" wide>
+    <Modal title={props.mode === 'save' ? '保存游戏' : '读取存档'} sub="存在这台电脑的浏览器里，换电脑前先导出" wide>
       <div className="list">
         {SLOTS.map((slot, i) => {
           const s = list[i];

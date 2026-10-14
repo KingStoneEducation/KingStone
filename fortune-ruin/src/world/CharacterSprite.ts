@@ -163,7 +163,7 @@ export class CharacterSprite {
       this.bubble = this.scene.add
         .text(this.x, this.y - 36, text, {
           fontFamily: WORLD_FONT,
-          fontSize: '7px',
+          fontSize: '6px',
           color: '#241b30',
           backgroundColor: '#f4f1eaee',
           padding: { x: 3, y: 2 },
@@ -189,7 +189,7 @@ export class CharacterSprite {
       this.label = this.scene.add
         .text(this.x, this.y - 34, text, {
           fontFamily: WORLD_FONT,
-          fontSize: '7px',
+          fontSize: '6px',
           color,
           stroke: '#120d1f',
           strokeThickness: 2,
@@ -226,6 +226,7 @@ export class CharacterSprite {
 }
 
 /** Text is rendered at high resolution and downsampled smoothly even in pixel-art mode. */
+/** Text is drawn with the pixel font at its native size; keep its pixels hard when the camera scales it. */
 export function smoothText(t: Phaser.GameObjects.Text): void {
-  t.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  t.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 }

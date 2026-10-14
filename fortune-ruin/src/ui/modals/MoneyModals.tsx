@@ -213,7 +213,7 @@ function AccountTab(): JSX.Element {
           </button>
         </div>
       ) : (
-        <div className="note">网上银行可以查看账户和还款；存取现金需要去银行柜台或 ATM。</div>
+        <div className="note">存取现金要去银行柜台或 ATM。</div>
       )}
       <label className="row" style={{ cursor: 'pointer' }}>
         <input
@@ -224,7 +224,7 @@ function AccountTab(): JSX.Element {
             core.touch();
           }}
         />
-        自动扣款（到期日从储蓄账户自动支付房租、水电与贷款）
+        自动扣款：到期从存款里付房租、水电和月供
       </label>
       {fb}
       <h4 style={{ margin: '8px 0 0', color: 'var(--gold-light)' }}>最近交易</h4>
@@ -279,7 +279,7 @@ export function BillsTab(): JSX.Element {
                   <td className="muted">{b.payeeName}</td>
                   <td className="r">
                     <GV v={eco.billTotal(b)} />
-                    {b.lateFees > 0 && <div className="bad" style={{ fontSize: 11 }}>含滞纳金 {formatG(b.lateFees)}</div>}
+                    {b.lateFees > 0 && <div className="bad" style={{ fontSize: 12 }}>含滞纳金 {formatG(b.lateFees)}</div>}
                   </td>
                   <td className={late ? 'bad' : ''}>{late ? `逾期 ${today - b.dueDay} 天` : b.dueDay === today ? '今天' : `${b.dueDay - today} 天后`}</td>
                   <td>
@@ -375,7 +375,7 @@ function LoansTab(): JSX.Element {
       )}
       <div className="card">
         <h3>申请个人贷款</h3>
-        <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>
           估算月收入 <GV v={income} /> · 信用分 {core.state.player.creditScore} · 银行按你的收入与现有负债核定额度
         </div>
         <div className="row wrap">
@@ -390,7 +390,7 @@ function LoansTab(): JSX.Element {
             </button>
           ))}
         </div>
-        <div style={{ marginTop: 8, fontSize: 13 }}>
+        <div style={{ marginTop: 8, fontSize: 12 }}>
           年利率 <b>{(q.aprBp / 100).toFixed(2)}%</b> · 月供 <GV v={q.monthly} /> · 总利息 <GV v={q.totalInterest} /> · 可贷上限 <GV v={q.maxPrincipal} />
         </div>
         {!q.ok && <div className="error">{q.reason}</div>}
@@ -407,7 +407,7 @@ function LoansTab(): JSX.Element {
         </button>
       </div>
       {fb}
-      <div className="note">借来的钱会让账户余额变多，但净资产不会增加——它是负债，每月都要还。连续三期未还会被认定违约，信用分将大幅下降。</div>
+      <div className="note">借来的钱是负债，每月都要还。连续三期不还算违约，信用分会大跌。</div>
     </div>
   );
 }

@@ -23,11 +23,11 @@ export function PhonePanel(): JSX.Element {
             <h2>{formatClock(d.minuteOfDay)}</h2>
             <div className="sub">
               {formatDate(d)}
-              {inCasino && ' · 手机是你在赌场里唯一的时钟'}
+              {inCasino && ' · 赌场里只有手机能看时间'}
             </div>
           </div>
           <button className="ghost small" onClick={() => store.closePanel()}>
-            ✕
+            ×
           </button>
         </div>
         <Tabs<Tab>
@@ -113,7 +113,7 @@ function Thread(props: { from: string; onBack: () => void }): JSX.Element {
             </div>
           )}
           {m.resolved && m.actions && (
-            <div className="dim" style={{ fontSize: 11, marginTop: 4 }}>
+            <div className="dim" style={{ fontSize: 12, marginTop: 4 }}>
               已回复：{m.actions.find((a) => a.id === m.resolved)?.label ?? m.resolved}
             </div>
           )}

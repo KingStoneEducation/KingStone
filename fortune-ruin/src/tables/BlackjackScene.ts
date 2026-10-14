@@ -201,7 +201,7 @@ export class BlackjackScene extends TableScene {
     }
     if (!v.label) {
       v.label = this.add
-        .text(last.x, last.y - 20, text, { fontFamily: WORLD_FONT, fontSize: '7px', color, backgroundColor: '#120d1fdd', padding: { x: 2, y: 0 }, resolution: 4 })
+        .text(last.x, last.y - 20, text, { fontFamily: WORLD_FONT, fontSize: '6px', color, backgroundColor: '#120d1fdd', padding: { x: 2, y: 0 }, resolution: 2 })
         .setOrigin(0.5, 1)
         .setDepth(150);
       smoothText(v.label);
@@ -226,7 +226,7 @@ export class BlackjackScene extends TableScene {
     const p = this.dealerCardPos(0);
     if (!this.dealerLabel) {
       this.dealerLabel = this.add
-        .text(p.x - 20, p.y, text, { fontFamily: WORLD_FONT, fontSize: '7px', color: '#f4f1ea', backgroundColor: '#120d1fdd', padding: { x: 2, y: 0 }, resolution: 4 })
+        .text(p.x - 20, p.y, text, { fontFamily: WORLD_FONT, fontSize: '6px', color: '#f4f1ea', backgroundColor: '#120d1fdd', padding: { x: 2, y: 0 }, resolution: 2 })
         .setOrigin(1, 0.5)
         .setDepth(150);
       smoothText(this.dealerLabel);

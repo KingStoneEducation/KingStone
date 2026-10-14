@@ -13,7 +13,7 @@ type Tab = 'overview' | 'ledger' | 'trends';
 export function FinancePanel(): JSX.Element {
   const [tab, setTab] = useState<Tab>('overview');
   return (
-    <Modal title="资产与财务" sub="真实财富 = 资产 − 负债。现金不足不等于破产，资产升值也不等于有钱可花。" wide="x" onClose={() => store.closePanel()}>
+    <Modal title="资产与财务" wide="x" onClose={() => store.closePanel()}>
       <Tabs<Tab>
         tabs={[
           { id: 'overview', label: '总览' },
@@ -58,7 +58,7 @@ function Overview(): JSX.Element {
       <div className="grid3">
         <div className="card">
           <h3>真实净资产</h3>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>
+          <div style={{ fontSize: 24, fontWeight: 800 }}>
             <GV v={w.real()} />
           </div>
           <div className="muted" style={{ fontSize: 12 }}>
@@ -67,18 +67,18 @@ function Overview(): JSX.Element {
         </div>
         <div className="card">
           <h3>流动财富</h3>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>
+          <div style={{ fontSize: 24, fontWeight: 700 }}>
             <GV v={w.liquid()} />
           </div>
           <div className="muted" style={{ fontSize: 12 }}>现金 + 存款 + 筹码 + 可卖出的证券</div>
         </div>
         <div className="card">
           <h3>别人眼中的你</h3>
-          <div style={{ fontSize: 13 }}>
+          <div style={{ fontSize: 12 }}>
             陌生人估计 <GV v={w.perceivedByStrangers()} />
           </div>
-          <div style={{ fontSize: 13 }}>{circle.avg !== null ? <>熟人平均估计 <GV v={circle.avg} />（{circle.n} 人）</> : '还没有人了解你的身家'}</div>
-          <div className="muted" style={{ fontSize: 11.5 }}>只来自衣着、住处、他们看到和听到的事</div>
+          <div style={{ fontSize: 12 }}>{circle.avg !== null ? <>熟人平均估计 <GV v={circle.avg} />（{circle.n} 人）</> : '还没有人了解你的身家'}</div>
+          <div className="muted" style={{ fontSize: 12 }}>只来自衣着、住处、他们看到和听到的事</div>
         </div>
       </div>
       <div className="grid2">
@@ -150,18 +150,18 @@ function Overview(): JSX.Element {
               </tr>
             </tbody>
           </table>
-          <div style={{ marginTop: 8, fontSize: 12.5 }}>
+          <div style={{ marginTop: 8, fontSize: 12 }}>
             每月固定支出 <GV v={obligations} /> · 预计月收入 <GV v={income} /> · 信用分 {core.state.player.creditScore}
           </div>
           {income > 0 && obligations > income * 0.6 && <div className="error">固定支出超过收入的 60%，现金流很紧张。</div>}
         </div>
       </div>
       <div className="card">
-        <h3>财富阶层（初始平衡方案）</h3>
+        <h3>财富阶层</h3>
         <div className="row wrap" style={{ gap: 6 }}>
           {WEALTH_CLASSES.map((c) => (
             <span key={c.id} className={`tag ${c.id === cls.id ? 'gold' : ''}`}>
-              {c.name} {c.min === -Infinity ? '< 0' : `≥ ${(c.min / 100).toLocaleString()} G`}
+              {c.name} {c.min === -Infinity ? '资不抵债' : `${(c.min / 100).toLocaleString()} G 以上`}
             </span>
           ))}
         </div>
@@ -180,7 +180,7 @@ function Ledger(): JSX.Element {
   return (
     <div className="stack">
       <div className="row between">
-        <div style={{ fontSize: 13 }}>
+        <div style={{ fontSize: 12 }}>
           今日收入 <GV v={flow.income} /> · 支出 <GV v={flow.expenses} /> · 赌场 <GV v={flow.casinoNet} sign />
         </div>
         <select value={cat} onChange={(e) => setCat(e.target.value)}>
@@ -223,7 +223,6 @@ function Ledger(): JSX.Element {
           })}
         </tbody>
       </table>
-      <div className="note">每一笔钱的来去都记录在账：账户之间的划转不改变总额，所有收入和支出都有明确来源。</div>
     </div>
   );
 }
@@ -249,7 +248,7 @@ function Trends(): JSX.Element {
       </div>
       <div className="grid2">
         <div className="card">
-          <h3>每日现金流（收入 − 支出）</h3>
+          <h3>每日现金流：收入减支出</h3>
           <BarChart data={days.map((d) => d.income - d.expenses)} />
         </div>
         <div className="card">

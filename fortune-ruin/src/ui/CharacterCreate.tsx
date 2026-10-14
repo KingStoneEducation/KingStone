@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { store } from './store';
+import { JOBS } from '../data/jobs';
+import { HOMES } from '../data/housing';
 import { Portrait } from './components';
 import { lookFor } from '../world/looks';
 import { P } from '../art/palette';
@@ -27,16 +29,16 @@ export function CharacterCreate(): JSX.Element {
     <div className="create">
       <div className="create-panel">
         <div className="create-preview">
-          <div style={{ fontSize: 13, color: 'var(--muted)' }}>形象预览</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>形象预览</div>
           <div className="portrait" style={{ width: 160, height: 220, alignItems: 'center' }}>
             <Portrait look={look} scale={6} frame={frame} />
           </div>
           <div className="row">
             <button className="small" onClick={() => setFrame((f) => (f + 12) % 16)}>
-              ⟲
+              ←
             </button>
             <button className="small" onClick={() => setFrame((f) => (f + 4) % 16)}>
-              ⟳
+              →
             </button>
           </div>
           <div className="field" style={{ width: '100%' }}>
@@ -50,13 +52,13 @@ export function CharacterCreate(): JSX.Element {
             </div>
           </div>
           <div className="note" style={{ width: '100%' }}>
-            初始状态：现金 1,000 G，存款 19,000 G，住在老城区的普通出租公寓，在一家贸易公司做普通职员，持有灰港大赌场的普通访客会员卡。
+            你住在老城区的{HOMES.home_basic.name}，在{JOBS.office_clerk.employer.replace(/ .*/, '')}做{JOBS.office_clerk.title}。现金 1,000 G，存款 19,000 G。
           </div>
         </div>
         <div className="create-form">
           <div>
             <h2 style={{ margin: 0, color: 'var(--gold-light)' }}>新的人生</h2>
-            <div className="muted" style={{ fontSize: 12.5 }}>灰港 · 第 1 年 3 月 1 日，星期一，早上 7 点。</div>
+            <div className="muted" style={{ fontSize: 12 }}>灰港 · 第 1 年 3 月 1 日，星期一，早上 7 点。</div>
           </div>
           <div className="grid2">
             <div className="field">
@@ -126,7 +128,7 @@ export function CharacterCreate(): JSX.Element {
             </div>
           </div>
           <div className="field">
-            <label>性格倾向（影响初始冲动程度、压力反应与部分技能，不影响任何赌局概率）</label>
+            <label>性格</label>
             <div className="choice-grid">
               {(Object.keys(PERSONALITIES) as PersonalityTendency[]).map((k) => (
                 <button key={k} className={`choice ${personality === k ? 'active' : ''}`} onClick={() => setPersonality(k)}>

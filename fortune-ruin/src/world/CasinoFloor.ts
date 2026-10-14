@@ -202,7 +202,7 @@ export class CasinoFloor {
 
   float(x: number, y: number, text: string, color: string): void {
     const obj = this.scene.add
-      .text(x, y, text, { fontFamily: WORLD_FONT, fontSize: '7px', color, stroke: '#120d1f', strokeThickness: 2, resolution: 4 })
+      .text(x, y, text, { fontFamily: WORLD_FONT, fontSize: '6px', color, stroke: '#120d1f', strokeThickness: 2, resolution: 2 })
       .setOrigin(0.5, 1)
       .setDepth(LABEL_DEPTH + 2);
     smoothText(obj);

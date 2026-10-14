@@ -285,7 +285,7 @@ function inviteMessage(core: GameCore, def: string, npc: string, at: number, dur
     status: 'invited',
   };
   core.state.events.scheduled.push(ev);
-  core.phone.send(npc, npcName(npc), `${body}\n📍 ${LOCATIONS[sd.location]?.name ?? sd.location} · ${formatDateTime(at)}`, [
+  core.phone.send(npc, npcName(npc), `${body}\n地点：${LOCATIONS[sd.location]?.name ?? sd.location} · ${formatDateTime(at)}`, [
     { id: `accept:${ev.id}`, label: '我会去的' },
     { id: `decline:${ev.id}`, label: '抱歉，去不了' },
   ], ev.id);

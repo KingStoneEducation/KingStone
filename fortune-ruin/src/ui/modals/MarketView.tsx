@@ -68,7 +68,7 @@ export function MarketView(): JSX.Element {
               <tr key={a.id}>
                 <td>
                   <div style={{ fontWeight: 600 }}>{a.name}</div>
-                  <div className="dim" style={{ fontSize: 11 }}>
+                  <div className="dim" style={{ fontSize: 12 }}>
                     {a.kind} · 年化波动约 {Math.round(a.sigma * 100)}% · {a.desc}
                   </div>
                 </td>
@@ -82,7 +82,7 @@ export function MarketView(): JSX.Element {
                   {h ? (
                     <>
                       <GV v={h.units * price} />
-                      <div style={{ fontSize: 11 }}>
+                      <div style={{ fontSize: 12 }}>
                         <GV v={h.units * price - h.costBasis} sign />
                       </div>
                     </>
@@ -121,7 +121,7 @@ export function MarketView(): JSX.Element {
         </tbody>
       </table>
       {fb}
-      <div className="note">价格按随机过程逐日变化，有长期趋势也有剧烈波动，没有任何稳赚不赔的产品。历史表现不代表未来收益；持仓市值不是可以直接花的现金。</div>
+      <div className="note">价格每天都在变，没有稳赚的东西。持仓要卖出才能变成现金。</div>
     </div>
   );
 }

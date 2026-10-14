@@ -57,7 +57,7 @@ export function HelpPanel(): JSX.Element {
       <div className="grid2">
         <div className="card">
           <h3>移动与互动</h3>
-          <div style={{ fontSize: 13, lineHeight: 1.9 }}>
+          <div style={{ fontSize: 12, lineHeight: 1.9 }}>
             <kbd>W</kbd>
             <kbd>A</kbd>
             <kbd>S</kbd>
@@ -72,7 +72,7 @@ export function HelpPanel(): JSX.Element {
         </div>
         <div className="card">
           <h3>界面</h3>
-          <div style={{ fontSize: 13, lineHeight: 1.9 }}>
+          <div style={{ fontSize: 12, lineHeight: 1.9 }}>
             <kbd>P</kbd> 手机（消息、日程、联系人）
             <br />
             <kbd>F</kbd> 资产与财务　<kbd>R</kbd> 人际关系
@@ -84,14 +84,14 @@ export function HelpPanel(): JSX.Element {
         </div>
         <div className="card">
           <h3>生活</h3>
-          <div style={{ fontSize: 13 }}>
-            按时上班领工资，月初房租水电会自动扣款（可在银行关闭）。饿了要吃饭，困了回家睡觉——睡觉时时间会快进。体力和睡眠耗尽会晕倒，代价不小。
+          <div style={{ fontSize: 12 }}>
+            按时上班领工资。房租水电月初自动扣款，可以在网上银行关掉。饿了吃饭，困了回家睡觉；体力或睡眠耗尽会晕倒。
           </div>
         </div>
         <div className="card">
           <h3>赌场</h3>
-          <div style={{ fontSize: 13 }}>
-            在兑换台把现金换成筹码，走到赌桌前按 <kbd>E</kbd> 入座。每张桌子的规则都公开写在桌上和信息栏里。所有结果由真实的洗牌和随机数决定，任何会员等级都不会改变概率。
+          <div style={{ fontSize: 12 }}>
+            在兑换台把现金换成筹码，走到赌桌前按 <kbd>E</kbd> 入座。每张桌子的规则写在桌上，也能在赌桌左上角查看；结果只取决于洗牌和随机数。
           </div>
         </div>
       </div>

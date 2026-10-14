@@ -48,19 +48,19 @@ export function SocialPanel(): JSX.Element {
   const [sel, setSel] = useState<string | null>(met[0]?.id ?? null);
   const def = sel ? NPC_BY_ID[sel] : null;
   return (
-    <Modal title="人际关系" sub="每个人在意的东西不同：有人看重你的人品，有人看重你的钱包。" wide="x" onClose={() => store.closePanel()}>
+    <Modal title="人际关系" wide="x" onClose={() => store.closePanel()}>
       {met.length === 0 ? (
         <div className="note">你还没有认识任何人。出门走走，和人聊聊吧。</div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 14 }}>
-          <div className="list" style={{ maxHeight: '64vh', overflow: 'auto' }}>
+          <div className="list" style={{ maxHeight: 'calc(var(--vh, 100vh) * 0.64)', overflow: 'auto' }}>
             {met.map((n) => {
               const r = core.social.rel(n.id);
               return (
                 <div key={n.id} className="item" style={{ cursor: 'pointer', borderColor: sel === n.id ? 'var(--gold)' : undefined, padding: '5px 8px' }} onClick={() => setSel(n.id)}>
                   <Portrait look={n.look} scale={2} crop="bust" />
                   <div className="grow">
-                    <div className="title" style={{ fontSize: 13 }}>
+                    <div className="title" style={{ fontSize: 12 }}>
                       {r.knowsName ? n.name : '？'}
                     </div>
                     <div className="desc">{core.social.statusName(r.status)}</div>
@@ -94,12 +94,12 @@ function Detail(props: { id: string }): JSX.Element {
           <h3 style={{ margin: 0, color: 'var(--gold-light)' }}>
             {r.knowsName ? `${def.name} · ${def.nameEn}` : '不知道名字的人'}
           </h3>
-          <div className="muted" style={{ fontSize: 12.5 }}>
+          <div className="muted" style={{ fontSize: 12 }}>
             {def.age} 岁 · {def.occupation} · {def.district}
           </div>
-          {r.familiarity >= 20 && <div style={{ fontSize: 13, marginTop: 4 }}>{def.bio}</div>}
+          {r.familiarity >= 20 && <div style={{ fontSize: 12, marginTop: 4 }}>{def.bio}</div>}
           {r.familiarity >= 40 && (
-            <div className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
               对钱的看法：{def.moneyView}　对赌博：{def.gamblingAttitude}
             </div>
           )}
@@ -119,7 +119,7 @@ function Detail(props: { id: string }): JSX.Element {
         </div>
         <div className="card">
           <h3>TA 对你的了解</h3>
-          <div style={{ fontSize: 13 }} className="stack">
+          <div style={{ fontSize: 12 }} className="stack">
             <div>
               身家估计：
               {b?.wealth ? (
@@ -136,13 +136,12 @@ function Detail(props: { id: string }): JSX.Element {
             <div>欠债：{b?.knowsDebt ? <span className="bad">知道你有债务</span> : <span className="dim">不知道</span>}</div>
             <div>赌博：{(b?.knowsGambling ?? 0) > 0 ? `知道你常去赌场（程度 ${Math.round(b!.knowsGambling)}）` : <span className="dim">不知道</span>}</div>
           </div>
-          <div className="dim" style={{ fontSize: 11.5, marginTop: 6 }}>NPC 只能通过亲眼看到、你告诉 TA、或别人传的话来了解你——传闻可能夸大或失真。</div>
         </div>
       </div>
       <div className="card">
         <h3>TA 记得的事</h3>
         {mems.length === 0 ? (
-          <div className="muted" style={{ fontSize: 12.5 }}>还没有什么特别的记忆。</div>
+          <div className="muted" style={{ fontSize: 12 }}>还没有什么特别的记忆。</div>
         ) : (
           <table className="data">
             <tbody>

@@ -8,6 +8,7 @@ import { TILE_INDEX } from '../../art/tiles';
 import { LOCATIONS, hoursText, isOpen } from '../../data/locations';
 import { toDate } from '../../core/calendar';
 import { HOMES } from '../../data/housing';
+import { Icon } from '../Icon';
 
 const S = 4;
 
@@ -85,10 +86,10 @@ export function MapPanel(): JSX.Element {
     store.toast(r.message, 'info');
   };
   return (
-    <Modal title="灰港地图" sub="点击地点查看营业时间与交通方式" wide="x" onClose={() => store.closePanel()}>
+    <Modal title="灰港地图" sub="点地名看营业时间和怎么去" wide="x" onClose={() => store.closePanel()}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 270px', gap: 14 }}>
         <div className="mapwrap" ref={ref}>
-          <img src={img} style={{ width: '100%', imageRendering: 'pixelated', borderRadius: 8, display: 'block' }} />
+          <img src={img} style={{ width: '100%', imageRendering: 'pixelated', display: 'block' }} />
           {pins.map((b) => {
             const loc = LOCATIONS[b.target!];
             if (!loc) return null;
@@ -103,14 +104,20 @@ export function MapPanel(): JSX.Element {
                 style={{ left: `${((b.door!.x + 0.5) / CITY_W) * 100}%`, top: `${(b.door!.y / CITY_H) * 100}%`, borderColor: isHome ? 'var(--good)' : sel === b.target ? 'var(--gold-light)' : undefined }}
                 onClick={() => setSel(b.target!)}
               >
-                {isHome ? '🏠 家' : loc.name.replace(/ .*/, '')}
+                {isHome ? (
+                  <>
+                    <Icon name="home" /> 家
+                  </>
+                ) : (
+                  loc.name.replace(/ .*/, '')
+                )}
                 {isWork && ' · 上班'}
               </div>
             );
           })}
           {BUS_STOPS.map((s) => (
-            <div key={s.id} style={{ position: 'absolute', left: `${(s.x / CITY_W) * 100}%`, top: `${(s.y / CITY_H) * 100}%`, transform: 'translate(-50%,-50%)', fontSize: 10 }} title={s.name}>
-              🚏
+            <div key={s.id} style={{ position: 'absolute', left: `${(s.x / CITY_W) * 100}%`, top: `${(s.y / CITY_H) * 100}%`, transform: 'translate(-50%,-50%)', fontSize: 12 }} title={s.name}>
+              <Icon name="bus" />
             </div>
           ))}
           <div className="mappin you" style={{ left: `${((here.x + 0.5) / CITY_W) * 100}%`, top: `${(here.y / CITY_H) * 100}%` }}>
@@ -121,18 +128,18 @@ export function MapPanel(): JSX.Element {
           {selDef ? (
             <>
               <h3 style={{ margin: 0, color: 'var(--gold-light)' }}>{selDef.name}</h3>
-              <div className="muted" style={{ fontSize: 12.5 }}>{selDef.desc}</div>
-              <div style={{ fontSize: 12.5 }}>
+              <div className="muted" style={{ fontSize: 12 }}>{selDef.desc}</div>
+              <div style={{ fontSize: 12 }}>
                 营业：{selDef.hours ? hoursText(selDef) : '全天'}
                 {selDef.hours && (isOpen(selDef, d.weekday, d.minuteOfDay) ? <span className="good"> · 营业中</span> : <span className="bad"> · 已打烊</span>)}
               </div>
-              {selDef.dressCode !== undefined && <div style={{ fontSize: 12.5 }}>着装要求：体面度 ≥ {selDef.dressCode}</div>}
+              {selDef.dressCode !== undefined && <div style={{ fontSize: 12 }}>着装要求：体面度至少 {selDef.dressCode}</div>}
               {selDef.access && selDef.access !== 'resident' && (
-                <div style={{ fontSize: 12.5 }}>
+                <div style={{ fontSize: 12 }}>
                   进入条件：{{ members: '会员或会员宾客', reservation: '需要预订或受邀', employees: '仅限员工', resident: '' }[selDef.access]}
                 </div>
               )}
-              <div style={{ fontSize: 12.5 }}>消费水平：{'G'.repeat(Math.max(1, selDef.priceLevel))}</div>
+              <div style={{ fontSize: 12 }}>消费水平：{'G'.repeat(Math.max(1, selDef.priceLevel))}</div>
               <div className="card">
                 <div className="row between">
                   <span>出租车</span>
@@ -164,8 +171,8 @@ export function MapPanel(): JSX.Element {
               {fb}
             </>
           ) : (
-            <div className="muted" style={{ fontSize: 12.5 }}>
-              灰港分为老城区、集市街、市中心、河畔区、码头与山丘富人区。步行最省钱；公交车在各站之间往返（06:00–24:00）；出租车随叫随到但更贵。
+            <div className="muted" style={{ fontSize: 12 }}>
+              步行最省钱；公交 06:00–24:00 在各站之间往返；出租车随叫随到，但贵。
             </div>
           )}
         </div>

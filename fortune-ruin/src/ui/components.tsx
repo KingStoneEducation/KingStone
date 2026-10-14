@@ -23,7 +23,7 @@ export function Modal(props: {
             {props.sub && <div className="sub">{props.sub}</div>}
           </div>
           <button className="ghost small close" onClick={close} title="关闭 (Esc)">
-            ✕
+            ×
           </button>
         </div>
         <div className="modal-body">{props.children}</div>
@@ -114,7 +114,7 @@ export function useFeedback(): [ReactNode, (ok: boolean, text: string) => void] 
     const t = setTimeout(() => setMsg(null), 4500);
     return () => clearTimeout(t);
   }, [msg]);
-  const node = msg ? <div className={msg.ok ? 'good' : 'error'} style={{ fontSize: 12.5, marginTop: 6 }}>{msg.text}</div> : null;
+  const node = msg ? <div className={msg.ok ? 'good' : 'error'} style={{ fontSize: 12, marginTop: 6 }}>{msg.text}</div> : null;
   return [node, (ok, text) => setMsg({ ok, text })];
 }
 

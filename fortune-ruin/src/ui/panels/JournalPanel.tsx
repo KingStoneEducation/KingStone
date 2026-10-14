@@ -26,7 +26,7 @@ export function JournalPanel(): JSX.Element {
     .reverse();
   let lastDay = -1;
   return (
-    <Modal title="日志" sub="发生过的事都记在这里" wide onClose={() => store.closePanel()}>
+    <Modal title="日志" wide onClose={() => store.closePanel()}>
       <div className="row wrap" style={{ marginBottom: 10 }}>
         {CATS.map((c) => (
           <button key={c.id} className={`small ${cat === c.id ? 'primary' : 'ghost'}`} onClick={() => setCat(c.id)}>
@@ -38,10 +38,10 @@ export function JournalPanel(): JSX.Element {
         <div className="item" style={{ marginBottom: 10 }}>
           <div style={{ fontWeight: 700, marginBottom: 4 }}>进行中的故事</div>
           {core.stories.summaries().map((x) => (
-            <div key={x.arc} style={{ fontSize: 13, lineHeight: 1.6 }}>
+            <div key={x.arc} style={{ fontSize: 12, lineHeight: 1.6 }}>
               <span style={{ color: 'var(--gold-light)' }}>【{x.title}】</span>
               {x.status}
-              <span className="dim" style={{ fontSize: 11.5 }}> · 第 {x.days + 1} 天</span>
+              <span className="dim" style={{ fontSize: 12 }}> · 第 {x.days + 1} 天</span>
             </div>
           ))}
         </div>
@@ -59,7 +59,7 @@ export function JournalPanel(): JSX.Element {
               </div>
             )}
             <div className="row" style={{ alignItems: 'baseline', padding: '2px 0' }}>
-              <span className="dim num" style={{ fontSize: 11.5, width: 40 }}>
+              <span className="dim num" style={{ fontSize: 12, width: 40 }}>
                 {formatClock(d.minuteOfDay)}
               </span>
               <span style={{ fontWeight: e.important ? 700 : 400, color: e.important ? 'var(--gold-light)' : undefined }}>{e.text}</span>

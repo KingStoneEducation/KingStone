@@ -14,7 +14,8 @@ export const atlas = new AtlasBuilder('atlas');
 let registered = false;
 
 /** Font stack for in-world labels (system CJK fonts; nothing is downloaded). */
-export const WORLD_FONT = '"PingFang SC","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC","WenQuanYi Zen Hei","Source Han Sans SC",sans-serif';
+/** The interface's pixel font; in-world text is 6 px rendered at 2× = its native 12 px. */
+export const WORLD_FONT = '"Fusion Pixel","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif';
 
 /** Vertical offset of each building image relative to its footprint. */
 export const BUILDING_OFFSET: Record<string, number> = {};

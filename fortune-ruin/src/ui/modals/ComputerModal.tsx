@@ -18,7 +18,7 @@ type Tab = 'housing' | 'jobs' | 'invest' | 'bills' | 'life' | 'payday';
 export function ComputerModal(props: { tab?: Tab }): JSX.Element {
   const [tab, setTab] = useState<Tab>(props.tab ?? 'housing');
   return (
-    <Modal title="电脑" sub="房屋租售 · 招聘 · 证券 · 网上银行 · 生活服务" wide="x">
+    <Modal title="电脑" sub="家里的旧笔记本电脑" wide="x">
       <Tabs<Tab>
         tabs={[
           { id: 'housing', label: '房屋' },
@@ -66,7 +66,7 @@ function HousingTab(): JSX.Element {
     <div className="stack">
       <div className="card">
         <h3>现在的家：{cur.name}</h3>
-        <div className="muted" style={{ fontSize: 12.5 }}>
+        <div className="muted" style={{ fontSize: 12 }}>
           {cur.district} · {cur.area} · {h.tenure === 'own' ? '自有产权' : `月租 ${formatG(h.rent)}`} · 每月居住总成本 <GV v={hs.monthlyCost()} /> · 舒适度 {Math.round(hs.comfort() * 100)}% · 体面度 {hs.prestige().toFixed(1)}
         </div>
       </div>
@@ -128,7 +128,7 @@ function HousingTab(): JSX.Element {
         })}
       </div>
       {fb}
-      <div className="note">房价跟随灰港房地产指数波动。房产升值不等于现金：卖房要付 5% 中介费，持有期间每月还有维护费和水电。</div>
+      <div className="note">房价随市场涨跌。卖房要付 5% 中介费，住着每月也有维护费和水电。</div>
     </div>
   );
 }
@@ -140,8 +140,8 @@ function JobsTab(): JSX.Element {
   const apps = core.state.career.applications;
   return (
     <div className="stack">
-      <div className="muted" style={{ fontSize: 12.5 }}>
-        预计月收入 <GV v={c.monthlyIncomeEstimate()} />。可以同时打几份工，但要注意班次时间不能冲突，太累会拖垮状态。
+      <div className="muted" style={{ fontSize: 12 }}>
+        预计月收入 <GV v={c.monthlyIncomeEstimate()} />。可以兼几份工，只要班次不撞。
       </div>
       <div className="list">
         {Object.values(JOBS).map((d) => {
@@ -206,7 +206,7 @@ function LifeTab(): JSX.Element {
       <div className="grid2">
         <div className="card">
           <h3>Lumière 法餐厅 · 订位</h3>
-          <div className="muted" style={{ fontSize: 12.5 }}>
+          <div className="muted" style={{ fontSize: 12 }}>
             山丘区的米其林餐厅，需提前订位，着装要求：正装。订位费 {formatG(LUMIERE_BOOKING_FEE)}。{res >= core.today() && <span className="good"> 已预订：{res === core.today() ? '今天' : '明天'}</span>}
           </div>
           <div className="row" style={{ marginTop: 6 }}>
@@ -232,7 +232,7 @@ function LifeTab(): JSX.Element {
         </div>
         <div className="card">
           <h3>子午线会所 · 会员</h3>
-          <div className="muted" style={{ fontSize: 12.5 }}>
+          <div className="muted" style={{ fontSize: 12 }}>
             {sv.isClubMember() ? <span className="good">你是会员（有效至第 {Number(core.state.player.flags.clubMemberUntil) - core.today()} 天后）</span> : `年费 ${formatG(CLUB_ANNUAL_FEE)}。需要会员担保，或足够的身家与声望。`}
           </div>
           {!sv.isClubMember() && clubErr && <div className="error">{clubErr}</div>}
@@ -303,11 +303,11 @@ function PaydayTab(): JSX.Element {
     <div className="stack">
       <div className="card" style={{ borderColor: 'rgba(255,107,107,0.5)' }}>
         <h3 style={{ color: 'var(--bad)' }}>随借 App · 秒到账</h3>
-        <div className="muted" style={{ fontSize: 12.5 }}>不查征信，最快 1 分钟到账。最高 2,000 G，借期 1 个月。</div>
+        <div className="muted" style={{ fontSize: 12 }}>不查征信，最快 1 分钟到账。最高 2,000 G，借期 1 个月。</div>
         <div className="row" style={{ marginTop: 8 }}>
           <AmountInput value={amount} onChange={setAmount} step={100} /> <span className="muted">G</span>
         </div>
-        <div style={{ marginTop: 6, fontSize: 13 }}>
+        <div style={{ marginTop: 6, fontSize: 12 }}>
           一个月后应还 <GV v={q.monthly} />（利息 <GV v={q.totalInterest} />，折合年化 {(q.aprBp / 100).toFixed(0)}%）
         </div>
         {!q.ok && <div className="error">{q.reason}</div>}
@@ -357,7 +357,7 @@ export function CasinoMemberModal(): JSX.Element {
       </div>
       <div className="card" style={{ marginTop: 10 }}>
         <h3>累计战绩</h3>
-        <div className="row wrap" style={{ gap: 16, fontSize: 13 }}>
+        <div className="row wrap" style={{ gap: 16, fontSize: 12 }}>
           <span>
             总盈亏 <GV v={Object.values(st.byGame).reduce((a, g) => a + g.net, 0)} sign />
           </span>
@@ -389,7 +389,7 @@ export function CasinoMemberModal(): JSX.Element {
         </tbody>
       </table>
       <div className="note" style={{ marginTop: 10 }}>
-        积分 = 下注额 × 该游戏公布的庄家优势（即「理论损失」），这也是现实中赌场评级客人的方法。会员等级只带来服务和礼遇，永远不会改变任何一局的概率。
+        积分按下注额乘以该游戏的庄家优势累计。
       </div>
     </Modal>
   );

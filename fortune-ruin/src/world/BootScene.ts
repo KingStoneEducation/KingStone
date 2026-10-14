@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { registerTextures } from './textures';
+import { registerTextures, WORLD_FONT } from './textures';
 import { store } from '../ui/store';
 
 /** Generates every procedural texture, then shows the city behind the main menu. */
@@ -12,8 +12,8 @@ export class BootScene extends Phaser.Scene {
     const { width, height } = this.scale;
     const t = this.add
       .text(width / 2, height / 2, '正在绘制灰港……', {
-        fontFamily: '"PingFang SC","Microsoft YaHei","Noto Sans SC","WenQuanYi Zen Hei",sans-serif',
-        fontSize: '18px',
+        fontFamily: WORLD_FONT,
+        fontSize: '24px',
         color: '#e8dcc0',
       })
       .setOrigin(0.5);

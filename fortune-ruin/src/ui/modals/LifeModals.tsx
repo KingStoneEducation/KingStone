@@ -15,6 +15,7 @@ import { busStopTile } from '../../world/WorldScene';
 import { lookFor } from '../../world/looks';
 import { LOCATIONS } from '../../data/locations';
 import { SKILL_NAMES } from '../../systems/PlayerSystem';
+import { Icon } from '../Icon';
 
 // ------------------------------------------------------------------ sleep
 
@@ -52,17 +53,17 @@ export function SleepModal(): JSX.Element {
         <div className="note">{err}</div>
       ) : (
         <div className="stack">
-          <div className="muted" style={{ fontSize: 12.5 }}>
+          <div className="muted" style={{ fontSize: 12 }}>
             床越舒适，恢复越快（当前居所舒适度 {Math.round(core.housing.comfort() * 100)}%）。睡眠时时间快进，账单、消息与 NPC 的生活照常进行。
           </div>
           {shifts.length > 0 && (
             <div className="note">
-              ⏰ 下一个班：{shifts[0].def.employer} {formatClock(shifts[0].start % MINUTES_PER_DAY)}（{toDate(shifts[0].start).day}日）
+              <Icon name="clock" /> 下一个班：{shifts[0].def.employer} {formatClock(shifts[0].start % MINUTES_PER_DAY)}（{toDate(shifts[0].start).day}日）
             </div>
           )}
           {plans.slice(0, 2).map((p) => (
             <div className="note" key={p.id}>
-              📅 已答应的约：{LOCATIONS[p.location ?? '']?.name ?? p.location} {toDate(p.at).day}日 {formatClock(toDate(p.at).minuteOfDay)}
+              <Icon name="calendar" /> 已答应的约：{LOCATIONS[p.location ?? '']?.name ?? p.location} {toDate(p.at).day}日 {formatClock(toDate(p.at).minuteOfDay)}
             </div>
           ))}
           <div className="list">
@@ -128,7 +129,7 @@ export function KitchenModal(): JSX.Element {
             ))}
           </div>
         )}
-        <div className="note">自己做饭比外面吃便宜得多。食材可以在集市街的 QuickMart 便利店买到。</div>
+        <div className="note">食材在集市街的 QuickMart 便利店买。</div>
         {fb}
       </div>
     </Modal>
@@ -143,7 +144,7 @@ export function WardrobeModal(): JSX.Element {
   const app = core.state.player.appearance;
   const cur = core.state.player.outfit;
   return (
-    <Modal title="衣柜" sub="衣着会影响陌生人对你财富的判断、着装要求，以及部分人对你的印象" wide>
+    <Modal title="衣柜" sub="体面度影响路人的眼光，也决定有些地方进不进得去" wide>
       <div className="grid3">
         {core.state.inventory.outfits.map((id) => {
           const o = OUTFITS[id];
@@ -158,7 +159,7 @@ export function WardrobeModal(): JSX.Element {
                     体面度 {'★'.repeat(Math.max(0, Math.round(o.prestige ?? 0)))}
                     {'☆'.repeat(Math.max(0, 5 - Math.round(o.prestige ?? 0)))}
                   </div>
-                  <div className="muted" style={{ fontSize: 11.5 }}>{o.desc}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{o.desc}</div>
                 </div>
               </div>
               <button
@@ -190,7 +191,7 @@ export function ReadModal(): JSX.Element {
     .filter(([id, n]) => n > 0 && ITEMS[id]?.kind === 'book')
     .map(([id, n]) => ({ def: ITEMS[id], n }));
   return (
-    <Modal title="书架" sub="读书需要时间，但能提高技能（技能影响工作表现与社交，不影响任何赌局概率）">
+    <Modal title="书架" sub="读完一本要好几个小时">
       {books.length === 0 ? (
         <div className="note">书架上都是读过的旧书。QuickMart 便利店有新书出售。</div>
       ) : (
@@ -240,7 +241,7 @@ export function WorkModal(props: { jobId: string }): JSX.Element {
       <Modal title={`${def.employer} · ${def.title}`} sub="你还没有在这里工作">
         <div className="stack">
           <div>{def.desc}</div>
-          <div className="muted" style={{ fontSize: 12.5 }}>
+          <div className="muted" style={{ fontSize: 12 }}>
             {def.payType === 'salary' ? `月薪 ${formatG(def.rate)}` : `时薪 ${formatG(def.rate)}`}
             {def.tipsPerHour ? ` + 小费` : ''} · 班次 {formatClock(def.start)}–{formatClock(def.end)}
           </div>
@@ -282,7 +283,7 @@ export function WorkModal(props: { jobId: string }): JSX.Element {
     <Modal title={`${career.title(job)} · ${def.employer}`} sub={`表现 ${job.performance}/100 · 已上 ${job.shifts} 个班`}>
       <div className="stack">
         {shift && (
-          <div className="muted" style={{ fontSize: 12.5 }}>
+          <div className="muted" style={{ fontSize: 12 }}>
             今日班次 {formatClock(shift.start % MINUTES_PER_DAY)}–{formatClock(shift.end % MINUTES_PER_DAY)} ·{' '}
             {{ upcoming: '还没开始', open: '可以打卡', late: '已迟到', done: '已完成', missed: '已缺勤' }[shift.status]}
           </div>
@@ -297,7 +298,7 @@ export function WorkModal(props: { jobId: string }): JSX.Element {
           </div>
           <div className="card">
             <h3>你的状态</h3>
-            <div className="muted" style={{ fontSize: 12.5 }}>
+            <div className="muted" style={{ fontSize: 12 }}>
               工作效率 {Math.round(core.player.workEfficiency(def.skill) * 100)}% · 睡眠 {Math.round(s.sleep)} · 压力 {Math.round(s.stress)}
             </div>
           </div>
@@ -459,15 +460,15 @@ export function IntroModal(): JSX.Element {
               今天是工作日：<b>{formatClock(job.start)}</b> 前要到<b>{place}</b>，去工位打卡（可以提前一小时）。从家走过去大约 {walk} 分钟。
               {core.phone.unread() > 0 && ' 手机里有主管发来的消息。'}
             </div>
-            <div className="muted" style={{ fontSize: 12.5 }}>
+            <div className="muted" style={{ fontSize: 12 }}>
               左上角会一直显示下一班的时间，点击它就能在地图上找到公司。迟到超过 10 分钟会被记下来；无故缺勤一天，{job.bossName}会发来警告，累计几次就会被辞退。工资每 {job.payEveryDays} 天打进银行账户。
             </div>
           </>
         ) : (
-          <div>你眼下没有工作。房租和三餐不会等人——可以用家里的电脑浏览招聘信息。</div>
+          <div>你眼下没有工作。家里的电脑上能看招聘信息。</div>
         )}
-        <div className="muted" style={{ fontSize: 12.5 }}>
-          钱包里有 {formatG(core.economy.balance('cash'))} 现金，银行里有 {formatG(core.economy.balance('bank'))}。房租和水电账单每月自动扣款。灰港大赌场在城北的赌场广场，二十四小时营业——游戏里的一切赌注与财富都是虚拟货币。
+        <div className="muted" style={{ fontSize: 12 }}>
+          钱包里有 {formatG(core.economy.balance('cash'))} 现金，银行里有 {formatG(core.economy.balance('bank'))}。房租和水电每月自动扣款。灰港大赌场在城北的赌场广场，二十四小时营业。
         </div>
       </div>
     </Modal>

@@ -48,7 +48,7 @@ function Self(): JSX.Element {
           </div>
         ))}
         <div className="note" style={{ marginTop: 8 }}>
-          状态影响移动速度、工作效率、对话和你在牌桌上的心态（冲动值高时更容易加注），但永远不会改变任何赌局的概率。
+          状态会影响走路快慢、工作效率和对话；冲动值高的时候，你在牌桌上更容易加注。
         </div>
         {p.moodBuffs.length > 0 && (
           <div style={{ marginTop: 6 }}>
@@ -73,7 +73,7 @@ function Self(): JSX.Element {
         </div>
         <div className="card">
           <h3>声望与信用</h3>
-          <div style={{ fontSize: 13 }} className="stack">
+          <div style={{ fontSize: 12 }} className="stack">
             <div>社会声望 {Math.round(p.reputation.social)} · 赌场声望 {Math.round(p.reputation.casino)} · 可信度 {Math.round(p.reputation.trust)}</div>
             <div>信用分 {p.creditScore}</div>
             <div>财富阶层：{core.wealth.wealthClass().name}</div>
@@ -129,10 +129,10 @@ function Casino(): JSX.Element {
         <h3>每次去赌场的累计结果</h3>
         <LineChart zero series={[{ name: '累计盈亏', color: '#ff4fa3', data: sessions.map((s) => (cum += s.net)) }]} height={140} />
       </div>
-      <div className="muted" style={{ fontSize: 12.5 }}>
+      <div className="muted" style={{ fontSize: 12 }}>
         单局最大赢 <GV v={st.biggestWin} /> · 单局最大输 <GV v={st.biggestLoss} sign /> · 当前连胜 {st.winStreak} / 连败 {st.lossStreak}
       </div>
-      <div className="note">短期内什么都可能发生；局数越多，实际回报率越接近各游戏公布的理论值（21 点基本策略约 99.5%，百家乐庄约 98.9%，欧式轮盘 97.3%）。</div>
+      <div className="note">短期内什么都可能发生；玩得越久，回报率越接近理论值：21 点（基本策略）约 99.5%，百家乐押庄约 98.9%，欧式轮盘 97.3%。</div>
     </div>
   );
 }
@@ -157,7 +157,7 @@ function Life(): JSX.Element {
         {events.length === 0 && <div className="muted">平静的日子。</div>}
         {events.map((e, i) => (
           <div key={i} className="row" style={{ alignItems: 'baseline', padding: '2px 0' }}>
-            <span className="dim" style={{ fontSize: 11.5, minWidth: 120 }}>
+            <span className="dim" style={{ fontSize: 12, minWidth: 120 }}>
               {formatDate(toDate(e.t), true)}
             </span>
             <span>{e.text}</span>

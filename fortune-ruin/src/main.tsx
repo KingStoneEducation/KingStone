@@ -15,6 +15,10 @@ import { LOCATIONS } from './data/locations';
 import { TABLE_BY_ID } from './casino/tables';
 import { daylight, toDate } from './core/calendar';
 import './ui/styles.css';
+import { applyUiScale } from './ui/uiScale';
+
+// canvas text does not re-render when a web font arrives later: load the pixel font before any scene draws text
+await Promise.race([document.fonts.load('12px "Fusion Pixel"'), new Promise((r) => setTimeout(r, 2500))]);
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -79,7 +83,10 @@ document.addEventListener('click', (e) => {
   if ((e.target as HTMLElement)?.closest?.('button')) sfx('click');
 });
 
-createRoot(document.getElementById('ui-root')!).render(<App />);
+const uiRoot = document.getElementById('ui-root')!;
+applyUiScale(uiRoot);
+window.addEventListener('resize', () => applyUiScale(uiRoot));
+createRoot(uiRoot).render(<App />);
 
 // handy for debugging and automated play-tests
 (window as unknown as Record<string, unknown>).__fr = { game, store, audio };
