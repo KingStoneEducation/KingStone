@@ -7,6 +7,8 @@ import { NPC_BY_ID } from '../../data/npcs';
 import { faceFor } from '../../data/faces';
 import { LOCATIONS } from '../../data/locations';
 import { toDate } from '../../core/calendar';
+import { ITEMS } from '../../data/items';
+import { itemIconUrl } from '../../art/itemIcons';
 
 const DIM_NAMES: [keyof import('../../core/state').RelDims, string][] = [
   ['affection', '好感'],
@@ -74,6 +76,7 @@ export function DialogueModal(props: { view: DialogueView }): JSX.Element {
                 <span className="dim" style={{ marginRight: 4 }}>
                   {i + 1}
                 </span>
+                {o.id.startsWith('give:') && ITEMS[o.id.slice(5)] && <img className="opt-icon" src={itemIconUrl(o.id.slice(5))} width={16} height={16} alt="" />}
                 {o.label}
                 {o.disabled && <span className="dim"> （{o.disabled}）</span>}
               </button>

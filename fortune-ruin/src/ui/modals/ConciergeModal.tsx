@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { store, type ConciergeTab } from '../store';
 import { useCore } from '../hooks';
-import { GV, Modal, Tabs, useFeedback } from '../components';
+import { GV, ItemIcon, Modal, Tabs, useFeedback } from '../components';
 import { formatG } from '../../core/money';
 import { toDate } from '../../core/calendar';
 import { ITEMS } from '../../data/items';
@@ -285,6 +285,7 @@ function StoreTab(): JSX.Element {
           if (!d) return null;
           return (
             <div className="item" key={c.id}>
+              <ItemIcon id={c.id} />
               <div className="grow">
                 <div className="title">
                   {d.name} {core.inventory.count(c.id) > 0 && <span className="tag">持有 {core.inventory.count(c.id)}</span>}

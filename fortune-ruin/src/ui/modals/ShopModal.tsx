@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { store } from '../store';
 import { useCore } from '../hooks';
-import { GV, Modal, Portrait, useFeedback } from '../components';
+import { GV, ItemIcon, Modal, Portrait, useFeedback } from '../components';
 import { ITEMS, SHOPS, type ItemDef } from '../../data/items';
 import { STAT_NAMES } from '../../systems/PlayerSystem';
 import { lookFor } from '../../world/looks';
@@ -70,7 +70,7 @@ export function ShopModal(props: { shopId: string; consume: boolean }): JSX.Elem
           const q = qty[id] ?? 1;
           return (
             <div className="item" key={id}>
-              {d.kind === 'outfit' && d.look && <Portrait look={lookFor(app, id)} scale={2} />}
+              {d.kind === 'outfit' && d.look ? <Portrait look={lookFor(app, id)} scale={2} /> : <ItemIcon id={id} />}
               <div className="grow">
                 <div className="title">
                   {d.name} {owned && <span className="tag good">已拥有</span>}

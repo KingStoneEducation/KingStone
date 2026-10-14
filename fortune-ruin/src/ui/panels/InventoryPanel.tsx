@@ -1,6 +1,6 @@
 import { store } from '../store';
 import { useCore } from '../hooks';
-import { GV, Modal, useFeedback } from '../components';
+import { GV, ItemIcon, Modal, useFeedback } from '../components';
 import { ITEMS, OUTFITS } from '../../data/items';
 import { MEAL_BASIC, MEAL_FRESH } from '../../systems/InventorySystem';
 import { effectText } from '../modals/ShopModal';
@@ -19,6 +19,7 @@ export function InventoryPanel(): JSX.Element {
       <div className="stack">
         {vehicle && (
           <div className="item">
+            <ItemIcon id={vehicle.id} />
             <div className="grow">
               <div className="title">
                 <Icon name="car" /> {vehicle.name}
@@ -47,6 +48,7 @@ export function InventoryPanel(): JSX.Element {
             const usable = isMeal ? atHome : d && (d.kind === 'book' ? atHome : !!d.effects);
             return (
               <div className="item" key={id}>
+                <ItemIcon id={id} />
                 <div className="grow">
                   <div className="title">
                     {name} <span className="dim">×{n}</span>

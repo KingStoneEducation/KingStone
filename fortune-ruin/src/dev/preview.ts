@@ -226,3 +226,34 @@ if (mode === 'hairbust') {
     add(portraitCanvas(look, playerFace(app, look), { bg: '#8a6a4a' }), label);
   }
 }
+
+import { itemIconCanvas } from '../art/itemIcons';
+import { ITEMS } from '../data/items';
+
+if (mode === 'icons') {
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.flexWrap = 'wrap';
+  wrap.style.background = '#e8d8b8';
+  wrap.style.width = '1500px';
+  out.appendChild(wrap);
+  for (const [id, d] of Object.entries(ITEMS)) {
+    const box = document.createElement('div');
+    box.style.margin = '4px';
+    box.style.width = '80px';
+    box.style.color = '#2a1f2e';
+    box.style.fontSize = '10px';
+    const c = itemIconCanvas(id);
+    const s = document.createElement('canvas');
+    s.width = 64;
+    s.height = 64;
+    const x = s.getContext('2d')!;
+    x.imageSmoothingEnabled = false;
+    x.drawImage(c, 0, 0, 64, 64);
+    box.appendChild(s);
+    const t = document.createElement('div');
+    t.textContent = d.name;
+    box.appendChild(t);
+    wrap.appendChild(box);
+  }
+}

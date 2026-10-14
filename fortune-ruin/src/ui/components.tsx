@@ -3,6 +3,8 @@ import { formatG, type Money } from '../core/money';
 import type { CharacterLook } from '../data/npcs';
 import { buildCharacterSheet, CHAR_H, CHAR_W } from '../art/characters';
 import { store } from './store';
+import { ITEMS } from '../data/items';
+import { iconSlotColor, itemIconUrl } from '../art/itemIcons';
 
 export function Modal(props: {
   title: ReactNode;
@@ -89,6 +91,17 @@ export function Portrait(props: { look: CharacterLook; scale?: number; frame?: n
     ctx.drawImage(sheet, f * CHAR_W, 0, CHAR_W, h, 0, 0, CHAR_W * scale, h * scale);
   }, [props.look, scale, props.frame, h]);
   return <canvas ref={ref} width={CHAR_W * scale} height={h * scale} />;
+}
+
+/** The pixel picture of an item, in a small framed slot. */
+export function ItemIcon(props: { id: string; size?: number }): JSX.Element {
+  const s = props.size ?? 32;
+  const kind = ITEMS[props.id]?.kind ?? (props.id.startsWith('meal_') ? 'grocery' : 'misc');
+  return (
+    <span className="item-icon" style={{ width: s + 8, height: s + 8, background: iconSlotColor(kind) }}>
+      <img src={itemIconUrl(props.id === 'meal_basic' ? 'groceries_basic' : props.id === 'meal_fresh' ? 'groceries_fresh' : props.id)} width={s} height={s} alt="" />
+    </span>
+  );
 }
 
 /** Number input in whole G that returns minor units. */
