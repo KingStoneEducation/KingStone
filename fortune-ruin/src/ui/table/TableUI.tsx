@@ -547,29 +547,41 @@ export function TableUI(): JSX.Element | null {
     return { left, pct: left / sh.cards.length, cut: sh.cutIndex / sh.cards.length };
   })();
   const lim = limits(t.tableId);
+  const hints = store.settings.casinoHints;
   return (
     <div className="table-ui">
       <div className="table-top">
-        <div className="table-info" style={{ maxWidth: showRules ? 380 : 250 }}>
+        <div className="table-info" style={{ maxWidth: showRules && hints ? 380 : 250 }}>
           <div className="row between">
             <span className="tname">{cfg.name}</span>
-            <button className="small ghost" onClick={() => setShowRules((v) => !v)} title="查看本桌公开规则">
-              {showRules ? '收起' : '规则'}
-            </button>
+            <div className="row" style={{ gap: 4 }}>
+              {hints && (
+                <button className="small ghost" onClick={() => setShowRules((v) => !v)} title="查看本桌公开规则">
+                  {showRules ? '收起' : '规则'}
+                </button>
+              )}
+              <button
+                className={`small ${hints ? '' : 'ghost'}`}
+                onClick={() => store.saveSettings({ casinoHints: !hints })}
+                title={hints ? '关闭规则说明、点数与牌型标签、赔率与操作提示（荷官的报牌不受影响）' : '重新显示规则说明、点数与牌型标签、赔率与操作提示'}
+              >
+                提示：{hints ? '开' : '关'}
+              </button>
+            </div>
           </div>
           <div className="muted" style={{ fontSize: 12 }}>
             {cfg.game === 'poker'
               ? `无限注 · 盲注 ${formatG(cfg.rules.smallBlind ?? 0)}/${formatG(cfg.rules.bigBlind ?? 0)} · 买入 ${formatG(lim.min)}–${formatG(lim.max)}`
               : `${GAME_NAMES[cfg.game]} · 限注 ${formatG(lim.min)}–${formatG(lim.max)}`}
           </div>
-          {showRules && (
+          {showRules && hints && (
             <ul style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: 12, lineHeight: 1.55, color: 'var(--muted)' }}>
               {rules.map((l, i) => (
                 <li key={i}>{l}</li>
               ))}
             </ul>
           )}
-          {shoeInfo && (
+          {shoeInfo && hints && (
             <div style={{ marginTop: 5, fontSize: 11.5 }} className="muted">
               牌靴剩余 {shoeInfo.left} 张
               <div className="bar" style={{ marginTop: 3, position: 'relative' }}>
@@ -584,10 +596,14 @@ export function TableUI(): JSX.Element | null {
             <div className="money" style={{ fontSize: 13 }}>
               <span className="k">可用筹码</span>
               <span className="v chips">{formatG(core.casino.availableChips())}</span>
-              <span className="k">本次进场</span>
-              <span className="v">
-                <GV v={session?.net ?? 0} sign />
-              </span>
+              {hints && (
+                <>
+                  <span className="k">本次进场</span>
+                  <span className="v">
+                    <GV v={session?.net ?? 0} sign />
+                  </span>
+                </>
+              )}
               <span className="k">会员</span>
               <span className="v" style={{ fontWeight: 400 }}>
                 {core.casino.tierInfo().name}
@@ -610,11 +626,13 @@ export function TableUI(): JSX.Element | null {
       <div
         className="table-bar"
         title={
-          t.game === 'blackjack'
-            ? '快捷键：B 下注 · 空格 发牌 · H 要牌 · S 停牌 · D 加倍 · P 分牌 · R 投降 · Esc 离桌'
-            : t.game === 'poker'
-              ? '快捷键：F 弃牌 · C 过牌/跟注 · R 下注/加注 · A 全下 · 空格 下一手 · Esc 离桌'
-              : '快捷键：空格 开局 · Esc 离桌'
+          !hints
+            ? undefined
+            : t.game === 'blackjack'
+              ? '快捷键：B 下注 · 空格 发牌 · H 要牌 · S 停牌 · D 加倍 · P 分牌 · R 投降 · Esc 离桌'
+              : t.game === 'poker'
+                ? '快捷键：F 弃牌 · C 过牌/跟注 · R 下注/加注 · A 全下 · 空格 下一手 · Esc 离桌'
+                : '快捷键：空格 开局 · Esc 离桌'
         }
       >
         <div className="table-msg">{ui.message || '\u00a0'}</div>

@@ -39,6 +39,7 @@ export type Modal =
   | { type: 'jobs' }
   | { type: 'collapse'; text: string }
   | { type: 'settings' }
+  | { type: 'intro' }
   | { type: 'saves'; mode: 'save' | 'load' };
 
 export interface Toast {
@@ -63,6 +64,10 @@ export interface Settings {
   reduceFlashing: boolean;
   /** table animation speed multiplier */
   tableSpeed: number;
+  /** rule reminders, hand totals, payout hints and prompts at the tables */
+  casinoHints: boolean;
+  /** four-colour deck: spades black, hearts red, diamonds blue, clubs green */
+  fourColorDeck: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -74,6 +79,8 @@ const DEFAULT_SETTINGS: Settings = {
   showCasinoClock: false,
   reduceFlashing: false,
   tableSpeed: 1,
+  casinoHints: true,
+  fourColorDeck: false,
 };
 
 function loadSettings(): Settings {
@@ -105,6 +112,8 @@ class UIStore {
   tableUi: TableUiState = { chip: 25, busy: false, phase: 'betting', message: '', result: null };
   locationBanner: { name: string; sub: string; t: number } | null = null;
   fade = false;
+  /** location the map should open on (set by openMap) */
+  mapFocus: string | null = null;
   settings: Settings = loadSettings();
   private listeners = new Set<() => void>();
   private version = 0;
@@ -154,6 +163,14 @@ class UIStore {
 
   openPanel(p: Panel): void {
     this.panel = this.panel === p ? null : p;
+    this.syncPause();
+    this.notify();
+  }
+
+  /** Open the city map with a location selected. */
+  openMap(location: string | null): void {
+    this.mapFocus = location;
+    this.panel = 'map';
     this.syncPause();
     this.notify();
   }

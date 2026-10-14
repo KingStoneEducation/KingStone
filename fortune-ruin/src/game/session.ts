@@ -80,6 +80,7 @@ export function newGame(opts: NewGameOptions): void {
   const core = startNewGame(opts);
   begin(core);
   autosave('new');
+  store.openModal({ type: 'intro' });
 }
 
 export function loadGame(slot: string): string | null {

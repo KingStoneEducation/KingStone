@@ -137,13 +137,44 @@ export class DialogueEngine {
     if (plan) lines.push(`别忘了${toDate(plan.at).hour}点的约哦。`);
     this.core.social.touchContact(npcId);
     this.core.paused.add('dialogue');
+    // stay for the conversation, even when chatting makes time pass
+    this.core.state.npcs[npcId].flags.talkHold = true;
+    this.core.bus.emit('dialogue:start', { npc: npcId });
     return this.view(lines);
   }
 
   end(): void {
+    const npc = this.session?.npcId;
     this.session = null;
     this.core.paused.delete('dialogue');
+    if (npc) {
+      const rt = this.core.state.npcs[npc];
+      rt.flags.talkHold = false;
+      // nobody walks off the moment a conversation ends
+      rt.flags.talkHoldUntil = this.core.now() + 15;
+      this.core.bus.emit('dialogue:end', { npc });
+    }
     this.core.touch();
+  }
+
+  /**
+   * Someone who dislikes the player may not want to talk: a small chance that
+   * grows with the dislike. Returns what they say instead, or null.
+   */
+  refusal(npcId: string): string | null {
+    const r = this.core.social.rel(npcId);
+    if (!r.met) return null;
+    const now = this.core.now();
+    if (Number(r.flags.refusedUntil ?? -1) > now) return this.pick(npcId, ['我说了，现在不想聊。', '……', '别再来了。']);
+    const disp = this.core.social.disposition(npcId);
+    if (r.affection > -20 && disp > -25) return null;
+    const dislike = Math.max(-r.affection, -disp);
+    const p = Math.min(0.45, 0.1 + Math.max(0, dislike - 20) / 140);
+    if (!this.core.rng.chance(p)) return null;
+    r.flags.refusedUntil = now + 30;
+    const t = this.def(npcId).traits;
+    const pool = t.temper > 0.6 ? ['离我远点，好吗？', '我没什么想跟你说的。', '你还有脸来找我？'] : t.empathy > 0.6 ? ['……抱歉，我现在不太想说话。', '改天吧，今天不方便。'] : ['我还有事。', '现在不太方便。', '……（对方别过头去，假装没看见你。）'];
+    return this.pick(npcId, pool);
   }
 
   private salientFact(npcId: string): Memory | null {
@@ -262,8 +293,8 @@ export class DialogueEngine {
     opts.push({ id: 'menu_share', label: '说说自己的近况…', tone: 'neutral' });
     if (this.core.inventory.giftables().length) opts.push({ id: 'menu_gift', label: '送礼物…', tone: 'warm' });
     const venue = this.treatPrice();
-    if (venue) opts.push({ id: 'treat', label: `请对方${venue.what}（${fmt(venue.price)}）`, tone: 'money' });
-    if (r.familiarity >= 25) opts.push({ id: 'hangout', label: '一起待一会儿（约 45 分钟）', tone: 'warm' });
+    if (venue) opts.push({ id: 'treat', label: `请对方${venue.what}（${fmt(venue.price)}）`, tone: 'money', disabled: r.flags.treatDay === this.core.today() ? '今天已经请过了' : undefined });
+    if (r.familiarity >= 25) opts.push({ id: 'hangout', label: '一起待一会儿（约 45 分钟）', tone: 'warm', disabled: r.flags.hangoutDay === this.core.today() ? '今天已经一起待过了' : undefined });
     opts.push({ id: 'advice', label: '请教点事', tone: 'neutral', disabled: r.flags.adviceDay === this.core.today() ? '今天已经请教过了' : undefined });
     const owes = Number(this.core.state.player.flags[`owes:${id}`] ?? 0);
     if (owes > 0) opts.push({ id: 'repay', label: `还钱（${fmt(owes)}）`, tone: 'money' });
@@ -409,7 +440,7 @@ export class DialogueEngine {
       case 'chat': {
         const talked = r.talksToday;
         const mag = Math.max(0.1, 1 - talked * 0.25);
-        soc.applyDirect(id, { kind: 'chat', facets: { attention: 0.5 * mag, charm: 0.25 * mag + this.core.state.player.skills.social / 400 }, importance: 5 }, { silent: true, noMemory: true });
+        soc.applyDirect(id, { kind: 'chat', facets: { attention: 0.5 * mag, charm: 0.25 * mag + this.core.state.player.skills.social / 400 }, importance: 5 }, { silent: true, noMemory: true, routine: 0.5 });
         this.core.player.change('social', 8 * mag);
         this.core.player.addSkill('social', 0.15 * mag, 60);
         const own = this.pick(id, def.voice.small) ?? this.pick(id, GENERIC_SMALL);
@@ -419,6 +450,17 @@ export class DialogueEngine {
         break;
       }
       case 'ask': {
+        const today = this.core.today();
+        if (r.flags.askDay !== today) {
+          r.flags.askDay = today;
+          r.flags.askCount = 0;
+        }
+        r.flags.askCount = Number(r.flags.askCount) + 1;
+        if (Number(r.flags.askCount) > 3) {
+          lines.push(this.pick(id, ['你今天已经问过好几次啦，我真的挺好的。', '……你今天怎么老问这个？', '还是那样，跟刚才一样。']) ?? '');
+          if (Number(r.flags.askCount) > 5) soc.applyDirect(id, { kind: 'chat', facets: { attention: -0.3 }, importance: 3 }, { silent: true, noMemory: true });
+          break;
+        }
         const rt = this.core.state.npcs[id];
         const self = soc.memoriesOf(id, id)[0];
         let line: string | null = null;
@@ -431,7 +473,7 @@ export class DialogueEngine {
         if (!line && rt.flags.inCrisis && r.trust > 30) line = id === 'marco' ? '……兄弟，我欠了不少钱，那些人天天打电话催。我不知道该怎么办了。' : '最近真的很难，欠了好多钱。';
         if (!line) line = rt.mood > 25 ? this.pick(id, def.voice.happy) : rt.mood < -10 || rt.stress > 60 ? this.pick(id, def.voice.stressed) : this.pick(id, def.voice.work);
         lines.push(line ?? '还是老样子。');
-        soc.applyDirect(id, { kind: 'chat', facets: { attention: 0.4, kindness: 0.2 }, importance: 5 }, { silent: true, noMemory: true });
+        soc.applyDirect(id, { kind: 'chat', facets: { attention: 0.4, kindness: 0.2 }, importance: 5 }, { silent: true, noMemory: true, routine: 0.4 });
         this.core.advance(8, 'talking');
         break;
       }
@@ -474,7 +516,7 @@ export class DialogueEngine {
         break;
       }
       case 'resp_thanks':
-        soc.applyDirect(id, { kind: 'chat', facets: { charm: 0.3 }, importance: 4 }, { silent: true, noMemory: true });
+        soc.applyDirect(id, { kind: 'chat', facets: { charm: 0.3 }, importance: 4 }, { silent: true, noMemory: true, routine: 0.2 });
         lines.push(this.pick(id, ['不客气。', '嗯。', '应该的。']) ?? '');
         s.menu = 'main';
         break;
@@ -523,7 +565,8 @@ export class DialogueEngine {
           soc.applyDirect(id, { kind: 'chat', facets: { charm: -0.1 }, importance: 3 }, { silent: true, noMemory: true });
           break;
         }
-        soc.applyDirect(id, { kind: 'treated_me', facets: { generosity: 0.45, attention: 0.6, intimacy: 0.2 }, importance: 14, data: { what: v.what.replace('喝', '').replace('吃', '') || v.what } });
+        r.flags.treatDay = this.core.today();
+        soc.applyDirect(id, { kind: 'treated_me', facets: { generosity: 0.45, attention: 0.6, intimacy: 0.2 }, importance: 14, data: { what: v.what.replace('喝', '').replace('吃', '') || v.what } }, { routine: 0.8 });
         this.core.player.change('social', 12);
         this.core.advance(30, 'talking');
         lines.push(this.pick(id, ['谢谢，那我就不客气了。', '你请客？好啊！', '今天是什么好日子？谢啦。', '……谢谢。']) ?? '');
@@ -531,7 +574,8 @@ export class DialogueEngine {
       }
       case 'hangout': {
         const t = def.traits;
-        soc.applyDirect(id, { kind: 'deep_talk', facets: { intimacy: 0.7 * (0.6 + t.sociability * 0.4), attention: 0.8 }, importance: 16 });
+        r.flags.hangoutDay = this.core.today();
+        soc.applyDirect(id, { kind: 'deep_talk', facets: { intimacy: 0.7 * (0.6 + t.sociability * 0.4), attention: 0.8 }, importance: 16 }, { routine: 1.2 });
         this.core.player.change('social', 20);
         this.core.player.change('stress', -6);
         this.core.advance(45, 'talking');
@@ -548,7 +592,7 @@ export class DialogueEngine {
           this.core.player.change('impulsivity', -ex.calm);
           this.core.player.change('stress', -ex.calm / 2);
         }
-        soc.applyDirect(id, { kind: 'advice_taken', facets: { attention: 0.4, sophistication: 0.1 }, importance: 8 }, { silent: true });
+        soc.applyDirect(id, { kind: 'advice_taken', facets: { attention: 0.4, sophistication: 0.1 }, importance: 8 }, { silent: true, routine: 0.3 });
         this.core.advance(10, 'talking');
         break;
       }
@@ -633,7 +677,11 @@ export class DialogueEngine {
     const loves = tags.some((t) => def.giftLikes.includes(t));
     const hates = tags.some((t) => def.giftDislikes.includes(t));
     const expensive = item.price >= G(500);
-    const sameDay = r.lastGiftDay === this.core.today();
+    if (r.lastGiftDay === this.core.today()) {
+      // a second present on the same day is awkward, not twice as nice
+      this.core.inventory.add(itemId);
+      return [this.pick(id, ['今天已经收了你的礼物了，真的不用了。', '你今天已经送过我东西啦，留着吧。']) ?? '不用了。', '（对方没有收下。）'];
+    }
     r.lastGiftDay = this.core.today();
     // professionals can't accept valuable gifts from clients
     if (expensive && (id === 'jack' || id === 'grace' || id === 'natasha')) {
@@ -641,13 +689,12 @@ export class DialogueEngine {
       soc.applyDirect(id, { kind: 'gift_bad', facets: { deceit: 0.1 }, importance: 10, data: { item: item.name } }, { silent: true });
       return [this.pick(id, def.voice.giftDislike) ?? '我不能收。', '（对方把礼物还给了你。）'];
     }
-    const scale = sameDay ? 0.3 : 1;
     const priceMag = Math.min(1.5, Math.log10(Math.max(10, item.price / 100)) / 2.5);
     if (hates) {
-      soc.applyDirect(id, { kind: 'gift_bad', facets: { attention: 0.2 * scale, vulgarity: expensive ? 0.3 : 0 }, importance: 10, data: { item: item.name } });
+      soc.applyDirect(id, { kind: 'gift_bad', facets: { attention: 0.2, vulgarity: expensive ? 0.3 : 0 }, importance: 10, data: { item: item.name } });
       return [this.pick(id, def.voice.giftDislike) ?? '……谢谢。'];
     }
-    soc.applyDirect(id, { kind: 'gift', facets: { generosity: (loves ? 0.8 : 0.4) * scale * (0.6 + priceMag), kindness: loves ? 0.4 * scale : 0.1, wealthDisplay: expensive ? priceMag * 0.5 : 0 }, importance: loves ? 22 : 12, data: { item: item.name } });
+    soc.applyDirect(id, { kind: 'gift', facets: { generosity: (loves ? 0.8 : 0.4) * (0.6 + priceMag), kindness: loves ? 0.4 : 0.1, wealthDisplay: expensive ? priceMag * 0.5 : 0 }, importance: loves ? 22 : 12, data: { item: item.name } }, { routine: 0.8 });
     return [loves ? (this.pick(id, def.voice.giftLove) ?? '谢谢！') : this.pick(id, ['谢谢，你有心了。', '哦，谢谢。', '这是给我的？谢谢。'])!];
   }
 

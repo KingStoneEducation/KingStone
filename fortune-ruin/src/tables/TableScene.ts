@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { GameCore } from '../core/GameCore';
 import { store } from '../ui/store';
 import { TABLE_BY_ID, type TableConfig } from '../casino/tables';
-import { CARD_H, CARD_W, cardFrame, chipFrame, registerTableTextures, tableAtlas, TH, TW, type FeltVariant } from '../art/tableArt';
+import { CARD_H, CARD_SCALE, CARD_W, cardFrame, chipFrame, registerTableTextures, tableAtlas, TH, TW, type FeltVariant } from '../art/tableArt';
 import { breakIntoChips, formatG, G, type Money } from '../core/money';
 import { CHIP_DENOMS } from '../art/palette';
 import type { Card } from '../casino/cards';
@@ -62,9 +62,15 @@ export abstract class TableScene extends Phaser.Scene {
     this.add.image(0, 0, this.feltKey()).setOrigin(0, 0).setDepth(0);
     this.fit();
     this.scale.on('resize', this.fit, this);
+    let hints = store.settings.casinoHints;
     this.offs.push(
       this.core.bus.on('patron:emote', ({ id, emote }) => this.plaqueEmote(id, emote)),
       this.core.bus.on('patron:left', ({ id }) => this.time.delayedCall(10, () => this.removePlaque(id))),
+      store.subscribe(() => {
+        if (store.settings.casinoHints === hints || !this.alive) return;
+        hints = store.settings.casinoHints;
+        this.refreshHints();
+      }),
     );
     this.events.once('shutdown', () => this.teardown());
     store.tableApi = this as unknown as TableApi;
@@ -72,6 +78,11 @@ export abstract class TableScene extends Phaser.Scene {
     this.alive = true;
     this.build();
     store.notify();
+  }
+
+  /** Table hints were switched on or off: show or hide the helper labels. */
+  protected refreshHints(): void {
+    /* subclasses with hint labels override this */
   }
 
   /** Felt texture key (subclasses draw their own layout). */
@@ -133,8 +144,10 @@ export abstract class TableScene extends Phaser.Scene {
     store.notify();
   }
 
-  setPhase(phase: TablePhase, message?: string): void {
-    store.tableUi = { ...store.tableUi, phase, message: message ?? store.tableUi.message };
+  /** `prompt` is a helper line for newcomers; it is dropped when table hints are off. */
+  setPhase(phase: TablePhase, prompt?: string): void {
+    const message = prompt !== undefined && this.hintsOn() ? prompt : store.tableUi.message;
+    store.tableUi = { ...store.tableUi, phase, message };
     store.notify();
     this.core.touch();
   }
@@ -142,6 +155,15 @@ export abstract class TableScene extends Phaser.Scene {
   message(text: string): void {
     store.tableUi = { ...store.tableUi, message: text };
     store.notify();
+  }
+
+  /** A helper line (payouts, whose turn it is ...), only shown with table hints on. */
+  hint(text: string): void {
+    if (this.hintsOn()) this.message(text);
+  }
+
+  hintsOn(): boolean {
+    return store.settings.casinoHints;
   }
 
   showResult(net: Money, text: string): void {
@@ -272,27 +294,37 @@ export abstract class TableScene extends Phaser.Scene {
 
   // ------------------------------------------------------------------ cards
 
-  cardImage(card: Card | null, x: number, y: number, depth = 100): Phaser.GameObjects.Image {
-    const ref = tableAtlas.ref(cardFrame(card));
-    return this.add.image(x, y, ref.key, ref.frame).setOrigin(0.5, 0.5).setDepth(depth);
+  /**
+   * A card on the table. Card textures carry CARD_DENSITY × the stage's
+   * detail, so `size` is relative to the card's table size (1 = 22 × 30).
+   */
+  cardImage(card: Card | null, x: number, y: number, depth = 100, size = 1): Phaser.GameObjects.Image {
+    const ref = tableAtlas.ref(cardFrame(card, store.settings.fourColorDeck));
+    return this.add.image(x, y, ref.key, ref.frame).setOrigin(0.5, 0.5).setDepth(depth).setScale(size * CARD_SCALE);
+  }
+
+  /** Texture scale for a card shown at `size` × its table size. */
+  cardScale(size = 1): number {
+    return size * CARD_SCALE;
   }
 
   setCardFace(img: Phaser.GameObjects.Image, card: Card | null): void {
-    const ref = tableAtlas.ref(cardFrame(card));
+    const ref = tableAtlas.ref(cardFrame(card, store.settings.fourColorDeck));
     img.setTexture(ref.key, ref.frame);
   }
 
   async flip(img: Phaser.GameObjects.Image, card: Card | null, ms = 180): Promise<void> {
+    const sx = img.scaleY;
     await this.tween(img, { scaleX: 0 }, ms / 2, 'Sine.easeIn');
     this.setCardFace(img, card);
-    await this.tween(img, { scaleX: 1 }, ms / 2, 'Sine.easeOut');
+    await this.tween(img, { scaleX: sx }, ms / 2, 'Sine.easeOut');
   }
 
   /** Slide a new card from the shoe to (x, y), turning it face up on arrival. */
   async dealCard(from: { x: number; y: number }, x: number, y: number, card: Card | null, depth: number): Promise<Phaser.GameObjects.Image> {
-    const img = this.cardImage(null, from.x, from.y, depth).setScale(0.85);
+    const img = this.cardImage(null, from.x, from.y, depth, 0.85);
     sfx('card');
-    await this.tween(img, { x, y, scale: 1, angle: { from: -12, to: 0 } }, 260);
+    await this.tween(img, { x, y, scale: this.cardScale(), angle: { from: -12, to: 0 } }, 260);
     if (card !== null) await this.flip(img, card, 150);
     return img;
   }

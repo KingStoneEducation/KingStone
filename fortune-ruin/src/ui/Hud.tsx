@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { store, type Panel } from './store';
 import { useCore } from './hooks';
 import { Bar, GV, Keycap } from './components';
-import { formatClock, formatDate, SEASON_NAMES, toDate } from '../core/calendar';
+import { formatClock, formatDate, MINUTES_PER_DAY, SEASON_NAMES, toDate, WEEKDAY_NAMES } from '../core/calendar';
 import { LOCATIONS, isOpen } from '../data/locations';
 import { formatG, type Money } from '../core/money';
 import type { AccountId } from '../core/state';
@@ -29,6 +29,66 @@ function Clock(): JSX.Element {
         <span className="muted">{status}</span>
         {hide && <span className="dim" style={{ fontSize: 11 }}> · 这里看不到时钟</span>}
       </div>
+    </div>
+  );
+}
+
+function span(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h} 小时${m ? ` ${m} 分` : ''}` : `${m} 分钟`;
+}
+
+/** Your job, always in view: when the next shift starts, or that you are late for it. */
+function WorkLine(): JSX.Element | null {
+  const core = useCore();
+  const items = core.career.agenda();
+  if (core.state.world.location === 'casino' && !store.settings.showCasinoClock) return null;
+  if (items.length === 0) {
+    if (core.career.activeJobs().length > 0) return null;
+    return (
+      <div className="hud-box interactive work-line" onClick={() => store.openModal({ type: 'jobs' })} title="查看招聘信息">
+        <div className="what">目前没有工作</div>
+        <div className="when">用电脑上的招聘网站找一份工作</div>
+      </div>
+    );
+  }
+  const it = items[0];
+  const now = core.now();
+  const d = toDate(it.start);
+  const sameDay = Math.floor(now / MINUTES_PER_DAY) === Math.floor(it.start / MINUTES_PER_DAY);
+  const tomorrow = Math.floor(it.start / MINUTES_PER_DAY) === Math.floor(now / MINUTES_PER_DAY) + 1;
+  const day = sameDay ? '今天' : tomorrow ? '明天' : WEEKDAY_NAMES[d.weekday];
+  const at = `${day} ${formatClock(d.minuteOfDay)}`;
+  let when = '';
+  let tone = '';
+  switch (it.status) {
+    case 'upcoming':
+      when = `${at} 上班 · 还有 ${span(it.start - now)}`;
+      if (it.start - now <= 90) tone = 'warn';
+      break;
+    case 'open':
+      when = now < it.start ? `可以打卡了 · ${formatClock(d.minuteOfDay)} 开始` : '上班时间到了，去工位打卡';
+      tone = 'warn';
+      break;
+    case 'late':
+      when = `已迟到 ${span(now - it.start)}，快去打卡`;
+      tone = 'bad';
+      break;
+    case 'leave':
+      when = '今天请了假';
+      break;
+    case 'next':
+      when = `下一班：${at}`;
+      break;
+  }
+  const place = LOCATIONS[it.location]?.name ?? it.employer;
+  return (
+    <div className="hud-box interactive work-line" onClick={() => store.openMap(it.location)} title="点击在地图上查看上班地点">
+      <div className="what">
+        {it.title} · {place}
+      </div>
+      <div className={`when ${tone}`}>{when}</div>
     </div>
   );
 }
@@ -200,6 +260,7 @@ export function Hud(): JSX.Element {
       {!atTable && (
         <div className="hud-tl">
           <Clock />
+          <WorkLine />
         </div>
       )}
       {!atTable && (

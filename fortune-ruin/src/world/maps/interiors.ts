@@ -118,7 +118,8 @@ const homeShared: Builder = () => {
   b.prop('window', 3, 1, undefined, { oy: -2 });
   b.prop('chair', 9, 7);
   b.prop('wardrobe', 1, 7, { kind: 'wardrobe', label: '衣箱' });
-  b.staff(9, 6, 'left', 3301, '室友', 'roommate');
+  // by the kitchen doorway, not in it
+  b.staff(10, 6, 'left', 3301, '室友', 'roommate');
   b.spawn('bed', 2, 4, 'down');
   b.data.ambient = { day: 0.8, night: 0.45, color: 0x0e0a22 };
   return b.finish();
@@ -400,7 +401,7 @@ const cafe: Builder = () => {
   b.prop('window', 11, 1, undefined, { oy: -2 });
   b.prop('plant', 14, 2);
   b.prop('plant', 1, 9);
-  for (const [x, y] of [[3, 6], [7, 6], [11, 6], [3, 9], [8, 9], [13, 8]] as [number, number][]) {
+  for (const [x, y] of [[3, 6], [7, 6], [11, 6], [3, 9], [10, 9], [13, 8]] as [number, number][]) {
     b.prop('table_round', x, y);
     b.prop('chair_cafe', x - 1, y);
     if (x < 13) b.prop('chair_cafe', x + 1, y);
@@ -411,7 +412,7 @@ const cafe: Builder = () => {
   b.spot('cafe_window', 12, 6, 'left', true);
   b.spot('cafe_table1', 4, 6, 'left', true);
   b.spot('cafe_table2', 6, 6, 'right', true);
-  b.spot('cafe_table3', 9, 9, 'left', true);
+  b.spot('cafe_table3', 9, 9, 'right', true);
   b.interactable('cafe_work', 7, 2, 1, 1, { kind: 'work', label: '咖啡师工位', data: { job: 'barista' } });
   b.data.ambient = { day: 1, night: 0.8, color: 0x140c1a };
   return b.finish();
@@ -444,7 +445,7 @@ const restaurant: Builder = () => {
   b.prop('sink', 15, 3);
   b.prop('bottle_shelf', 2, 1, undefined, { oy: -2 });
   b.prop('painting', 13, 1, undefined, { oy: -2 });
-  for (const [x, y] of [[2, 6], [6, 6], [10, 6], [14, 6], [2, 9], [6, 9], [12, 9]] as [number, number][]) {
+  for (const [x, y] of [[2, 6], [7, 6], [13, 6], [2, 9], [6, 9], [12, 9]] as [number, number][]) {
     b.prop('dining_table', x, y, { kind: 'order', label: '点菜', data: { shop: 'restaurant' } });
     b.prop('chair', x - 1, y);
     b.prop('chair', x + 2, y);
@@ -456,7 +457,7 @@ const restaurant: Builder = () => {
   b.spot('rest_pass', 6, 4, 'up');
   b.spot('rest_table1', 3, 5, 'down', true);
   b.spot('rest_table2', 7, 5, 'down', true);
-  b.spot('rest_table3', 11, 5, 'down', true);
+  b.spot('rest_table3', 13, 5, 'down', true);
   b.interactable('rest_work', 6, 4, 1, 1, { kind: 'work', label: '传菜口（上班）', data: { job: 'waiter' } });
   b.staff(4, 2, 'down', 2302, '厨师', 'cook');
   b.data.ambient = { day: 0.95, night: 0.7, color: 0x140c1a };
@@ -728,7 +729,7 @@ const fineDining: Builder = () => {
     b.prop('chair', x - 1, y);
     b.prop('chair', x + 2, y);
   }
-  b.prop('piano', 7, 8, { kind: 'piano', label: '钢琴' });
+  b.prop('piano', 4, 8, { kind: 'piano', label: '钢琴' });
   b.prop('chandelier', 4, 3, undefined, { noBlock: true });
   b.prop('chandelier', 11, 3, undefined, { noBlock: true });
   b.prop('art_large', 7, 1, undefined, { oy: -4 });

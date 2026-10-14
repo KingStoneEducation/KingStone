@@ -115,6 +115,14 @@ export class NPCManager {
   tick(t: number): void {
     for (const def of NPCS) {
       const rt = this.rt(def.id);
+      // someone talking with the player stays put (a traveller's walk is paused, not skipped)
+      if (rt.flags.talkHold === true || Number(rt.flags.talkHoldUntil ?? -1) > t) {
+        if (rt.travel) {
+          rt.travel.depart += 1;
+          rt.travel.arrive += 1;
+        }
+        continue;
+      }
       if (rt.travel) {
         if (t >= rt.travel.arrive) {
           rt.location = rt.travel.to;

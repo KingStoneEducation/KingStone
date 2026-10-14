@@ -7,6 +7,7 @@ import { formatG, G, type Money } from '../core/money';
 import { store } from '../ui/store';
 import { WORLD_FONT } from '../world/textures';
 import { smoothText } from '../world/CharacterSprite';
+import { DEALER } from './dealerLines';
 import { sfx } from '../audio/Audio';
 
 const PLAYER = 'player';
@@ -113,7 +114,7 @@ export class BlackjackScene extends TableScene {
   }
 
   private clearTable(): void {
-    for (const seat of this.hands) for (const h of seat) this.destroyHand(h);
+    for (const seat of this.hands) for (const h of seat ?? []) this.destroyHand(h);
     this.hands = [];
     for (const c of this.dealerCards) c.destroy();
     this.dealerCards = [];
@@ -178,14 +179,19 @@ export class BlackjackScene extends TableScene {
     const eh = this.st.seats[seat].hands[h];
     const natural = v.values.length === 2 && hv.total === 21 && !eh?.fromSplit;
     if (natural) return { text: 'BJ', color: '#ffe45c' };
-    if (hv.total > 21) return { text: `爆 ${hv.total}`, color: '#ff8a8a' };
+    if (hv.total > 21) return { text: `${hv.total} · 超过21`, color: '#ff8a8a' };
     return { text: hv.soft ? `软${hv.total}` : String(hv.total), color: '#f4f1ea' };
   }
 
-  private updateHandLabel(seat: number, h: number): void {
+  /**
+   * The label over a hand: its running total (a hint, hidden when table hints
+   * are off), or a call the dealer makes either way — over 21, the result.
+   */
+  private updateHandLabel(seat: number, h: number, call?: { text: string; color: string }): void {
     const v = this.hands[seat]?.[h];
     if (!v) return;
-    const { text, color } = this.handLabelText(seat, h);
+    let { text, color } = call ?? this.handLabelText(seat, h);
+    if (!call && !this.hintsOn() && BJE.handValue(v.values).total <= 21) text = '';
     const H = this.hands[seat].length || this.st.seats[seat].hands.length;
     const last = this.cardPos(seat, h, H, Math.max(0, v.values.length - 1));
     if (!text) {
@@ -202,15 +208,21 @@ export class BlackjackScene extends TableScene {
     } else v.label.setText(text).setColor(color).setPosition(last.x, last.y - 20);
   }
 
+  protected override refreshHints(): void {
+    if (this.st.phase === 'settled') return; // result tags stay as they are
+    this.hands.forEach((seat, i) => (seat ?? []).forEach((_, h) => this.updateHandLabel(i, h)));
+    this.updateDealerLabel();
+  }
+
   private updateDealerLabel(): void {
-    if (this.dealerValues.length === 0) {
+    if (this.dealerValues.length === 0 || !this.hintsOn()) {
       this.dealerLabel?.destroy();
       this.dealerLabel = null;
       return;
     }
     const visible = this.dealerHidden ? this.dealerValues.filter((_, i) => i !== 1) : this.dealerValues;
     const hv = BJE.handValue(visible);
-    const text = this.dealerHidden ? `${hv.soft ? '软' : ''}${hv.total} + ?` : hv.total > 21 ? `爆 ${hv.total}` : visible.length === 2 && hv.total === 21 ? 'BJ' : `${hv.soft && hv.total < 21 ? '软' : ''}${hv.total}`;
+    const text = this.dealerHidden ? `${hv.soft ? '软' : ''}${hv.total} + ?` : hv.total > 21 ? `${hv.total} · 超过21` : visible.length === 2 && hv.total === 21 ? 'BJ' : `${hv.soft && hv.total < 21 ? '软' : ''}${hv.total}`;
     const p = this.dealerCardPos(0);
     if (!this.dealerLabel) {
       this.dealerLabel = this.add
@@ -245,7 +257,7 @@ export class BlackjackScene extends TableScene {
     const shoe = this.st.shoe;
     const left = shoe.cards.length - shoe.pos;
     this.setPhase('betting');
-    this.dealerSay(this.st.needsShuffle ? '这一靴牌用完了，下一局先洗牌。请下注。' : left < 80 ? '请下注。（牌靴快到切牌位置了）' : '请下注。', 2600);
+    this.dealerSay(DEALER.bjBetting(this.st.needsShuffle, left < 80), 2600);
   }
 
   private refreshPending(i: number, animate: boolean): void {
@@ -269,7 +281,7 @@ export class BlackjackScene extends TableScene {
       if (!this.alive) return;
       switch (e.k) {
         case 'shuffle':
-          this.dealerSay('洗牌中……', 1800);
+          this.dealerSay(DEALER.shuffle(), 1800);
           sfx('shuffle');
           await this.animShuffle();
           break;
@@ -286,7 +298,7 @@ export class BlackjackScene extends TableScene {
           await this.animDealerDeal(e.card, e.hidden);
           break;
         case 'insuranceOffered':
-          this.dealerSay('庄家明牌是 A。需要买保险吗？（保险赔率 2:1）', 3500);
+          this.dealerSay(DEALER.bjInsurance(), 3500);
           break;
         case 'peek': {
           const hole = this.dealerCards[1];
@@ -295,7 +307,7 @@ export class BlackjackScene extends TableScene {
             await this.wait(250);
             await this.tween(hole, { y: hole.y + 4 }, 160);
           }
-          if (!e.dealerBlackjack) this.dealerSay('庄家没有 Blackjack，继续。', 1600);
+          if (!e.dealerBlackjack) this.dealerSay(DEALER.bjNoBlackjack(), 1600);
           await this.wait(300);
           break;
         }
@@ -304,7 +316,7 @@ export class BlackjackScene extends TableScene {
           this.dealerHidden = false;
           if (hole) await this.flip(hole, e.card);
           this.updateDealerLabel();
-          if (BJE.dealerHasNatural(this.st)) this.dealerSay('庄家 Blackjack。', 1800);
+          if (BJE.dealerHasNatural(this.st)) this.dealerSay(DEALER.bjDealerBlackjack(), 1800);
           await this.wait(250);
           break;
         }
@@ -315,8 +327,7 @@ export class BlackjackScene extends TableScene {
           await this.animDouble(e.seat, e.hand, e.extra);
           break;
         case 'surrender': {
-          const v = this.hands[e.seat]?.[e.hand];
-          if (v?.label) v.label.setText('投降').setColor('#c8c0d8');
+          this.updateHandLabel(e.seat, e.hand, { text: '投降', color: '#c8c0d8' });
           await this.wait(300);
           break;
         }
@@ -333,11 +344,11 @@ export class BlackjackScene extends TableScene {
           this.setPhase('dealer');
           break;
         case 'dealerStands':
-          this.dealerSay(`庄家 ${e.total} 点，停牌。`, 1800);
+          this.dealerSay(DEALER.bjDealerStands(e.total), 1800);
           await this.wait(450);
           break;
         case 'dealerBust':
-          this.dealerSay(`庄家爆牌（${e.total} 点）！`, 1800);
+          this.dealerSay(DEALER.bjDealerOver(e.total), 1800);
           await this.wait(500);
           break;
         case 'settle':
@@ -474,12 +485,13 @@ export class BlackjackScene extends TableScene {
       win: ['赢', '#7dffa8'],
       push: ['平局', '#c8c0d8'],
       lose: ['输', '#ff8a8a'],
-      bust: ['爆牌', '#ff8a8a'],
+      bust: ['超过 21 点', '#ff8a8a'],
       surrender: ['投降', '#c8c0d8'],
     };
     const [text, color] = labels[result] ?? [result, '#fff'];
     const total = this.handLabelText(seat, h).text;
-    if (v.label) v.label.setText(result === 'blackjack' || result === 'bust' || result === 'surrender' ? text : `${total} · ${text}`).setColor(color);
+    const plain = result === 'blackjack' || result === 'bust' || result === 'surrender' || !this.hintsOn();
+    this.updateHandLabel(seat, h, { text: plain ? text : `${total} · ${text}`, color });
     if (payout > bet) {
       // the dealer pays from the rack
       const win = this.chipStack(payout - bet, rack.x, rack.y, { mine, label: false });
@@ -538,7 +550,7 @@ export class BlackjackScene extends TableScene {
         if (owner === PLAYER) {
           const cur = BJE.currentHand(s);
           if (cur) this.pointAt(cur.seat, cur.hand);
-          this.setPhase('player', '轮到你了。');
+          this.setPhase('player', DEALER.bjYourTurn());
           return;
         }
         if (owner) {
@@ -572,9 +584,9 @@ export class BlackjackScene extends TableScene {
     await this.wait(1500);
     // sweep cards to the discard tray
     const all: Phaser.GameObjects.Image[] = [...this.dealerCards];
-    for (const seat of this.hands) for (const h of seat) all.push(...h.cards);
+    for (const seat of this.hands) for (const h of seat ?? []) all.push(...h.cards);
     await Promise.all(all.map((c, i) => this.tween(c, { x: BJ.discard.x, y: BJ.discard.y, angle: 90, alpha: 0.6, delay: i * 15 }, 340, 'Cubic.easeIn')));
-    for (const seat of this.hands) for (const h of seat) {
+    for (const seat of this.hands) for (const h of seat ?? []) {
       h.stack?.destroy();
       h.extra?.destroy();
     }

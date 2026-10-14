@@ -55,13 +55,18 @@ function renderMinimap(): HTMLCanvasElement {
 export function MapPanel(): JSX.Element {
   const core = useCore();
   const ref = useRef<HTMLDivElement>(null);
-  const [sel, setSel] = useState<string | null>(null);
+  const [sel, setSel] = useState<string | null>(() => {
+    const f = store.mapFocus;
+    store.mapFocus = null;
+    return f;
+  });
   const [fb, say] = useFeedback();
   const img = useMemo(() => renderMinimap().toDataURL(), []);
   const d = toDate(core.now());
   const w = core.state.world;
   const here = w.location === 'city' ? { x: w.x, y: w.y } : core.services.originTile();
   const homeLoc = HOMES[core.state.housing.homeId].location;
+  const workLocs = new Set(core.career.agenda().map((a) => a.location));
   useEffect(() => setSel((s) => s), []);
   const pins = BUILDINGS.filter((b) => b.target && b.door);
   const selDef = sel ? LOCATIONS[sel] : null;
@@ -89,15 +94,17 @@ export function MapPanel(): JSX.Element {
             if (!loc) return null;
             const open = !loc.hours || isOpen(loc, d.weekday, d.minuteOfDay);
             const isHome = b.target === homeLoc;
+            const isWork = workLocs.has(b.target!);
             if (b.target!.startsWith('home') && !isHome) return null;
             return (
               <div
                 key={b.id}
-                className={`mappin ${open ? '' : 'closed'}`}
+                className={`mappin ${open ? '' : 'closed'} ${isWork ? 'work' : ''}`}
                 style={{ left: `${((b.door!.x + 0.5) / CITY_W) * 100}%`, top: `${(b.door!.y / CITY_H) * 100}%`, borderColor: isHome ? 'var(--good)' : sel === b.target ? 'var(--gold-light)' : undefined }}
                 onClick={() => setSel(b.target!)}
               >
                 {isHome ? '🏠 家' : loc.name.replace(/ .*/, '')}
+                {isWork && ' · 上班'}
               </div>
             );
           })}

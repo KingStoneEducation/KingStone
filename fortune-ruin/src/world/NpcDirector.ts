@@ -63,6 +63,10 @@ export class NpcDirector {
   private displaced = new Set<string>();
   /** NPCs currently facing someone in conversation (no idle fidgeting) */
   private talking = new Set<string>();
+  /** NPCs talking with the player: they do not move at all */
+  private engaged = new Set<string>();
+  /** when someone stopped by the player goes back to where they were heading (game minutes) */
+  private returnAt = new Map<string, number>();
 
   constructor(private host: WorldHost) {}
 
@@ -125,6 +129,30 @@ export class NpcDirector {
     this.staged.clear();
     this.displaced.clear();
     this.talking.clear();
+    this.engaged.clear();
+    this.returnAt.clear();
+  }
+
+  /** The player starts talking with this NPC: stop, and drop any other conversation. */
+  engage(id: string): void {
+    this.engaged.add(id);
+    this.returnAt.delete(id);
+    const s = this.sprites.get(id);
+    if (s?.path.length) s.stop();
+    for (const st of this.staged.values()) if (st.enc.a === id || st.enc.b === id) st.idx = st.beats.length;
+  }
+
+  /** The conversation is over; after a short while they carry on with what they were doing. */
+  disengage(id: string): void {
+    this.engaged.delete(id);
+    const s = this.sprites.get(id);
+    const rt = this.core.state.npcs[id];
+    if (!s || !rt || rt.travel || s.fixedDepth !== null) return;
+    const p = tilePx(this.spotFor(id, rt.spot));
+    if (Math.hypot(s.x - p.x, s.y - p.y) > 20) {
+      this.displaced.add(id);
+      this.returnAt.set(id, Number(rt.flags.talkHoldUntil ?? this.core.now()));
+    }
   }
 
   /** Reconcile sprites with simulation state; animate arrivals, departures and spot changes. */
@@ -135,6 +163,8 @@ export class NpcDirector {
       const rt = core.state.npcs[def.id];
       const here = rt.location === loc && !rt.travel;
       const sprite = this.sprites.get(def.id);
+      // talking with the player: no arriving, leaving or wandering
+      if (sprite && this.engaged.has(def.id)) continue;
       if (here && !sprite) {
         // arrival: walk in from the entrance
         const s = new CharacterSprite(this.host.hostScene, def.look, 0, 0, 'up');
@@ -166,6 +196,11 @@ export class NpcDirector {
         continue;
       }
       if (here && sprite && !this.leaving.has(def.id)) {
+        const back = this.returnAt.get(def.id);
+        if (back !== undefined && core.now() >= back) {
+          this.returnAt.delete(def.id);
+          this.walkBack(def.id);
+        }
         const want = rt.spot;
         if (this.targetSpot.get(def.id) !== want && sprite.path.length === 0) {
           this.targetSpot.set(def.id, want);
@@ -246,6 +281,7 @@ export class NpcDirector {
       if (st.walker) this.walkBack(st.walker);
     }
     for (const e of recent) {
+      if (this.engaged.has(e.a) || this.engaged.has(e.b)) continue;
       const sa = this.sprites.get(e.a);
       const sb = this.sprites.get(e.b);
       if (!sa || !sb || this.leaving.has(e.a) || this.leaving.has(e.b)) {

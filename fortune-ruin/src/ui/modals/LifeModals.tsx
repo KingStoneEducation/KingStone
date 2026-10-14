@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { store } from '../store';
 import { useCore } from '../hooks';
 import { GV, Modal, Portrait, useFeedback } from '../components';
-import { formatClock, MINUTES_PER_DAY, toDate } from '../../core/calendar';
+import { formatClock, formatDate, MINUTES_PER_DAY, toDate } from '../../core/calendar';
 import { G, formatG } from '../../core/money';
 import { ITEMS, OUTFITS } from '../../data/items';
 import { MEAL_BASIC, MEAL_FRESH } from '../../systems/InventorySystem';
 import type { ShiftReport } from '../../systems/CareerSystem';
 import type { EventPrompt } from '../../systems/EventManager';
-import { BUS_STOPS } from '../../world/maps/cityLayout';
+import { BUS_STOPS, locationAnchor, travelMinutes } from '../../world/maps/cityLayout';
+import { JOBS } from '../../data/jobs';
+import { HOMES } from '../../data/housing';
 import { busStopTile } from '../../world/WorldScene';
 import { lookFor } from '../../world/looks';
 import { LOCATIONS } from '../../data/locations';
@@ -405,6 +407,69 @@ export function BusModal(props: { stop: string }): JSX.Element {
       </div>
       {!running && <div className="note" style={{ marginTop: 8 }}>深夜可以用手机地图叫出租车（更贵）。</div>}
       {fb}
+    </Modal>
+  );
+}
+
+// ------------------------------------------------------------------ first morning
+
+/**
+ * The first thing a new life sees: who you are on Monday morning — the job
+ * you already have, when and where it starts, and what is at stake.
+ */
+export function IntroModal(): JSX.Element {
+  const core = useCore();
+  const p = core.state.player;
+  const d = toDate(core.now());
+  const shift = core.career.agenda()[0] ?? null;
+  const job = shift ? JOBS[shift.jobId] : null;
+  const homeLoc = HOMES[core.state.housing.homeId].location;
+  const walk = shift ? travelMinutes(locationAnchor(homeLoc, null), locationAnchor(shift.location, null)) : 0;
+  const place = shift ? (LOCATIONS[shift.location]?.name ?? shift.employer) : '';
+  return (
+    <Modal
+      title={`${formatDate(d)} · 清晨 ${formatClock(d.minuteOfDay)}`}
+      sub={`${p.name}，闹钟响了`}
+      onClose={() => store.closeModal()}
+      foot={
+        <div className="row" style={{ gap: 8 }}>
+          {shift && (
+            <button
+              onClick={() => {
+                store.closeModal();
+                store.openMap(shift.location);
+              }}
+            >
+              在地图上看看公司
+            </button>
+          )}
+          <button className="primary" onClick={() => store.closeModal()}>
+            起床
+          </button>
+        </div>
+      }
+    >
+      <div className="stack" style={{ gap: 10, lineHeight: 1.65 }}>
+        {shift && job ? (
+          <>
+            <div>
+              你在<b>{job.employer}</b> 做<b>{shift.title}</b>。{job.desc}
+            </div>
+            <div className="note">
+              今天是工作日：<b>{formatClock(job.start)}</b> 前要到<b>{place}</b>，去工位打卡（可以提前一小时）。从家走过去大约 {walk} 分钟。
+              {core.phone.unread() > 0 && ' 手机里有主管发来的消息。'}
+            </div>
+            <div className="muted" style={{ fontSize: 12.5 }}>
+              左上角会一直显示下一班的时间，点击它就能在地图上找到公司。迟到超过 10 分钟会被记下来；无故缺勤一天，{job.bossName}会发来警告，累计几次就会被辞退。工资每 {job.payEveryDays} 天打进银行账户。
+            </div>
+          </>
+        ) : (
+          <div>你眼下没有工作。房租和三餐不会等人——可以用家里的电脑浏览招聘信息。</div>
+        )}
+        <div className="muted" style={{ fontSize: 12.5 }}>
+          钱包里有 {formatG(core.economy.balance('cash'))} 现金，银行里有 {formatG(core.economy.balance('bank'))}。房租和水电账单每月自动扣款。灰港大赌场在城北的赌场广场，二十四小时营业——游戏里的一切赌注与财富都是虚拟货币。
+        </div>
+      </div>
     </Modal>
   );
 }

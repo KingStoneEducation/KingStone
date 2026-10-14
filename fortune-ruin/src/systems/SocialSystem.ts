@@ -345,6 +345,12 @@ export interface ApplyOptions {
   silent?: boolean;
   /** skip recording a memory (minor routine interactions) */
   noMemory?: boolean;
+  /**
+   * An everyday interaction (chat, treat, small gift…) of this weight. Its
+   * warmth wears off with repetition, and on its own it cannot turn an
+   * acquaintance into a close friend — that takes things that matter.
+   */
+  routine?: number;
 }
 
 export class SocialSystem {
@@ -389,6 +395,17 @@ export class SocialSystem {
     const w = sourceWeight(source, reliability);
     const delta: Partial<RelDims> = {};
     for (const [k, v] of Object.entries(raw) as [keyof RelDims, number][]) delta[k] = v * w;
+    if (opts.routine) {
+      const fresh = 1 / (1 + this.socialLoad(rel));
+      for (const k of Object.keys(delta) as (keyof RelDims)[]) {
+        if ((delta[k] ?? 0) <= 0) continue;
+        // small talk alone does not make a best friend: everyday warmth tops out around 75
+        const depth = k === 'affection' || k === 'trust' || k === 'attraction' ? Math.max(0, 1 - Math.max(0, rel[k] - 30) / 45) : 1;
+        delta[k] = delta[k]! * fresh * depth;
+      }
+      rel.flags.socialLoad = Math.round((this.socialLoad(rel) + opts.routine) * 1000) / 1000;
+      rel.flags.socialLoadT = this.core.now();
+    }
     this.applyDelta(npcId, delta);
     if (source === 'witnessed' || source === 'told') {
       rel.lastContact = this.core.now();
@@ -414,6 +431,14 @@ export class SocialSystem {
       this.core.bus.emit('relationship', { npc: npcId, delta, reason: spec.kind });
     }
     return delta;
+  }
+
+  /** How much everyday contact this NPC has had with the player lately (halves every 8 hours). */
+  socialLoad(rel: Relationship): number {
+    const load = Number(rel.flags.socialLoad ?? 0);
+    if (load <= 0) return 0;
+    const since = this.core.now() - Number(rel.flags.socialLoadT ?? this.core.now());
+    return load * Math.pow(0.5, since / (8 * 60));
   }
 
   applyDelta(npcId: string, delta: Partial<RelDims>): void {

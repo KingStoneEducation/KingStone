@@ -16,6 +16,7 @@ import { CityLife } from './CityLife';
 import { CasinoFloor, seatPosition } from './CasinoFloor';
 import { findPath, type Pt } from './pathfinding';
 import { entryRefusal } from './access';
+import { FEET, gateSide } from './gates';
 import { BUILDING_OFFSET, frameRef } from './textures';
 import { playerLook, staffLook } from './looks';
 import { daylight, toDate } from '../core/calendar';
@@ -213,6 +214,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       bus.on('world:teleport', ({ location, spawn }) => this.teleport(location, spawn)),
       bus.on('appearance', () => this.refreshPlayerLook()),
       bus.on('casino:backoff', () => this.guardApproach()),
+      bus.on('dialogue:start', ({ npc }) => this.npcDir?.engage(npc)),
+      bus.on('dialogue:end', ({ npc }) => this.npcDir?.disengage(npc)),
     );
     const w = this.core.state.world;
     const home = HOMES[this.core.state.housing.homeId]?.location;
@@ -546,10 +549,10 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   /** The feet hit-box: 9 x 5 px just above the sprite's base. */
   private boxBlocked(x: number, y: number): boolean {
-    const l = x - 4.5;
-    const r = x + 4.5;
-    const t = y - 6;
-    const b = y - 1;
+    const l = x - FEET.halfW;
+    const r = x + FEET.halfW;
+    const t = y - FEET.top;
+    const b = y - FEET.bottom;
     return this.solidAt(l, t) || this.solidAt(r, t) || this.solidAt(l, b) || this.solidAt(r, b);
   }
 
@@ -980,7 +983,14 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       store.toast(err, 'warn');
       return;
     }
-    if (!sprite.sitting && sprite.path.length === 0) sprite.face(OPPOSITE[this.player!.dir]);
+    // stop and turn to the player
+    if (sprite.path.length) sprite.stop();
+    if (sprite.fixedDepth === null) sprite.face(OPPOSITE[this.player!.dir]);
+    const refused = this.core.dialogue.refusal(id);
+    if (refused) {
+      sprite.say(refused, 2800, this.time.now);
+      return;
+    }
     const view = this.core.dialogue.start(id);
     store.openModal({ type: 'dialogue', view });
   }
@@ -1089,12 +1099,15 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     return { inside: { x: ix, y: iy }, outside: { x: ox, y: oy } };
   }
 
+  /**
+   * Which side of the gate the player is on. Measured from the middle of the
+   * feet hit-box (not the sprite's base, which pokes into the gate row when
+   * the player walks up to it from inside), projected onto the inside→outside
+   * axis so it does not matter how far along the gate the player stands.
+   */
   private isInsideGate(it: Interactable): boolean {
     const p = this.player!;
-    const { inside, outside } = this.gatePoints(it);
-    const tx = p.x / 16;
-    const ty = p.y / 16;
-    return Math.hypot(tx - inside.x, ty - inside.y) < Math.hypot(tx - outside.x, ty - outside.y);
+    return gateSide(this.gatePoints(it), p.x, p.y) === 'inside';
   }
 
   private useGate(it: Interactable): void {

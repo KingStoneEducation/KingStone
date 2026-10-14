@@ -1,16 +1,20 @@
 import type Phaser from 'phaser';
 import { circle, ellipse, hash2, makeCanvas, mix, px, rect, rgba, ring, shade, strokeRect, type Ctx } from './canvas';
-import { drawText, drawTextCentered, measureText } from './font';
+import { drawTextCentered } from './font';
 import { CHIP_COLORS, CHIP_DENOMS, P } from './palette';
-import { cardRank, cardSuit, type Card } from '../casino/cards';
+import type { Card } from '../casino/cards';
+import { CARD_DENSITY, CH, CW, drawCardBack, drawCardFace } from './cardArt';
 import { EURO_WHEEL, numberColor } from '../casino/RouletteEngine';
 import { AtlasBuilder } from './atlas';
 import { DEFAULT_GEOM, cellOf, columnRect, dozenRect, evenRect, EVEN_MONEY, gridRight, numberRect, type RouletteGeom } from '../casino/rouletteLayout';
 
 export const TW = 480;
 export const TH = 270;
+/** A card's size on the table (stage pixels); its texture has CARD_DENSITY × as many texels. */
 export const CARD_W = 22;
 export const CARD_H = 30;
+/** Scale that shows a card texture at its table size. */
+export const CARD_SCALE = 1 / CARD_DENSITY;
 
 export type FeltVariant = 'green' | 'blue' | 'red';
 
@@ -21,94 +25,7 @@ const FELTS: Record<FeltVariant, { felt: string; dark: string; light: string; in
 };
 
 // ------------------------------------------------------------------ cards
-
-const SUIT5: string[][] = [
-  ['..#..', '.###.', '#####', '..#..', '.###.'],
-  ['.#.#.', '#####', '#####', '.###.', '..#..'],
-  ['..#..', '.###.', '#####', '.###.', '..#..'],
-  ['.###.', '.###.', '#####', '#.#.#', '..#..'],
-];
-
-const SUIT9: string[][] = [
-  ['....#....', '...###...', '..#####..', '.#######.', '#########', '#########', '.##.#.##.', '....#....', '..#####..'],
-  ['.##...##.', '####.####', '#########', '#########', '.#######.', '..#####..', '...###...', '....#....', '.........'],
-  ['....#....', '...###...', '..#####..', '.#######.', '#########', '.#######.', '..#####..', '...###...', '....#....'],
-  ['...###...', '..#####..', '...###...', '.#..#..#.', '#########', '#########', '.#..#..#.', '....#....', '..#####..'],
-];
-
-function glyph(ctx: Ctx, g: string[], x: number, y: number, color: string, flip = false): void {
-  ctx.fillStyle = color;
-  for (let j = 0; j < g.length; j++) {
-    const row = flip ? g[g.length - 1 - j] : g[j];
-    for (let i = 0; i < row.length; i++) if (row[i] === '#') ctx.fillRect(x + i, y + j, 1, 1);
-  }
-}
-
-const RANK_TEXT = ['', 'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-
-export function drawCardFace(ctx: Ctx, card: Card): void {
-  const r = cardRank(card);
-  const s = cardSuit(card);
-  const red = s === 1 || s === 2;
-  const ink = red ? '#c8102e' : '#1b1824';
-  // body
-  rect(ctx, 1, 0, CARD_W - 2, CARD_H, '#f8f5ec');
-  rect(ctx, 0, 1, CARD_W, CARD_H - 2, '#f8f5ec');
-  rect(ctx, 1, CARD_H - 3, CARD_W - 2, 2, '#e3ddcd');
-  // outline
-  ctx.fillStyle = '#3a3346';
-  ctx.fillRect(1, 0, CARD_W - 2, 1);
-  ctx.fillRect(1, CARD_H - 1, CARD_W - 2, 1);
-  ctx.fillRect(0, 1, 1, CARD_H - 2);
-  ctx.fillRect(CARD_W - 1, 1, 1, CARD_H - 2);
-  // corner index
-  const label = RANK_TEXT[r];
-  drawText(ctx, label, 2, 2, ink, '3x5', 1, label === '10' ? 0 : 1);
-  glyph(ctx, SUIT5[s], 2, 8, ink);
-  // mirrored index bottom-right
-  const w = measureText(label, '3x5', 1, label === '10' ? 0 : 1);
-  drawText(ctx, label, CARD_W - 2 - w, CARD_H - 7, ink, '3x5', 1, label === '10' ? 0 : 1);
-  glyph(ctx, SUIT5[s], CARD_W - 7, CARD_H - 13, ink, true);
-  if (r >= 11) {
-    // court card: framed portrait panel
-    const fx = 7;
-    const fy = 6;
-    const fw = 10;
-    const fh = 18;
-    const robe = r === 11 ? '#3b5ba8' : r === 12 ? '#b3263a' : '#2b2b35';
-    rect(ctx, fx, fy, fw, fh, '#e8c860');
-    rect(ctx, fx + 1, fy + 1, fw - 2, fh - 2, robe);
-    rect(ctx, fx + 3, fy + 3, 4, 4, '#f1d2b4');
-    rect(ctx, fx + 3, fy + 2, 4, 1, r === 12 ? '#e8c860' : '#5a3a20');
-    if (r === 13) rect(ctx, fx + 2, fy + 1, 6, 1, '#e8c860');
-    rect(ctx, fx + 2, fy + 8, 6, 1, '#e8c860');
-    drawText(ctx, RANK_TEXT[r], fx + 3, fy + 10, '#f8f5ec', '3x5');
-  } else {
-    glyph(ctx, SUIT9[s], Math.floor(CARD_W / 2) - 4, Math.floor(CARD_H / 2) - 4, ink);
-    if (r === 1) {
-      ring(ctx, CARD_W / 2, CARD_H / 2, 7, red ? '#e8a0a8' : '#b8b0c8');
-    }
-  }
-}
-
-export function drawCardBack(ctx: Ctx, color = '#8c1d2c'): void {
-  rect(ctx, 1, 0, CARD_W - 2, CARD_H, '#f8f5ec');
-  rect(ctx, 0, 1, CARD_W, CARD_H - 2, '#f8f5ec');
-  rect(ctx, 2, 2, CARD_W - 4, CARD_H - 4, color);
-  for (let y = 3; y < CARD_H - 3; y++) {
-    for (let x = 3; x < CARD_W - 3; x++) {
-      if ((x + y) % 4 === 0 || (x - y + 64) % 4 === 0) px(ctx, x, y, shade(color, 0.22));
-    }
-  }
-  rect(ctx, 8, 11, 6, 8, '#e0b13e');
-  rect(ctx, 9, 12, 4, 6, color);
-  drawText(ctx, 'G', 10, 13, '#e0b13e', '3x5');
-  ctx.fillStyle = '#3a3346';
-  ctx.fillRect(1, 0, CARD_W - 2, 1);
-  ctx.fillRect(1, CARD_H - 1, CARD_W - 2, 1);
-  ctx.fillRect(0, 1, 1, CARD_H - 2);
-  ctx.fillRect(CARD_W - 1, 1, 1, CARD_H - 2);
-}
+// Card faces and backs live in cardArt.ts (drawn at CARD_DENSITY × detail).
 
 // ------------------------------------------------------------------ chips
 
@@ -573,8 +490,9 @@ export function drawPokerTable(ctx: Ctx, variant: FeltVariant, stakes: string): 
 export const tableAtlas = new AtlasBuilder('tbl');
 let done = false;
 
-export function cardFrame(card: Card | null): string {
-  return card === null ? 'card:back' : `card:${card}`;
+/** Atlas frame of a card face (two- or four-colour deck) or the back. */
+export function cardFrame(card: Card | null, fourColor = false): string {
+  return card === null ? 'card:back' : `${fourColor ? 'card4' : 'card'}:${card}`;
 }
 
 export function chipFrame(denomG: number): string {
@@ -584,8 +502,11 @@ export function chipFrame(denomG: number): string {
 /** Builds the card, chip and felt textures used by all table scenes (once). */
 export function registerTableTextures(scene: Phaser.Scene): void {
   if (done && scene.textures.exists('tbl0')) return;
-  for (let c = 0; c < 52; c++) tableAtlas.draw(cardFrame(c), CARD_W, CARD_H, (ctx) => drawCardFace(ctx, c));
-  tableAtlas.draw(cardFrame(null), CARD_W, CARD_H, (ctx) => drawCardBack(ctx));
+  for (let c = 0; c < 52; c++) {
+    tableAtlas.draw(cardFrame(c), CW, CH, (ctx) => drawCardFace(ctx, c));
+    tableAtlas.draw(cardFrame(c, true), CW, CH, (ctx) => drawCardFace(ctx, c, true));
+  }
+  tableAtlas.draw(cardFrame(null), CW, CH, (ctx) => drawCardBack(ctx));
   for (const d of CHIP_DENOMS) {
     tableAtlas.draw(chipFrame(d), 12, 7, (ctx) => drawChipSlice(ctx, d));
     tableAtlas.draw(`chiptop:${d}`, 16, 16, (ctx) => drawChipTop(ctx, d));

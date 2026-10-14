@@ -2,11 +2,12 @@ import Phaser from 'phaser';
 import * as BAC from '../casino/BaccaratEngine';
 import { TableScene } from './TableScene';
 import { BAC as L, bjSeat, drawBaccaratTable, feltTexture } from '../art/tableArt';
-import { cardLabel, type Card } from '../casino/cards';
+import type { Card } from '../casino/cards';
 import { formatG, G, type Money } from '../core/money';
 import { store } from '../ui/store';
 import { WORLD_FONT } from '../world/textures';
 import { smoothText } from '../world/CharacterSprite';
+import { DEALER } from './dealerLines';
 import { sfx } from '../audio/Audio';
 
 const PLAYER = 'player';
@@ -111,7 +112,8 @@ export class BaccaratScene extends TableScene {
     this.drawStacks();
     this.setPhase('betting');
     const left = s.shoe.cards.length - s.shoe.pos;
-    this.dealerSay(s.needsShuffle ? '本靴结束，下一局重新洗牌。请下注。' : `请下注。（第 ${s.history.length + 1} 局 · 牌靴剩余约 ${Math.round(left / 52)} 副）`, 2600);
+    this.dealerSay(DEALER.bacBetting(s.history.length + 1, s.needsShuffle), 2600);
+    if (!s.needsShuffle) this.hint(`第 ${s.history.length + 1} 局 · 牌靴剩余约 ${Math.round(left / 52)} 副`);
   }
 
   private key(owner: string, side: Side): string {
@@ -161,7 +163,17 @@ export class BaccaratScene extends TableScene {
     this.glow = null;
   }
 
+  protected override refreshHints(): void {
+    for (const side of ['player', 'banker'] as const) if (this.values[side].length) this.updateTotal(side);
+  }
+
   private updateTotal(to: 'player' | 'banker'): void {
+    if (!this.hintsOn()) {
+      // the dealer still announces every total; the running labels are a hint
+      this.totals[to]?.destroy();
+      this.totals[to] = null;
+      return;
+    }
     const total = BAC.bacTotal(this.values[to]);
     const b = to === 'player' ? L.playerBox : L.bankerBox;
     const text = `${to === 'player' ? '闲' : '庄'} ${total}`;
@@ -180,12 +192,12 @@ export class BaccaratScene extends TableScene {
       if (!this.alive) return;
       switch (e.k) {
         case 'shuffle':
-          this.dealerSay('洗牌中……', 1600);
+          this.dealerSay(DEALER.shuffle(), 1600);
           sfx('shuffle');
           await this.wait(1300);
           break;
         case 'burn': {
-          this.dealerSay(`烧牌：翻开 ${cardLabel(e.reveal)}，按规则烧掉 ${e.count} 张。`, 1800);
+          this.dealerSay(DEALER.bacBurn(e.reveal, e.count), 1800);
           const img = this.cardImage(e.reveal, shoe.x, shoe.y, 90);
           await this.tween(img, { x: L.discard.x, y: L.discard.y }, 380);
           img.destroy();
@@ -202,11 +214,11 @@ export class BaccaratScene extends TableScene {
           break;
         }
         case 'natural':
-          this.dealerSay(e.side === 'both' ? '双方天牌！' : `${e.side === 'player' ? '闲家' : '庄家'}天牌，不再补牌。`, 1800);
+          this.dealerSay(DEALER.bacNatural(e.side, BAC.bacTotal(this.values.player), BAC.bacTotal(this.values.banker)), 1800);
           await this.wait(500);
           break;
         case 'draw':
-          this.dealerSay(e.reason, 1600);
+          this.dealerSay(DEALER.bacDraw(e.to, BAC.bacTotal(this.values[e.to])), 1600);
           await this.wait(450);
           break;
         case 'result': {
@@ -214,8 +226,7 @@ export class BaccaratScene extends TableScene {
           const zone = L.zones[r.winner];
           this.glow = this.add.rectangle(zone.x + zone.w / 2, zone.y + zone.h / 2, zone.w + 4, zone.h + 4, 0xffe45c, 0.18).setStrokeStyle(1, 0xffe45c, 0.9).setDepth(55);
           this.tweens.add({ targets: this.glow, alpha: 0.4, yoyo: true, repeat: 3, duration: 260 });
-          const msg = r.winner === 'tie' ? `和局 ${r.playerTotal} : ${r.bankerTotal}` : `${r.winner === 'player' ? '闲' : '庄'}赢，${r.playerTotal} 比 ${r.bankerTotal}`;
-          this.dealerSay(msg + (r.playerPair ? ' · 闲对' : '') + (r.bankerPair ? ' · 庄对' : ''), 2600);
+          this.dealerSay(DEALER.bacResult(r.winner, r.playerTotal, r.bankerTotal, r.playerPair, r.bankerPair), 2600);
           await this.wait(700);
           break;
         }
@@ -318,7 +329,8 @@ export class BaccaratScene extends TableScene {
     }
     store.tableUi = { ...store.tableUi, result: null };
     void this.run(async () => {
-      this.setPhase('dealing', '停止下注，开牌。');
+      this.setPhase('dealing');
+      this.dealerSay(DEALER.bacNoMoreBets(), 1500);
       this.clearCards();
       await this.play(r.value);
       await this.finishRound();

@@ -3,6 +3,7 @@ import { formatG, mulRatio, type Money } from '../core/money';
 import { JOBS, type JobDef } from '../data/jobs';
 import type { JobState } from '../core/state';
 import { MINUTES_PER_DAY, formatClock, toDate } from '../core/calendar';
+import { LOCATIONS } from '../data/locations';
 
 export interface ShiftInfo {
   job: JobState;
@@ -24,6 +25,18 @@ export interface ShiftReport {
 }
 
 export type CareerResult = { ok: true; message: string; report?: ShiftReport } | { ok: false; error: string };
+
+/** What the player should know about a job right now (the HUD's work line). */
+export interface AgendaItem {
+  jobId: string;
+  title: string;
+  employer: string;
+  location: string;
+  /** the shift in question: today's, or the next one */
+  start: number;
+  end: number;
+  status: 'upcoming' | 'open' | 'late' | 'leave' | 'next';
+}
 
 const LATE_GRACE = 10;
 
@@ -101,6 +114,36 @@ export class CareerSystem {
       return { job: j, def, start: w.start, end: w.end, status };
     }
     return null;
+  }
+
+  /**
+   * One line per scheduled job: today's shift while it matters (upcoming,
+   * open for clock-in, running late, or on leave), otherwise the next one.
+   */
+  agenda(): AgendaItem[] {
+    const out: AgendaItem[] = [];
+    const now = this.core.now();
+    const today = Math.floor(now / MINUTES_PER_DAY);
+    for (const j of this.activeJobs()) {
+      const d = this.def(j.jobId);
+      if (d.flexible) continue;
+      const title = d.levels[Math.min(j.level, d.levels.length - 1)].title;
+      const base = { jobId: j.jobId, title, employer: d.employer, location: d.location };
+      const cur = this.currentShift(j.jobId);
+      if (cur && (cur.status === 'upcoming' || cur.status === 'open' || cur.status === 'late')) {
+        const day = Math.floor(cur.start / MINUTES_PER_DAY);
+        out.push({ ...base, start: cur.start, end: cur.end, status: this.isExcused(j, day) ? 'leave' : cur.status });
+        continue;
+      }
+      for (let k = 1; k <= 7; k++) {
+        const w = this.shiftOn(d, today + k);
+        if (w && w.start > now) {
+          out.push({ ...base, start: w.start, end: w.end, status: 'next' });
+          break;
+        }
+      }
+    }
+    return out.sort((a, b) => a.start - b.start);
   }
 
   upcomingShifts(): ShiftInfo[] {
@@ -243,17 +286,28 @@ export class CareerSystem {
   }
 
   /** End-of-shift absence check and paydays, called every minute (cheap). */
-  tickMinute(now: number): void {
+  tickMinute(now: number, activity: string = 'idle'): void {
     for (const j of this.activeJobs()) {
       const d = this.def(j.jobId);
       if (d.flexible) continue;
       const day = Math.floor(now / MINUTES_PER_DAY);
       for (const sd of [day - 1, day]) {
         const w = this.shiftOn(d, sd);
-        if (!w || now !== w.end) continue;
-        if (j.workedToday !== sd && !this.isExcused(j, sd)) this.recordAbsence(j, d);
+        if (!w) continue;
+        if (now === w.end && j.workedToday !== sd && !this.isExcused(j, sd)) this.recordAbsence(j, d);
+        if (activity !== 'sleeping' && activity !== 'working') this.remind(j, d, w, sd, now);
       }
     }
+  }
+
+  /** A heads-up an hour and a quarter of an hour before a shift, and once when running late. */
+  private remind(j: JobState, d: JobDef, w: { start: number; end: number }, day: number, now: number): void {
+    if (j.workedToday === day || this.isExcused(j, day)) return;
+    const there = this.core.state.world.location === d.location;
+    const where = LOCATIONS[d.location]?.name ?? d.employer;
+    if (now === w.start - 60 && !there) this.core.toast(`一小时后（${formatClock(d.start)}）要去${where}上班。按 M 打开地图可以查看路线。`, 'info');
+    else if (now === w.start - 15 && !there) this.core.toast(`离上班只剩 15 分钟了（${where}，${formatClock(d.start)}）。`, 'warn');
+    else if (now === w.start + LATE_GRACE + 1) this.core.toast(there ? `你已经迟到了，去工位打卡吧。` : `你上班已经迟到了。缺勤一整天会收到${d.bossName}的警告。`, 'bad');
   }
 
   private isExcused(j: JobState, day: number): boolean {

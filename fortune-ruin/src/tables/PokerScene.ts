@@ -7,6 +7,7 @@ import { formatG, type Money } from '../core/money';
 import { store } from '../ui/store';
 import { WORLD_FONT } from '../world/textures';
 import { smoothText } from '../world/CharacterSprite';
+import { DEALER } from './dealerLines';
 import { sfx } from '../audio/Audio';
 
 const PLAYER = 'player';
@@ -189,7 +190,7 @@ export class PokerScene extends TableScene {
         const shown = s.phase === 'settled' && !!s.result?.showdown.some((h) => h.seat === i);
         st.hole.forEach((c, j) => {
           const p = this.cardPos(i, j, shown);
-          v.cards.push(this.cardImage(this.mine(i) || shown ? c : null, p.x, p.y, 100 + j).setScale(p.scale).setAngle(p.angle));
+          v.cards.push(this.cardImage(this.mine(i) || shown ? c : null, p.x, p.y, 100 + j, p.scale).setAngle(p.angle));
         });
       }
       this.refreshBet(i);
@@ -303,12 +304,16 @@ export class PokerScene extends TableScene {
   }
 
   /** The player's current hand, from their own cards and the board only. */
+  protected override refreshHints(): void {
+    this.refreshStrength();
+  }
+
   private refreshStrength(): void {
     const s = this.st;
     const me = this.mySeat();
     const st = me >= 0 ? s.seats[me] : null;
     let text = '';
-    if (st && st.inHand && !st.folded && st.hole.length === 2 && (PK.handInProgress(s) || s.phase === 'settled')) {
+    if (this.hintsOn() && st && st.inHand && !st.folded && st.hole.length === 2 && (PK.handInProgress(s) || s.phase === 'settled')) {
       text = s.board.length >= 3 ? `你的牌：${PK.describeBest([...st.hole, ...s.board]).detail}` : `你的牌：${holeLabel(st.hole)}`;
     }
     if (!text) {
@@ -458,9 +463,9 @@ export class PokerScene extends TableScene {
         if (!this.alive) return;
         // everyone's cards arrive face down; only the player's own are turned up below
         const p = this.cardPos(seat, r);
-        const img = this.cardImage(null, from.x, from.y, 100 + r).setScale(0.5);
+        const img = this.cardImage(null, from.x, from.y, 100 + r, 0.5);
         sfx('card');
-        await this.tween(img, { x: p.x, y: p.y, scale: p.scale, angle: { from: -25, to: p.angle } }, 150);
+        await this.tween(img, { x: p.x, y: p.y, scale: this.cardScale(p.scale), angle: { from: -25, to: p.angle } }, 150);
         this.views[seat].cards[r] = img;
       }
     }
@@ -495,7 +500,7 @@ export class PokerScene extends TableScene {
         sfx(e.add >= this.st.rules.bigBlind * 10 ? 'chips' : 'chip');
         await this.moveChips(e.add, this.geom(seat).plaque, this.geom(seat).bet, this.mine(seat));
         this.refreshBet(seat);
-        if (e.action === 'allin' && !this.mine(seat)) this.dealerSay(`${this.seatName(seat)} 全下！`, 1600);
+        if (e.action === 'allin' && !this.mine(seat)) this.dealerSay(DEALER.pkAllIn(this.seatName(seat)), 1600);
       }
     }
     if (this.mine(seat)) this.refreshStrength();
@@ -538,7 +543,7 @@ export class PokerScene extends TableScene {
       if (st.inHand && !st.folded && this.vStack[i] > 0) this.setAction(i, null);
     }
     // burn one, then turn the street over
-    const burn = this.cardImage(null, PKT.muck.x, PKT.muck.y - 8, 95).setScale(0.6);
+    const burn = this.cardImage(null, PKT.muck.x, PKT.muck.y - 8, 95, 0.6);
     await this.tween(burn, { x: PKT.muck.x + 26, y: PKT.muck.y, alpha: 0.2 }, 160);
     burn.destroy();
     this.message(`${STREET_NAMES[street]}`);
@@ -546,10 +551,10 @@ export class PokerScene extends TableScene {
       if (!this.alive) return;
       const i = this.board.length;
       const p = this.boardPos(i);
-      const img = this.cardImage(null, PKT.muck.x, PKT.muck.y - 8, 90 + i).setScale(0.6);
+      const img = this.cardImage(null, PKT.muck.x, PKT.muck.y - 8, 90 + i, 0.6);
       sfx('card');
       this.board.push(img);
-      await this.tween(img, { x: p.x, y: p.y, scale: 1 }, 170);
+      await this.tween(img, { x: p.x, y: p.y, scale: this.cardScale() }, 170);
       await this.flipTo(img, c, 150);
     }
     this.refreshStrength();
@@ -570,7 +575,7 @@ export class PokerScene extends TableScene {
   private async animShowdown(hands: { seat: number; cards: Card[]; name: string }[]): Promise<void> {
     await this.gather();
     this.pointAt(-1);
-    this.dealerSay('摊牌。', 1500);
+    this.dealerSay(DEALER.pkShowdown(), 1500);
     for (const h of hands) {
       if (!this.alive) return;
       const v = this.views[h.seat];
@@ -580,7 +585,7 @@ export class PokerScene extends TableScene {
             const img = v.cards[j];
             if (!img) return;
             const p = this.cardPos(h.seat, j, true);
-            await this.tween(img, { x: p.x, y: p.y, angle: 0, scaleY: p.scale, scaleX: p.scale }, 160);
+            await this.tween(img, { x: p.x, y: p.y, angle: 0, scaleY: this.cardScale(p.scale), scaleX: this.cardScale(p.scale) }, 160);
             await this.flipTo(img, c, 180);
           }),
         );
@@ -610,7 +615,7 @@ export class PokerScene extends TableScene {
     this.refreshStack(seat);
     this.setAction(seat, `赢 ${g(amount)}`, '#ffe45c');
     if (hand) this.setHandName(seat, hand, true);
-    this.dealerSay(`${this.seatName(seat)} 赢得 ${formatG(amount)}${hand ? `（${hand}）` : ''}。`, 2200);
+    this.dealerSay(DEALER.pkWin(this.seatName(seat), amount, hand, mine), 2200);
     await this.wait(300);
   }
 
@@ -689,9 +694,9 @@ export class PokerScene extends TableScene {
     const s = this.st;
     const me = this.mySeat();
     this.setPhase('betting');
-    if (me < 0) this.dealerSay(initial ? '欢迎来到扑克室。选好买入金额就可以入座，也可以先看几手。' : '下一手马上开始，想入座的话现在可以买入。', 3200);
-    else if (s.seats[me].stack <= 0) this.dealerSay('你面前的筹码打光了。补码后才能继续，或者离桌。', 3200);
-    else this.dealerSay(initial ? '请坐。准备好了就开始下一手。' : '准备下一手。', 2000);
+    if (me < 0) this.dealerSay(initial ? DEALER.pkWelcome() : DEALER.pkNextOpen(), 3200);
+    else if (s.seats[me].stack <= 0) this.dealerSay(DEALER.pkBusted(), 3200);
+    else this.dealerSay(initial ? DEALER.pkSeated() : DEALER.pkNext(), 2000);
     this.scheduleAuto();
   }
 

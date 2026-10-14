@@ -6,6 +6,7 @@ import { betAnchor, betAt, numberRect, type LayoutBet } from '../casino/roulette
 import { ballAt, planSpin, pocketLocalAngle, type SpinPlan } from '../casino/rouletteMotion';
 import { formatG, G, type Money } from '../core/money';
 import { store } from '../ui/store';
+import { DEALER } from './dealerLines';
 import { sfx, audio } from '../audio/Audio';
 
 const PLAYER = 'player';
@@ -99,7 +100,7 @@ export class RouletteScene extends TableScene {
     this.drawStacks();
     this.setPhase('betting');
     const r = this.st.rules;
-    this.dealerSay(`请下注。每局最低合计 ${formatG(r.minTotal)}，内围单注最高 ${formatG(r.maxInside)}。`, 2800);
+    this.dealerSay(DEALER.rlBetting(r.minTotal, r.maxInside), 2800);
   }
 
   // ------------------------------------------------------------------ chips on the layout
@@ -146,7 +147,7 @@ export class RouletteScene extends TableScene {
     }
     const name = RLE.BET_KIND_NAMES[bet.kind];
     const nums = bet.numbers.length <= 6 ? ` ${bet.numbers.join('-')}` : '';
-    this.message(`${name}${nums} · 赔率 ${RLE.ROULETTE_PAYOUTS[bet.kind]}:1 · 点击下注 ${formatG(G(store.tableUi.chip))}，右键撤销`);
+    this.hint(`${name}${nums} · 赔率 ${RLE.ROULETTE_PAYOUTS[bet.kind]}:1 · 点击下注 ${formatG(G(store.tableUi.chip))}，右键撤销`);
   }
 
   private onDown(p: Phaser.Input.Pointer): void {
@@ -247,14 +248,14 @@ export class RouletteScene extends TableScene {
     const out = r.value;
     void this.run(async () => {
       this.setPhase('spinning');
-      this.dealerSay('停止下注！', 1500);
+      this.dealerSay(DEALER.rlNoMoreBets(), 1500);
       this.dolly?.destroy();
       this.dolly = null;
       await this.spinTo(out.pocketIndex);
       this.plan = null;
       const n = out.result;
       const color = RLE.numberColor(n);
-      this.dealerSay(`${n} 号，${color === 'red' ? '红' : color === 'black' ? '黑' : '绿色零'}${n !== 0 ? `，${n % 2 ? '单' : '双'}，${n <= 18 ? '小' : '大'}` : ''}。`, 3200);
+      this.dealerSay(DEALER.rlResult(n, color), 3200);
       this.placeDolly(n);
       await this.settleChips(out.settlements);
       await this.finishRound(true);

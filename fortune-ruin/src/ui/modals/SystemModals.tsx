@@ -59,6 +59,14 @@ export function SettingsModal(): JSX.Element {
           </div>
         </div>
         <label className="row" style={{ cursor: 'pointer' }}>
+          <input type="checkbox" checked={s.casinoHints} onChange={(e) => set({ casinoHints: e.target.checked })} />
+          赌桌提示：规则说明、点数与牌型标签、赔率与操作提示（熟悉规则后可关闭，荷官照常报牌）
+        </label>
+        <label className="row" style={{ cursor: 'pointer' }}>
+          <input type="checkbox" checked={s.fourColorDeck} onChange={(e) => set({ fourColorDeck: e.target.checked })} />
+          四色牌（黑桃黑、红心红、方块蓝、梅花绿）
+        </label>
+        <label className="row" style={{ cursor: 'pointer' }}>
           <input type="checkbox" checked={s.showCasinoClock} onChange={(e) => set({ showCasinoClock: e.target.checked })} />
           在赌场内显示时间（真实的赌场里通常看不到时钟）
         </label>

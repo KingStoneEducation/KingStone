@@ -56,6 +56,8 @@ export interface GameEvents {
   'patron:arrived': { id: string; tableId: string };
   'npc:arrived': { id: string; location: string | null };
   'npc:encounter': { encounter: Encounter };
+  'dialogue:start': { npc: string };
+  'dialogue:end': { npc: string };
   'npc:departed': { id: string; from: string | null; to: string | null };
   'npc:moved': { id: string };
   invest: { id: string; units: number; side: 'buy' | 'sell'; amount: Money; pnl?: Money };
@@ -200,7 +202,7 @@ export class GameCore {
     this.player.tick(1, activity);
     this.npcs.tick(t);
     this.encounters.tick(t);
-    this.career.tickMinute(t);
+    this.career.tickMinute(t, activity);
     this.events.tickMinute(t);
     this.casino.tickBackground(1);
     if (d.hour !== before.hour) this.onHour(d.hour);
