@@ -15,6 +15,8 @@ export interface SoundContext {
   casinoArea: CasinoArea | null;
   /** the table the player sits at */
   table: { game: string; area: string } | null;
+  /** among the stalls of the night market while it is open */
+  nightMarket?: boolean;
 }
 
 const LUXURY_HOMES = new Set(['home_penthouse', 'home_estate']);
@@ -55,7 +57,7 @@ export function musicFor(c: SoundContext): TrackId | null {
         return casinoFloor(c.hour);
     }
   }
-  if (loc === 'city') return c.night ? 'city_night' : 'city_day';
+  if (loc === 'city') return c.nightMarket ? 'night_market' : c.night ? 'city_night' : 'city_day';
   if (LUXURY_HOMES.has(loc)) return 'upscale';
   switch (c.ambience) {
     case 'home':

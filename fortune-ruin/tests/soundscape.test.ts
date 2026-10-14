@@ -52,6 +52,8 @@ describe('which music plays where', () => {
     expect(musicFor(at('bar'))).toBe('bar');
     expect(musicFor(at('fine_dining'))).toBe('upscale');
     expect(musicFor(at('store'))).toBe('shop');
+    // among the stalls of the night market, while it is open, the market has its own tune
+    expect(musicFor(at('city', { night: true, nightMarket: true }))).toBe('night_market');
   });
 
   it('no place in the city is left in silence by accident', () => {

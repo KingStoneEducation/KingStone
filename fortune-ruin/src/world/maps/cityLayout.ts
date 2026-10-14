@@ -140,6 +140,9 @@ export const CITY_SPOTS: Record<string, { x: number; y: number; face?: 'down' | 
   marina_view: { x: 111, y: 40, face: 'right' },
 };
 
+/** The old pier where the night market sets up its stalls (where its music plays). */
+export const NIGHT_MARKET_AREA = { x0: 26, x1: 51, y0: 78, y1: 89 };
+
 /** The marina's pontoon off the river promenade, and its four berths (anchor row of each boat). */
 export const MARINA = { x0: 108, x1: 111, y0: 40, y1: 57, gangway: 47, berths: { tour: 42, club: 46, own: 51, whitmore: 56 }, boatX: 112 };
 

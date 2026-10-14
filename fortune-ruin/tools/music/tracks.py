@@ -713,7 +713,109 @@ def spa():
     return s
 
 
-TRACKS = {f.__name__: f for f in (menu, casino_day, casino_night, highlimit, poker, city_day, city_night, home, cafe, bar, upscale, shop, skyline, spa)}
+PENTA_D = [P(n) for n in ('D4', 'E4', 'F#4', 'A4', 'B4', 'D5', 'E5', 'F#5', 'A5', 'B5', 'D6')]
+
+
+def pent_above(pitch):
+    """The next note up in D major pentatonic (for grace notes)."""
+    for q in PENTA_D:
+        if q > pitch:
+            return q
+    return pitch + 2
+
+
+def tremolo_melody(s, part, start, text, vel=72, long=1.5):
+    """A plucked melody: short notes as they are, long ones as a zither's tremolo (sixteenths, slightly uneven)."""
+    t = start
+    for tok in text.replace('|', ' ').split():
+        name, _, d = tok.partition(':')
+        d = float(d)
+        if name != 'r':
+            pitch = P(name)
+            if d >= long:
+                n = int(round(d / 0.25))
+                for i in range(n):
+                    s.note(part, t + i * 0.25, 0.3, pitch, vel - 6 - (i % 2) * 6 - (i * 10) // n, swing=False)
+            else:
+                s.note(part, t, d * 0.95, pitch, vel)
+        t += d
+
+
+def night_market():
+    """The night market on the old pier: a pentatonic tune in D for flute and koto over wood blocks and congas."""
+    s = Song('night_market', bpm=100, seed=151)
+    s.part('flute', 73, 0, vol=92, pan=58, reverb=44)
+    s.part('zither', 107, 1, vol=100, pan=70, reverb=40)
+    s.part('koto', 107, 2, vol=84, pan=40, reverb=42)
+    s.part('pizz', 45, 3, vol=80, pan=76, reverb=34)
+    s.part('bass', 32, 4, vol=104, pan=64, reverb=16, humanize=0.006)
+    s.part('kalimba', 108, 5, vol=70, pan=30, reverb=50)
+    s.part('perc', 0, 9, vol=78, pan=64, reverb=22, humanize=0.006, vel_jitter=5)
+    A = 'D | Bm | G | A | D | F#m | G | Asus4 A'
+    B = 'G | A | F#m | Bm | Em | A | D | D'
+    mel_a = ('A4:.5 B4:.5 D5:1 E5:.5 F#5:.5 E5:1 | D5:1.5 B4:.5 A4:2 | B4:.5 D5:.5 E5:1 D5:.5 B4:.5 A4:1 | E5:3 r:1 | '
+             'A4:.5 B4:.5 D5:1 F#5:1 A5:1 | F#5:1.5 E5:.5 A4:2 | B4:1 D5:1 E5:.5 D5:.5 B4:1 | D5:2 C#5:2')
+    mel_a2 = ('F#5:.5 A5:.5 B5:1 A5:.5 F#5:.5 E5:1 | D5:1 E5:.5 F#5:.5 B4:2 | D5:.5 E5:.5 B4:1 A4:.5 B4:.5 D5:1 | E5:2 F#5:1 E5:1 | '
+              'A5:1.5 F#5:.5 E5:1 D5:1 | F#5:1 A5:1 F#5:1 E5:1 | D5:.5 E5:.5 D5:.5 B4:.5 A4:1 B4:1 | A4:2 E5:2')
+    mel_b = ('D5:1 G5:1 B5:1.5 A5:.5 | A5:2 E5:1 F#5:1 | F#5:1.5 E5:.5 F#5:1 A5:1 | B5:3 r:1 | '
+             'G5:1 E5:1 B4:1 E5:1 | A5:1.5 B5:.5 A5:1 E5:1 | F#5:2 A5:1 F#5:1 | D5:3 r:1')
+    form = [(A, 'flute', mel_a), (A, 'flute', mel_a2), (B, 'zither', mel_b), (A, 'both', mel_a)]
+    for sec, (line, who, mel) in enumerate(form):
+        b0 = sec * 8
+        s.harmony_line(line, b0)
+        if who in ('flute', 'both'):
+            s.melody('flute', b0 * 4, mel, vel=74 if sec != 3 else 78)
+            # a dizi player's grace notes into the phrase starts (never on the loop's first beat)
+            for bar in (b0, b0 + 4):
+                if bar == 0:
+                    continue
+                first = P(mel.split('|')[bar - b0].split()[0].partition(':')[0])
+                s.note('flute', bar * 4 - 0.125, 0.12, pent_above(first), 56, swing=False, exact=True)
+        if who in ('zither', 'both'):
+            tremolo_melody(s, 'zither', b0 * 4, mel, vel=78 if who == 'zither' else 58)
+        # the koto's broken chords, busier in the last section
+        arp_lh(s, 'koto', line, b0, vel=50, pattern=(0, 7, 12, 16, 19, 16, 12, 7) if sec != 3 else (0, 7, 12, 16, 19, 24, 19, 16),
+               step=0.5 if sec != 3 else 0.5, low='D2')
+        t = b0 * 4
+        prev = None
+        for sym, beats in bars(line):
+            c = Chord(sym)
+            v = voice(c, prev, P('A3'), P('E5'), 'close', 3)
+            prev = v
+            # pizzicato on the offbeats, the street band's lilt
+            k = 0.5
+            while k < beats:
+                s.chord_notes('pizz', t + k, 0.22, v, 46 if k % 2 == 0.5 else 40)
+                k += 1
+            br = bass_root(c, 'E1', 'D2') + 12
+            s.note('bass', t, 1.3 if beats >= 2 else beats * 0.9, br, 82)
+            if beats >= 4:
+                s.note('bass', t + 1.5, 0.45, br, 62)
+                s.note('bass', t + 2, 1.3, br + 7 if br + 7 <= P('D3') else br - 5, 74)
+                s.note('bass', t + 3.5, 0.45, br + 7 if br + 7 <= P('D3') else br - 5, 58)
+            elif beats >= 2:
+                s.note('bass', t + beats - 0.5, 0.4, br, 60)
+            t += beats
+        grid = {77: 'x.....x...x.....', 76: '....o.......o...', 70: 'o-o-o-o-o-o-o-o-', 64: 'x.......x.o.....'}
+        if sec >= 2:
+            grid[63] = '......o.......o.'
+            grid[54] = '....o.......o...'
+        s.drums('perc', b0, 8, grid, vel={'x': 72, 'o': 50, '-': 28})
+        # a bongo run into the next section
+        for i, (at, pitch) in enumerate(((3, 60), (3.25, 60), (3.5, 61), (3.75, 61))):
+            s.note('perc', (b0 + 7) * 4 + at, 0.12, pitch, 52 + i * 6, swing=False)
+    # lanterns: the kalimba at the ends of phrases
+    for bar in (3, 11, 19, 27):
+        for i, p in enumerate(('A5', 'D6', 'E6')):
+            s.note('kalimba', bar * 4 + 3 + i * 0.25, 0.6, P(p), 44)
+    for bar in (7, 15, 23, 31):
+        for i, p in enumerate(('D6', 'F#6', 'A6', 'D7')):
+            s.note('kalimba', bar * 4 + 2 + i * 0.5, 1.2, P(p), 40)
+    s.finish(32)
+    return s
+
+
+TRACKS = {f.__name__: f for f in (menu, casino_day, casino_night, highlimit, poker, city_day, city_night, home, cafe, bar, upscale, shop, skyline, spa, night_market)}
 
 ROLES = {
     'menu': {'piano': 'lead', 'lh': 'comp', 'tpt': 'lead', 'strings': 'pad', 'bass': 'bass', 'drums': 'brush', 'strmel': 'lead'},
@@ -730,12 +832,14 @@ ROLES = {
     'shop': {'guitar': 'lead', 'rhodes': 'comp', 'bass': 'bass', 'drums': 'drums'},
     'skyline': {'sax': 'lead', 'vibes': 'lead', 'rhodes': 'comp', 'bass': 'bass', 'drums': 'brush', 'strings': 'pad'},
     'spa': {'harp': 'arp', 'strings': 'pad', 'flute': 'lead', 'celesta': 'accent', 'bass': 'bass'},
+    'night_market': {'flute': 'lead', 'zither': 'lead2', 'koto': 'arp', 'pizz': 'comp', 'bass': 'bass', 'kalimba': 'accent', 'perc': 'perc'},
 }
 
 ROOMS = {  # rt60 (s), wet level
     'menu': (2.2, 0.45), 'casino_day': (1.4, 0.36), 'casino_night': (1.8, 0.42), 'highlimit': (2.4, 0.5),
     'poker': (1.5, 0.38), 'city_day': (1.2, 0.3), 'city_night': (1.6, 0.4), 'home': (1.6, 0.36), 'cafe': (1.2, 0.32),
     'bar': (1.4, 0.36), 'upscale': (2.2, 0.46), 'shop': (1.2, 0.3), 'skyline': (2.0, 0.44), 'spa': (2.8, 0.52),
+    'night_market': (1.1, 0.28),
 }
 
 if __name__ == '__main__':

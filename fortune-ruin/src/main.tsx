@@ -15,6 +15,8 @@ import { LOCATIONS } from './data/locations';
 import { BIZ_TYPES } from './data/business';
 import { TABLE_BY_ID } from './casino/tables';
 import { daylight, toDate } from './core/calendar';
+import { NIGHT_MARKET_AREA } from './world/maps/cityLayout';
+import { nightMarketOpen } from './systems/OldTownSystem';
 import './ui/styles.css';
 import { applyUiScale } from './ui/uiScale';
 
@@ -54,6 +56,10 @@ game.events.on(Phaser.Core.Events.STEP, (time: number, delta: number) => {
   }
 });
 
+function inArea(p: { x: number; y: number }, a: { x0: number; x1: number; y0: number; y1: number }): boolean {
+  return p.x >= a.x0 && p.x <= a.x1 && p.y >= a.y0 && p.y <= a.y1;
+}
+
 /** Music and ambience follow the screen, the place, the casino room, the table and the time of day. */
 function updateSoundscape(): void {
   const s = store.settings;
@@ -70,6 +76,7 @@ function updateSoundscape(): void {
     night: inGame ? daylight(core!.now()) < 0.35 : true,
     casinoArea: inGame ? (store.world?.casinoArea() ?? null) : null,
     table: table ? { game: table.game, area: table.area } : null,
+    nightMarket: inGame && loc === 'city' && inArea(core!.state.world, NIGHT_MARKET_AREA) && nightMarketOpen(core!.now()),
   };
   audio.setMusic(musicFor(ctx));
   audio.setAmbience(ambienceFor(ctx));
