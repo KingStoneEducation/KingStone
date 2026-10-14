@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { GameCore } from '../core/GameCore';
 import { store, type AuctionTab, type BeachTab, type CharityTab, type MarinaTab, type PawnTab } from '../ui/store';
-import { buildCityMap, type CityMap } from './maps/city';
+import { buildCityMap, type CityMap, type Lane } from './maps/city';
 import { buildIsleMap } from './maps/isle';
 import { ISLE_DISTRICTS } from './maps/isleLayout';
 import { interiorMap } from './maps/interiors';
@@ -23,6 +23,7 @@ import { findPath, type Pt } from './pathfinding';
 import { entryRefusal } from './access';
 import { FEET, gateSide } from './gates';
 import { BUILDING_OFFSET, frameRef } from './textures';
+import { hashString } from '../core/rng';
 import { playerLook, staffLook } from './looks';
 import { daylight, toDate } from '../core/calendar';
 import { LOCATIONS, hoursText, isOpen } from '../data/locations';
@@ -196,6 +197,8 @@ export interface WorldApi {
   sleep(hours: number): Promise<void>;
   /** let a stepped stretch of time (a shift, a swim) run on the clock, then hand over its result */
   timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void, pose?: PoseName): Promise<void>;
+  /** into a taxi, your car or the bus, and out of it at the destination (run pays and spends the time) */
+  ride(mode: 'taxi' | 'drive' | 'bus', run: () => { ok: true; message: string } | { ok: false; error: string }, dest: Pt): Promise<void>;
 }
 
 export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
@@ -1844,6 +1847,91 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     // lie down in the bed you just went to, if you are still by it
     const near = !!p && !!bed && Math.abs(p.x - (bed.x + bed.w / 2) * 16) <= (bed.w / 2 + 1.5) * 16 && Math.abs(p.y - (bed.y + bed.h / 2) * 16) <= (bed.h / 2 + 1.5) * 16;
     await this.actions.sleep(near ? bed : null, hours);
+  }
+
+  async ride(mode: 'taxi' | 'drive' | 'bus', run: () => { ok: true; message: string } | { ok: false; error: string }, dest: Pt): Promise<void> {
+    const p = this.player;
+    if (!p || this.transitioning || this.map.id !== 'city') {
+      const r = run();
+      if (!r.ok) return store.toast(r.error, 'warn');
+      this.teleport('city', null, dest);
+      store.toast(r.message, 'info');
+      return;
+    }
+    const core = this.core;
+    const vehicle = core.inventory.vehicle();
+    // the taxi is yellow; your own car keeps a colour of its own; a bicycle has no doors to get into
+    const own = [0, 1, 2, 3, 4, 6, 7][hashString(vehicle?.id ?? 'car') % 7];
+    const frameFor = (lane: Lane | null) => {
+      if (!lane) return null;
+      if (mode === 'bus') return lane.dir === 'left' || lane.dir === 'right' ? frameRef(`bus:${lane.dir}`) : null;
+      if (mode === 'drive' && (!vehicle?.vehicle || vehicle.id === 'bicycle')) return null;
+      return frameRef(`car:${mode === 'taxi' ? 5 : own}:${lane.dir}`);
+    };
+    store.closeAll();
+    this.transitioning = true;
+    core.paused.add('transition');
+    this.setFocus(null);
+    this.marker?.setVisible(false);
+    p.stop();
+    if (this.benchSit) this.standUpFromBench();
+    const cam = this.cameras.main;
+    try {
+      const lane0 = this.laneNear(p.x, p.y);
+      const f0 = frameFor(lane0);
+      if (lane0 && f0) await this.actions.pullUp(f0, lane0, p, true);
+      cam.fadeOut(350, 8, 6, 14);
+      await this.wait(380);
+      const r = run();
+      if (!r.ok) {
+        // nothing happened: still on the pavement
+        if (this.player) {
+          this.player.alpha = 1;
+          this.player.sync();
+        }
+        cam.fadeIn(300, 8, 6, 14);
+        store.toast(r.error, 'warn');
+        return;
+      }
+      const from = this.map.id;
+      core.setLocation('city', -1, -1);
+      this.loadMap('city', null, dest);
+      this.syncState();
+      const q = this.player!;
+      const lane1 = this.laneNear(q.x, q.y);
+      const f1 = frameFor(lane1);
+      if (f1) {
+        q.alpha = 0;
+        q.sync();
+      }
+      cam.fadeIn(350, 8, 6, 14);
+      if (lane1 && f1) await this.actions.pullUp(f1, lane1, q, false);
+      this.onArrive(from, 'city');
+      store.toast(r.message, 'info');
+    } finally {
+      core.paused.delete('transition');
+      this.transitioning = false;
+    }
+  }
+
+  /** The street lane nearest a point (where a taxi or the bus pulls in), within a few tiles. */
+  private laneNear(x: number, y: number): Lane | null {
+    const lanes = (this.map as CityMap).lanes ?? [];
+    let best: Lane | null = null;
+    let bd = 5 * 16;
+    for (const l of lanes) {
+      const horiz = l.dir === 'left' || l.dir === 'right';
+      const along = horiz ? x : y;
+      const lo = Math.min(l.from, l.to) * 16;
+      const hi = Math.max(l.from, l.to) * 16;
+      if (along < lo + 40 || along > hi - 40) continue;
+      const d = Math.abs((horiz ? y : x) - (l.fixed * 16 + 8));
+      if (d < bd) {
+        bd = d;
+        best = l;
+      }
+    }
+    return best;
   }
 
   timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void, pose?: PoseName): Promise<void> {

@@ -9,6 +9,7 @@ import { sfx } from '../audio/Audio';
 import type { CharDir } from '../art/characters';
 import type { CharacterSprite } from './CharacterSprite';
 import type { Interactable } from './maps/types';
+import type { Lane } from './maps/city';
 import { ensureItemIcon, ensureSleeper, ensureSwimmer, frameRef } from './textures';
 
 /** Where a prop's picture sits in the world (pixels), and what it is. */
@@ -494,6 +495,49 @@ export class Actions {
         }),
       );
     });
+  }
+
+  // ------------------------------------------------------------ taxis, your car, the bus
+
+  /**
+   * A vehicle along a street: it pulls up level with you, you get in (or step out of it
+   * onto the pavement), and it drives on. `frame` is its picture for the lane's direction.
+   */
+  async pullUp(frame: { key: string; frame: string }, lane: Lane, p: CharacterSprite, getIn: boolean): Promise<void> {
+    const horiz = lane.dir === 'left' || lane.dir === 'right';
+    const sign = lane.dir === 'right' || lane.dir === 'down' ? 1 : -1;
+    const center = lane.fixed * 16 + 8;
+    const lo = Math.min(lane.from, lane.to) * 16;
+    const hi = Math.max(lane.from, lane.to) * 16;
+    const stop = Math.max(lo + 40, Math.min(hi - 40, horiz ? p.x : p.y));
+    const img = this.keep(this.s.add.image(0, 0, frame.key, frame.frame).setOrigin(0.5, horiz ? 0.85 : 0.5));
+    const k = { pos: stop - sign * 180 };
+    const place = () => {
+      if (horiz) img.setPosition(Math.round(k.pos), Math.round(center + 6)).setDepth(center + 10);
+      else img.setPosition(Math.round(center), Math.round(k.pos)).setDepth(k.pos + 18);
+    };
+    const drive = (to: number, ms: number, ease: string) =>
+      new Promise<void>((res) => this.s.tweens.add({ targets: k, pos: to, duration: ms, ease, onUpdate: place, onComplete: () => res() }));
+    place();
+    img.setAlpha(0);
+    void this.tw(img, { alpha: 1 }, 200);
+    await drive(stop, 900, 'Sine.easeOut');
+    // at the kerb: in through the door, or out of it
+    const door = horiz ? { x: stop, y: center + 2 } : { x: center + 8, y: stop };
+    sfx('door');
+    if (getIn) {
+      await this.tw(p, { x: door.x, y: door.y, alpha: 0 }, 320);
+    } else {
+      const x1 = p.x;
+      const y1 = p.y;
+      p.setPos(door.x, door.y);
+      p.alpha = 0;
+      await this.tw(p, { x: x1, y: y1, alpha: 1 }, 320);
+    }
+    await this.wait(250);
+    void this.wait(650).then(() => this.tw(img, { alpha: 0 }, 300));
+    await drive(stop + sign * 220, 950, 'Sine.easeIn');
+    this.drop(img);
   }
 
   // ------------------------------------------------------------ a shift

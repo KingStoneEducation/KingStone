@@ -3770,6 +3770,44 @@ export function buildPropImages(add: (name: string, c: HTMLCanvasElement) => voi
   }
 }
 
+/** Greyhaven's city bus from the side, facing right: green below, cream round the windows. */
+function drawBusSide(ctx: Ctx): void {
+  shadow(ctx, 32, 27, 30, 3);
+  rect(ctx, 2, 4, 60, 20, '#2a7a5a');
+  rect(ctx, 2, 4, 60, 9, '#e8e2d4');
+  for (let x = 6; x <= 42; x += 9) {
+    rect(ctx, x, 6, 7, 6, '#6f93b3');
+    px(ctx, x + 1, 7, P.glassShine);
+  }
+  // the door by the front, and the windscreen
+  rect(ctx, 51, 6, 6, 16, '#4a6a8a');
+  vline(ctx, 54, 6, 16, '#3a5a7a');
+  rect(ctx, 58, 6, 3, 7, '#6f93b3');
+  hline(ctx, 2, 18, 60, '#1e5a42');
+  // the route number over the windscreen
+  rect(ctx, 56, 4, 6, 2, '#1a1a1e');
+  hline(ctx, 57, 4, 4, '#f2c94c');
+  circle(ctx, 13, 24, 4, '#1a1a1a');
+  circle(ctx, 47, 24, 4, '#1a1a1a');
+  circle(ctx, 13, 24, 2, '#8a8a8a');
+  circle(ctx, 47, 24, 2, '#8a8a8a');
+  rect(ctx, 60, 15, 2, 3, '#f2e6a0');
+  rect(ctx, 2, 15, 2, 3, '#c2283a');
+  strokeRect(ctx, 2, 4, 60, 20, O);
+}
+
+/** The bus, side on (it only stops on the east–west streets). */
+export function busImage(dir: 'left' | 'right'): HTMLCanvasElement {
+  const { canvas, ctx } = makeCanvas(64, 30);
+  drawBusSide(ctx);
+  if (dir === 'right') return canvas;
+  const f = makeCanvas(64, 30);
+  f.ctx.translate(64, 0);
+  f.ctx.scale(-1, 1);
+  f.ctx.drawImage(canvas, 0, 0);
+  return f.canvas;
+}
+
 export function carImage(color: string, dir: 'left' | 'right' | 'up' | 'down', lights = false): HTMLCanvasElement {
   if (dir === 'left' || dir === 'right') {
     const { canvas, ctx } = makeCanvas(44, 26);

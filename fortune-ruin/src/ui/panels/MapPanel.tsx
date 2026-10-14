@@ -143,13 +143,22 @@ function CityMapPanel(): JSX.Element {
   const go = (mode: 'taxi' | 'drive') => {
     if (!sel) return;
     const tile = core.services.destinationTile(sel);
+    if (!tile) {
+      say(false, '无法到达');
+      return;
+    }
+    // in the world: the car pulls up, you get in, and out at the other end
+    if (store.world) {
+      store.closeAll();
+      void store.world.ride(mode, () => core.services.travel(sel, mode), tile);
+      return;
+    }
     const r = core.services.travel(sel, mode);
-    if (!r.ok || !tile) {
-      say(false, r.ok ? '无法到达' : r.error);
+    if (!r.ok) {
+      say(false, r.error);
       return;
     }
     store.closeAll();
-    store.world?.teleport('city', null, tile);
     store.toast(r.message, 'info');
   };
   return (

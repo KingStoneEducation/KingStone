@@ -389,16 +389,25 @@ export function BusModal(props: { stop: string }): JSX.Element {
     const to = BUS_STOPS.find((s) => s.id === id)!;
     const tile = busStopTile(id);
     if (!here || !tile) return;
-    const r = core.economy.pay(FARE, 'transport', `公交车：${here.name} → ${to.name}`, 'bus', ['cash', 'bank']);
-    if (!r.ok) {
-      say(false, r.error);
+    if (core.economy.balance('cash') + core.economy.balance('bank') < FARE) {
+      say(false, '车费不够');
       return;
     }
     const ride = Math.ceil((Math.abs(to.x - here.x) + Math.abs(to.y - here.y)) / 6) + 2;
-    core.advance(wait + ride, 'idle');
+    const run = (): { ok: true; message: string } | { ok: false; error: string } => {
+      const r = core.economy.pay(FARE, 'transport', `公交车：${here.name} → ${to.name}`, 'bus', ['cash', 'bank']);
+      if (!r.ok) return { ok: false, error: r.error };
+      core.advance(wait + ride, 'idle');
+      return { ok: true, message: `乘车 ${wait + ride} 分钟到达${to.name}` };
+    };
     store.closeModal();
-    store.world?.teleport('city', null, tile);
-    store.toast(`乘车 ${wait + ride} 分钟到达${to.name}`, 'info');
+    // the bus pulls in at the stop, you get on, and off at the other end
+    if (store.world) {
+      void store.world.ride('bus', run, tile);
+      return;
+    }
+    const r = run();
+    store.toast(r.ok ? r.message : r.error, r.ok ? 'info' : 'warn');
   };
   return (
     <Modal title={`公交站 · ${here?.name ?? ''}`} sub={running ? `运营时间 06:00–24:00 · 下一班约 ${wait} 分钟后 · 票价 ${formatG(FARE)}` : '末班车已过，早上 6 点恢复运营'}>

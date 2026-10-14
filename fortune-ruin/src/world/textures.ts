@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { AtlasBuilder } from '../art/atlas';
 import { buildTileset } from '../art/tiles';
-import { buildPropImages, CAR_COLORS, carImage } from '../art/props';
+import { buildPropImages, busImage, CAR_COLORS, carImage } from '../art/props';
 import { drawBuilding } from '../art/buildings';
 import { ALL_BUILDINGS } from './maps/cityLayout';
 import { buildCharacterSheet, CHAR_H, CHAR_W, DIRS, drawSleepingHead, drawSwimmer, randomLook } from '../art/characters';
@@ -153,6 +153,7 @@ export function registerTextures(scene: Phaser.Scene): void {
       atlas.add(`car:${i}:${d}`, carImage(c, d));
     }
   });
+  for (const d of ['left', 'right'] as const) atlas.add(`bus:${d}`, busImage(d));
   for (const e of EMOTES) atlas.add(`emote:${e}`, emoteCanvas(e));
   for (const name of Object.keys(FX)) atlas.add(`fx:${name}`, fxCanvas(name));
   atlas.draw('shadow', 14, 6, (ctx) => ellipse(ctx, 7, 3, 6, 2, 'rgba(10,6,20,0.32)'));
