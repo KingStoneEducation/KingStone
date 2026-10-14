@@ -133,6 +133,8 @@ export const NPCS: NpcDef[] = [
       { days: [5], from: hm(15), to: hm(17, 30), loc: 'city', spot: 'park_bench1', act: 'leisure', chance: 0.6 },
       { days: [6], from: hm(10), to: hm(13), loc: 'city', spot: 'park_bench1', act: 'leisure', chance: 0.7 },
       { days: [6], from: hm(15), to: hm(17), loc: 'restaurant', spot: 'rest_table2', act: 'eat', chance: 0.4 },
+      // Sunday lunch behind the serving line
+      { days: [6], from: hm(11), to: hm(13, 30), loc: 'community_kitchen', spot: 'ck_line', act: 'volunteer', chance: 0.6 },
     ],
     circle: ['daniel', 'oldzhou', 'tommy', 'ben', 'margaret'],
     initial: { met: true, knowsName: true, affection: 14, trust: 10, respect: 8, familiarity: 24, status: 'acquaintance' },
@@ -310,6 +312,7 @@ export const NPCS: NpcDef[] = [
       { days: [4, 5], from: hm(20), to: hm(24, 30), loc: 'bar', spot: 'bar_stool2', act: 'drink', chance: 0.85 },
       { days: [6], from: hm(13), to: hm(16), loc: 'city', spot: 'court', act: 'exercise', chance: 0.6 },
       { days: [5], from: hm(11), to: hm(13), loc: 'restaurant', spot: 'rest_table1', act: 'eat', chance: 0.4 },
+      { days: [2], from: hm(19), to: hm(21, 30), loc: 'city', spot: 'nm_seat3', act: 'eat', chance: 0.6 },
     ],
     circle: ['eileen', 'tommy', 'kiki', 'marco'],
     initial: { met: true, knowsName: true, affection: 55, trust: 50, respect: 30, familiarity: 72, status: 'friend' },
@@ -354,6 +357,8 @@ export const NPCS: NpcDef[] = [
       { days: ALL, from: hm(10, 30), to: hm(11, 30), loc: 'store', spot: 'store_aisle2', act: 'shop', chance: 0.5 },
       { days: [0, 2, 4], from: hm(14), to: hm(16), loc: 'cafe', spot: 'cafe_table2', act: 'leisure', chance: 0.5 },
       { days: ALL, from: hm(16, 30), to: hm(18), loc: 'city', spot: 'maple_garden', act: 'leisure', chance: 0.5 },
+      // helps serve lunch at the community kitchen on Tuesdays
+      { days: [1], from: hm(11), to: hm(13, 30), loc: 'community_kitchen', spot: 'ck_line', act: 'volunteer', chance: 0.7 },
     ],
     circle: ['oldzhou', 'eileen', 'ben'],
     initial: { met: true, knowsName: true, affection: 8, trust: 25, respect: 15, familiarity: 30, status: 'acquaintance' },
@@ -443,6 +448,7 @@ export const NPCS: NpcDef[] = [
       { days: [4], from: hm(18, 30), to: hm(23, 30), loc: 'bar', spot: 'bar_table2', act: 'drink', chance: 0.7 },
       { days: [5], from: hm(14), to: hm(18), loc: 'boutique', spot: 'boutique_rack', act: 'shop', chance: 0.6 },
       { days: [5], from: hm(21), to: hm(25), loc: 'casino', spot: 'roulette_watch', act: 'gamble', chance: 0.5 },
+      { days: [0], from: hm(19), to: hm(21), loc: 'city', spot: 'nm_seat4', act: 'eat', chance: 0.5 },
     ],
     circle: ['isabella', 'daniel', 'raymond', 'tommy'],
     initial: { met: true, knowsName: true, affection: 18, trust: 8, respect: 8, familiarity: 44, status: 'acquaintance' },
@@ -485,6 +491,8 @@ export const NPCS: NpcDef[] = [
       { days: [0, 1, 2, 3, 4, 5], from: hm(11), to: hm(19), loc: 'motors', spot: 'motors_floor', act: 'work' },
       { days: [0, 1, 2, 3, 4, 5], from: hm(21), to: hm(27), loc: 'casino', spot: 'bj_patron', act: 'gamble', chance: 0.75 },
       { days: [6], from: hm(20), to: hm(26), loc: 'casino', spot: 'bj_patron', act: 'gamble', chance: 0.6 },
+      // Monday mornings after a weekend at the tables
+      { days: [0], from: hm(9, 30), to: hm(10, 30), loc: 'pawn', spot: 'pawn_customer', act: 'shop', chance: 0.4 },
     ],
     circle: ['victor', 'daniel', 'tommy', 'natasha'],
     initial: { met: false, knowsName: false },
@@ -572,6 +580,10 @@ export const NPCS: NpcDef[] = [
       { days: ALL, from: hm(12), to: hm(13), loc: 'restaurant', spot: 'rest_table1', act: 'eat', chance: 0.3 },
       { days: ALL, from: hm(14), to: hm(17), loc: 'cafe', spot: 'cafe_table1', act: 'leisure', chance: 0.6 },
       { days: [5], from: hm(21), to: hm(22, 30), loc: 'casino', spot: 'casino_lobby_watch', act: 'watch', chance: 0.25 },
+      // the old crew chief still turns up at Pier 7 at dawn, eats at the community kitchen, and sits at the night market
+      { days: [0, 1, 2, 3, 4, 5], from: hm(6), to: hm(7, 45), loc: 'city', spot: 'pier7', act: 'leisure', chance: 0.6 },
+      { days: [0, 2, 4], from: hm(12), to: hm(13), loc: 'community_kitchen', spot: 'ck_table1', act: 'eat', chance: 0.6 },
+      { days: [1, 3, 5, 6], from: hm(19), to: hm(21, 30), loc: 'city', spot: 'nm_seat1', act: 'eat', chance: 0.55 },
     ],
     circle: ['eileen', 'margaret', 'ben'],
     initial: { met: true, knowsName: false, familiarity: 10, affection: 5, trust: 5, respect: 5 },
@@ -743,6 +755,8 @@ export const NPCS: NpcDef[] = [
       { days: [2, 3, 4, 5, 6], from: hm(17), to: hm(26), loc: 'bar', spot: 'bar_counter', act: 'work' },
       { days: WD, from: hm(13), to: hm(16), loc: 'city', spot: 'plaza_busk', act: 'busk', chance: 0.5 },
       { days: [5, 6], from: hm(12), to: hm(15), loc: 'cafe', spot: 'cafe_table3', act: 'leisure', chance: 0.4 },
+      // his nights off: playing for the night market crowd
+      { days: [0, 1], from: hm(19, 30), to: hm(23), loc: 'city', spot: 'nm_busk', act: 'busk', chance: 0.7 },
     ],
     circle: ['daniel', 'eileen', 'kiki', 'marco', 'natasha'],
     initial: { met: false, knowsName: false },
@@ -827,6 +841,8 @@ export const NPCS: NpcDef[] = [
       { days: [1, 2, 3, 4, 5, 6], from: hm(10, 30), to: hm(23), loc: 'restaurant', spot: 'rest_host', act: 'work' },
       { days: [0], from: hm(9), to: hm(11), loc: 'store', spot: 'store_aisle', act: 'shop', chance: 0.5 },
       { days: [0], from: hm(14), to: hm(17), loc: 'city', spot: 'park_bench2', act: 'leisure', chance: 0.5 },
+      // the restaurant is closed on Monday: he drives the week's food over to the kitchen
+      { days: [0], from: hm(16, 30), to: hm(17, 30), loc: 'community_kitchen', spot: 'ck_line', act: 'volunteer', chance: 0.8 },
     ],
     circle: ['eileen', 'margaret', 'oldzhou', 'raymond', 'grace'],
     initial: { met: false, knowsName: false },

@@ -30,7 +30,9 @@ export type BuildingStyle =
   | 'lofts'
   | 'river_tower'
   | 'pharmacy'
-  | 'bakery';
+  | 'bakery'
+  | 'pawn'
+  | 'kitchen';
 
 export interface BuildingDef {
   id: string;
@@ -87,8 +89,8 @@ export const BUILDINGS: BuildingDef[] = [
   { id: 'maple_court', name: '枫庭公寓', sign: 'MAPLE COURT', style: 'apartment', x: 2, y: 65, w: 12, h: 10, door: { x: 7, y: 74, w: 2 }, target: 'home_basic' },
   { id: 'dockside_rooms', name: '码头合租屋', sign: 'DOCKSIDE ROOMS', style: 'shared', x: 17, y: 65, w: 11, h: 9, door: { x: 22, y: 73 }, target: 'home_shared' },
   { id: 'row_house_1', name: '老城民居', style: 'house', x: 30, y: 66, w: 6, h: 7 },
-  { id: 'row_house_2', name: '老城民居', style: 'house', x: 37, y: 66, w: 6, h: 7 },
-  { id: 'row_house_3', name: '老城民居', style: 'house', x: 44, y: 66, w: 6, h: 7 },
+  { id: 'harbor_kitchen', name: '海员之家社区食堂', sign: 'COMMUNITY KITCHEN', style: 'kitchen', x: 37, y: 66, w: 6, h: 7, door: { x: 39, y: 72, w: 2 }, target: 'community_kitchen' },
+  { id: 'fulai_pawn', name: '福来当铺', sign: 'PAWN', style: 'pawn', x: 44, y: 66, w: 6, h: 7, door: { x: 46, y: 72 }, target: 'pawn' },
   { id: 'warehouse_1', name: '旧仓库', sign: 'PIER 7', style: 'warehouse', x: 2, y: 79, w: 13, h: 7 },
   { id: 'warehouse_2', name: '旧仓库', sign: 'PIER 8', style: 'warehouse', x: 17, y: 79, w: 12, h: 7 },
 
@@ -102,7 +104,7 @@ export const BUILDING_BY_ID: Record<string, BuildingDef> = Object.fromEntries(BU
 export const LOCATION_BUILDING: Record<string, string> = Object.fromEntries(BUILDINGS.filter((b) => b.target).map((b) => [b.target!, b.id]));
 
 /** Named outdoor spots NPC schedules refer to. */
-export const CITY_SPOTS: Record<string, { x: number; y: number; face?: 'down' | 'up' | 'left' | 'right' }> = {
+export const CITY_SPOTS: Record<string, { x: number; y: number; face?: 'down' | 'up' | 'left' | 'right'; sit?: boolean }> = {
   riverwalk: { x: 105, y: 70, face: 'right' },
   park_bench1: { x: 67, y: 81, face: 'down' },
   park_bench2: { x: 87, y: 69, face: 'down' },
@@ -111,6 +113,16 @@ export const CITY_SPOTS: Record<string, { x: number; y: number; face?: 'down' | 
   maple_garden: { x: 10, y: 76, face: 'down' },
   hill_garden: { x: 30, y: 21, face: 'down' },
   plaza_busk: { x: 76, y: 50, face: 'down' },
+  // the night market on the old pier
+  nm_seat1: { x: 29, y: 83, face: 'right', sit: true },
+  nm_seat2: { x: 32, y: 83, face: 'left', sit: true },
+  nm_seat3: { x: 37, y: 83, face: 'right', sit: true },
+  nm_seat4: { x: 40, y: 83, face: 'left', sit: true },
+  nm_seat5: { x: 33, y: 85, face: 'right', sit: true },
+  nm_busk: { x: 43, y: 86, face: 'up' },
+  nm_stroll: { x: 36, y: 81, face: 'up' },
+  // the foreman's corner at Pier 7
+  pier7: { x: 13, y: 87, face: 'left' },
 };
 
 export const BUS_STOPS: { id: string; name: string; x: number; y: number }[] = [

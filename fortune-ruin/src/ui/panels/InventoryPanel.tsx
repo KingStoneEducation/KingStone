@@ -4,7 +4,6 @@ import { GV, ItemIcon, Modal, useFeedback } from '../components';
 import { ITEMS, OUTFITS } from '../../data/items';
 import { MEAL_BASIC, MEAL_FRESH } from '../../systems/InventorySystem';
 import { effectText } from '../modals/ShopModal';
-import { mulRatio } from '../../core/money';
 import { Icon } from '../Icon';
 
 export function InventoryPanel(): JSX.Element {
@@ -56,14 +55,8 @@ export function InventoryPanel(): JSX.Element {
                   <div className="desc">{isMeal ? '放在家里的冰箱，回家可以做饭。' : `${d?.desc ?? ''} ${d ? effectText(d) : ''}`}</div>
                 </div>
                 {d?.kind === 'valuable' && (
-                  <button
-                    className="small"
-                    onClick={() => {
-                      const r = inv.sellValuable(id);
-                      say(r.ok, r.ok ? r.message : r.error);
-                    }}
-                  >
-                    变卖（约 <GV v={mulRatio(d.price, Math.round((d.resale ?? 0.4) * 100), 100)} />）
+                  <button className="small" title="老城区的福来当铺可以典当或卖断" onClick={() => store.openMap('pawn')}>
+                    当铺估价约 <GV v={core.pawn.appraise(id)} />
                   </button>
                 )}
                 {usable && (

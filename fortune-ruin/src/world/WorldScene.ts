@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GameCore } from '../core/GameCore';
-import { store } from '../ui/store';
+import { store, type CharityTab, type PawnTab } from '../ui/store';
 import { buildCityMap, type CityMap } from './maps/city';
 import { interiorMap } from './maps/interiors';
 import { ownShopMap } from './maps/ownShop';
@@ -30,6 +30,7 @@ import { TABLE_BY_ID, type TableConfig } from '../casino/tables';
 import { formatG } from '../core/money';
 import { patronLine, pedestrianLine, staffLine } from './ambientLines';
 import { sfx } from '../audio/Audio';
+import { nightMarketOpen } from '../systems/OldTownSystem';
 
 const DIR_VEC: Record<CharDir, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
@@ -66,6 +67,10 @@ const VERBS: Record<InteractKind, string> = {
   elevator: '乘电梯',
   concierge: '礼宾服务',
   view: '眺望',
+  pawn: '典当 / 赎当',
+  charity: '领饭',
+  labor: '应工',
+  fortune: '看相（20 G）',
 };
 
 const WALK_SPEED = 58;
@@ -117,6 +122,8 @@ interface PropView {
   rate: number;
   phase: number;
   frame: number;
+  /** a stall that opens and shuts with the clock instead of animating */
+  when?: StaffWhen;
 }
 
 interface NightView {
@@ -169,6 +176,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private props: PropView[] = [];
   private nights: NightView[] = [];
   private staticLights: LightSource[] = [];
+  /** lights of stalls that are only lit while they are open */
+  private timedLights: { light: LightSource; when: StaffWhen }[] = [];
   private emissives: Emissive[] = [];
   private staff: StaffView[] = [];
   private lighting!: Lighting;
@@ -327,6 +336,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.props = [];
     this.nights = [];
     this.staticLights = [];
+    this.timedLights = [];
     this.emissives = [];
     this.focus = null;
     this.arriveAction = null;
@@ -429,7 +439,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       const depth = d.ground ? -900 : d.wall ? -800 + p.y : d.overhead ? 120000 + base : base - 1;
       img.setDepth(depth);
       this.objects.push(img);
-      const view: PropView = { img, night: null, em: null, def: d, refs, nightRefs: [], rate: 200, phase: (p.x * 31 + p.y * 17) % 7, frame: 0 };
+      const view: PropView = { img, night: null, em: null, def: d, refs, nightRefs: [], rate: 200, phase: (p.x * 31 + p.y * 17) % 7, frame: 0, when: p.when };
       if (p.id === 'fountain') view.rate = 170;
       else if (p.id === 'roulette_table') view.rate = 120;
       else if (p.id.startsWith('slot')) view.rate = 240 + ((p.x * 13) % 5) * 40;
@@ -447,14 +457,16 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       }
       if (d.light) {
         const lx = p.flipX ? d.w - d.light.x : d.light.x;
-        this.staticLights.push({
+        const light: LightSource = {
           x: x + lx,
           y: y + d.light.y,
           r: d.light.r,
           color: hexColor(d.light.color),
           always: d.light.always || !map.outdoor,
           flicker: p.id.startsWith('neon') ? 0.04 : undefined,
-        });
+        };
+        if (p.when) this.timedLights.push({ light, when: p.when });
+        else this.staticLights.push(light);
       }
       this.props.push(view);
     }
@@ -653,7 +665,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private animate(time: number): void {
     for (const v of this.props) {
       if (v.refs.length < 2) continue;
-      const f = Math.floor(time / v.rate + v.phase) % v.refs.length;
+      const f = v.def.shut ? (this.whenActive(v.when) ? 0 : 1) : Math.floor(time / v.rate + v.phase) % v.refs.length;
       if (f === v.frame) continue;
       v.frame = f;
       v.img.setTexture(v.refs[f].key, v.refs[f].frame);
@@ -704,6 +716,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     }
     for (const v of this.props) if (v.em && v.night) v.em.alpha = v.night.alpha;
     const lights = this.staticLights.slice();
+    for (const t of this.timedLights) if (this.whenActive(t.when)) lights.push(t.light);
     if (this.city) lights.push(...this.city.lights(night > 0.3));
     if (this.player && darkness > 0.25) {
       this.playerLight.x = this.player.x;
@@ -752,13 +765,20 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.lighting.render(cam, 0.72, this.map.ambient.color, lights, 1, time, this.emissives);
   }
 
+  /** Whether something that keeps hours (Saturday night upstairs, the night market) is on right now. */
+  private whenActive(when: StaffWhen | undefined): boolean {
+    if (!when || this.attract) return true;
+    if (when === 'sky_night') return this.core.sky.isSkyNight();
+    return nightMarketOpen(this.core.now());
+  }
+
   private updateStaffVisibility(): void {
     const sprites = this.npcDir ? [...this.npcDir.sprites.values()] : [];
     for (const s of this.staff) {
       const sx = s.x * 16 + 8;
       const sy = s.y * 16 + 14;
       const covered = sprites.some((n) => Math.abs(n.x - sx) < 10 && Math.abs(n.y - sy) < 10);
-      const away = s.when === 'sky_night' && !this.core.sky.isSkyNight();
+      const away = !!s.when && !this.whenActive(s.when);
       s.sprite.sprite.setVisible(!covered && !away);
       s.sprite.shadow.setVisible(!covered && !away);
     }
@@ -921,6 +941,11 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     } else if (k === 'concierge') {
       const tab = it.interact.data?.tab;
       verb = tab === 'spa' ? '预约水疗' : tab === 'store' ? '兑换礼品' : '礼宾服务';
+    } else if (k === 'charity') {
+      const tab = it.interact.data?.tab;
+      verb = tab === 'volunteer' ? '报名做义工' : tab === 'donate' ? '捐款' : '领一份饭';
+    } else if (k === 'pawn') {
+      verb = it.interact.data?.tab === 'shelf' ? '看二手货' : '典当 / 赎当';
     } else if (k === 'elevator') {
       verb = it.interact.data?.floor === 'sky' ? '上楼' : '下楼';
     } else if (k === 'shop' || k === 'order') {
@@ -1092,10 +1117,12 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         store.openModal({ type: 'computer' });
         break;
       case 'shop':
-        store.openModal({ type: 'shop', shopId: String(d.shop) });
-        break;
       case 'order':
-        store.openModal({ type: 'shop', shopId: String(d.shop), consume: true });
+        if (d.when === 'night_market' && !nightMarketOpen(core.now())) {
+          store.openModal({ type: 'text', title: it.interact.label, text: '摊子用油布盖着，还没摆出来。夜市每天 18:00 开张，周五、周六开到凌晨两点。' });
+          break;
+        }
+        store.openModal({ type: 'shop', shopId: String(d.shop), consume: it.interact.kind === 'order' });
         break;
       case 'table':
         this.sitAtTable(String(d.table));
@@ -1157,6 +1184,22 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
           const r = core.business.workShift();
           store.toast(r.ok ? r.message : r.error, r.ok ? 'good' : 'warn');
         } else store.openPanel('business');
+        break;
+      case 'pawn':
+        store.openModal({ type: 'pawn', tab: String(d.tab ?? 'pawn') as PawnTab });
+        break;
+      case 'charity':
+        store.openModal({ type: 'charity', tab: String(d.tab ?? 'meal') as CharityTab });
+        break;
+      case 'labor':
+        store.openModal({ type: 'labor' });
+        break;
+      case 'fortune':
+        if (!nightMarketOpen(core.now())) {
+          store.openModal({ type: 'text', title: it.interact.label, text: '桌子收起来了，布幡卷在杆子上。看相先生只在夜市开张的时候来。' });
+          break;
+        }
+        store.openModal({ type: 'fortune' });
         break;
       case 'door':
         break;

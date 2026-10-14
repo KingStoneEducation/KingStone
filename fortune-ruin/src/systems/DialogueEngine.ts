@@ -71,6 +71,11 @@ const FACT_MOOD: Record<string, Expression> = {
   refused_help: 'frown',
   drunk_scene: 'frown',
   angry_at_me: 'angry',
+  pawned: 'worried',
+  volunteered: 'smile',
+  donated_kitchen: 'smile',
+  free_meal_rich: 'frown',
+  day_labor: 'surprised',
 };
 
 /** Read a reaction from the change in how they feel about the player. */
@@ -311,7 +316,7 @@ export class DialogueEngine {
         opts.push({ id: 'resp_skill', label: '「那当然，我有一套方法。」', tone: 'risky' });
         const real = this.actualRecentWin();
         if (real > 0 && Number(s.lastFact.data.amount ?? 0) > real * 1.3) opts.push({ id: 'resp_correct', label: `「其实没那么多，只有 ${fmt(real)}。」`, tone: 'neutral' });
-      } else if (k === 'big_loss' || k === 'evicted' || k === 'fired') {
+      } else if (k === 'big_loss' || k === 'evicted' || k === 'fired' || k === 'pawned') {
         opts.push({ id: 'resp_honest', label: '「是啊……最近确实不太好。」', tone: 'warm' });
         opts.push({ id: 'resp_deny', label: '「没那回事，我好得很。」', tone: 'risky' });
         if (k === 'big_loss') opts.push({ id: 'resp_quit', label: '「我打算不再赌了。」', tone: 'warm' });

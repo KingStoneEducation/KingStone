@@ -241,17 +241,40 @@ export function buildCityMap(): CityMap {
   b.prop('mailbox', 15, 74);
   b.prop('trash', 16, 75);
   for (const [x, y] of [[15, 66], [29, 64], [36, 64], [43, 64], [50, 64], [1, 64]] as [number, number][]) b.prop('tree_round', x, y + 0);
-  for (const x of [32, 39, 46]) b.fill(x, 73, 2, 1, 'garden', true);
+  for (const x of [32, 37, 48]) b.fill(x, 73, 2, 1, 'garden', true);
+  b.prop('aframe', 41, 73, { kind: 'sign', label: '食堂告示', data: { text: '海员之家社区食堂：每天 11:00–14:00、17:00–20:00 两餐，免费，每人一份。欢迎来帮忙打饭，也欢迎捐款。' } });
   for (const x of [5, 19, 33, 47]) b.prop('lamp', x, 77);
-  // docks
-  b.prop('crane', 34, 84);
-  b.prop('container', 38, 82);
-  b.prop('container_red', 42, 85);
-  b.prop('container', 46, 81);
-  b.prop('crate', 30, 81);
-  b.prop('crate', 31, 81);
-  b.prop('barrel', 30, 83);
-  b.prop('barrel', 49, 84);
+  // the old pier: day labour at Pier 7 in the morning
+  b.prop('labor_board', 10, 86, { kind: 'labor', label: '7 号码头 · 今日招工' });
+  b.staff(11, 86, 'down', 4201, '工头', 'foreman');
+  b.prop('crate', 3, 86);
+  b.prop('crate', 4, 86);
+  b.prop('barrel', 6, 86);
+  b.prop('crate', 20, 86);
+  b.prop('barrel', 22, 86);
+  // the night market by the water: five stalls, folding tables, a fortune teller
+  const stalls: [string, string, 'order' | 'shop', string][] = [
+    ['stall_wok', 'nm_wok', 'order', '阿珍炒档'],
+    ['stall_grill', 'nm_grill', 'order', '老马烤串'],
+    ['stall_sweets', 'nm_sweets', 'order', '陈记糖水'],
+    ['stall_books', 'nm_books', 'shop', '旧书摊'],
+    ['stall_trinkets', 'nm_trinkets', 'shop', '杂货小摊'],
+  ];
+  stalls.forEach(([prop, shop, kind, label], i) => {
+    const x = 29 + i * 4;
+    b.prop(prop, x, 80, { kind, label: `夜市 · ${label}`, data: { shop, when: 'night_market' } }, { when: 'night_market' });
+    b.staff(x + 1, 79, 'down', 4210 + i, '摊主', 'vendor', 'night_market');
+  });
+  for (const x of [29, 33, 37, 41, 45]) b.prop('lanterns', x, 82, undefined, { noBlock: true, when: 'night_market' });
+  for (const [x, y] of [[30, 83], [38, 83], [34, 85]] as [number, number][]) {
+    b.prop('nm_table', x, y);
+    b.prop('nm_stool', x - 1, y);
+    b.prop('nm_stool_red', x + 2, y);
+  }
+  b.prop('fortune_table', 46, 84, { kind: 'fortune', label: '夜市 · 看相' }, { when: 'night_market' });
+  b.staff(46, 83, 'down', 4220, '看相先生', 'fortune', 'night_market');
+  b.prop('crane', 50, 86);
+  b.prop('container', 47, 86);
   b.prop('boat', 8, 89, undefined, { noBlock: true });
   b.prop('boat', 36, 89, undefined, { noBlock: true });
 
@@ -295,7 +318,7 @@ export function buildCityMap(): CityMap {
   }
 
   // NPC spots and spawns
-  for (const [name, s] of Object.entries(CITY_SPOTS)) b.spot(name, s.x, s.y, s.face ?? 'down');
+  for (const [name, s] of Object.entries(CITY_SPOTS)) b.spot(name, s.x, s.y, s.face ?? 'down', s.sit);
   b.spawn('start', 7, 75, 'down');
 
   // benches can be sat on; the basketball court is open for a game

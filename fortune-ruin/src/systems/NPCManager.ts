@@ -22,6 +22,7 @@ export const ACTIVITY_NAMES: Record<string, string> = {
   gamble: '赌博',
   watch: '旁观',
   busk: '街头演奏',
+  volunteer: '做义工',
   home: '在家',
 };
 

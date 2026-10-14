@@ -637,6 +637,56 @@ export interface GameState {
   stories: StoriesState;
   /** the player's own shop; absent in old saves */
   business?: BusinessState | null;
+  /** the pawn shop, the community kitchen and the docks; absent in old saves */
+  oldtown?: OldTownState;
+}
+
+/** Something the player left at the pawn shop against a loan. */
+export interface PawnTicket {
+  id: number;
+  item: ItemId;
+  kind: 'item' | 'outfit' | 'vehicle';
+  /** what the shop said it is worth, and what it lent against it */
+  appraisal: Money;
+  loan: Money;
+  /** day the current term started (renewing restarts it) and the day it ends */
+  start: number;
+  due: number;
+  status: 'open' | 'redeemed' | 'forfeited';
+  /** fees paid so far (redeeming or renewing) */
+  feesPaid: Money;
+  /** day the reminder text was sent */
+  reminded?: number;
+}
+
+/** An item on the pawn shop's second-hand shelf. */
+export interface SecondHandLot {
+  id: number;
+  item: ItemId;
+  price: Money;
+  /** forfeited by the player, or bought in from the street */
+  from: 'player' | 'street';
+  /** week it was put out (street lots are replaced every week) */
+  week: number;
+}
+
+export interface OldTownState {
+  tickets: PawnTicket[];
+  seq: number;
+  stock: SecondHandLot[];
+  /** week index the street stock was last filled for */
+  stockWeek: number;
+  /** last day of a free meal, a volunteer shift, a day's labour and a fortune reading */
+  mealDay: number;
+  volunteerDay: number;
+  laborDay: number;
+  fortuneDay: number;
+  meals: number;
+  volunteerShifts: number;
+  laborShifts: number;
+  laborEarned: Money;
+  /** given to the community kitchen, in total */
+  donated: Money;
 }
 
 /** A shop the player leases and runs. */

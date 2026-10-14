@@ -9,6 +9,7 @@ import { initialNpcRuntime } from '../systems/NPCManager';
 import { emptyBelief, emptyRelationship, initialTies } from '../systems/SocialSystem';
 import { emptyFlow } from '../systems/EconomySystem';
 import { initialMarket } from '../systems/MarketSystem';
+import { emptyOldTown } from '../systems/OldTownSystem';
 import { BASE_IMPULSIVITY } from '../systems/PlayerSystem';
 import { GameCore } from './GameCore';
 
@@ -206,6 +207,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
     stats: { days: [], peakNetWorth: G(20000), lowestNetWorth: G(20000), milestones: {}, lifeEvents: [] },
     market: initialMarket(rng.nextU32()),
     stories: { active: [], done: [], ended: {} },
+    oldtown: emptyOldTown(),
   };
 
   // relationships

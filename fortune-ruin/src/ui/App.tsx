@@ -21,6 +21,7 @@ import { BusinessPanel } from './panels/BusinessPanel';
 import { TableUI } from './table/TableUI';
 import { ConciergeModal } from './modals/ConciergeModal';
 import { Desktop } from './computer/Desktop';
+import { CharityModal, FortuneModal, LaborModal, PawnModal } from './modals/OldTownModals';
 import { venueTheme } from './theme';
 
 function ModalHost(): JSX.Element | null {
@@ -75,6 +76,14 @@ function ModalHost(): JSX.Element | null {
       return <SavesModal mode={m.mode} />;
     case 'concierge':
       return <ConciergeModal tab={m.tab} lobby={!!m.lobby} />;
+    case 'pawn':
+      return <PawnModal tab={m.tab} />;
+    case 'charity':
+      return <CharityModal tab={m.tab} />;
+    case 'labor':
+      return <LaborModal />;
+    case 'fortune':
+      return <FortuneModal />;
   }
 }
 

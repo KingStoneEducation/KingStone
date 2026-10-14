@@ -30,6 +30,8 @@ export interface PropDef {
   overhead?: boolean;
   /** indoors, the night image follows the daylight outside (windows) instead of staying lit */
   daylit?: boolean;
+  /** two frames that are not an animation: 0 = open for business, 1 = shut (see PlacedProp.when) */
+  shut?: boolean;
 }
 
 const O = P.outline;
@@ -2478,6 +2480,506 @@ def({
     // arrow up
     for (let i = 0; i < 4; i++) hline(ctx, 28 - i, 12 + i, 1 + i * 2, BRASS_LIGHT);
     rect(ctx, 27, 16, 3, 4, BRASS_LIGHT);
+  },
+});
+
+
+// ------------------------------------------------------------------ the Old Town: night market, pawn shop, community kitchen
+
+const LANTERN = '#d8342a';
+const LANTERN_LIT = '#ffa04a';
+
+/** A red paper lantern, 5 × 6 px, lit at night. */
+function lantern(ctx: Ctx, x: number, y: number): void {
+  vline(ctx, x + 2, y - 2, 2, '#2a2a2e');
+  rect(ctx, x + 1, y, 3, 1, '#a8801a');
+  rect(ctx, x, y + 1, 5, 4, LANTERN);
+  vline(ctx, x + 2, y + 1, 4, shade(LANTERN, -0.2));
+  rect(ctx, x + 1, y + 5, 3, 1, '#a8801a');
+  px(ctx, x + 2, y + 6, '#e0b13e');
+}
+
+/** The lit paper: red-orange with a bright core (the light map adds the halo). */
+function lanternGlow(ctx: Ctx, x: number, y: number): void {
+  rect(ctx, x, y + 1, 5, 4, '#ff6a3a');
+  rect(ctx, x + 1, y + 1, 3, 4, LANTERN_LIT);
+  vline(ctx, x + 2, y + 2, 2, '#fff2c0');
+}
+
+interface StallLook {
+  /** awning stripes */
+  a: string;
+  b: string;
+  /** the front panel of the counter */
+  panel: string;
+  /** what is on the counter */
+  goods: (ctx: Ctx) => void;
+  /** pictogram on the hanging board, drawn in a 14 × 7 box at (x, y) */
+  sign: (ctx: Ctx, x: number, y: number) => void;
+}
+
+/** A night market stall, 3 tiles wide. Frame 0 is open, frame 1 is packed up for the day. */
+function stall(look: StallLook): Pick<PropDef, 'w' | 'h' | 'foot' | 'frames' | 'shut' | 'draw' | 'night' | 'light'> {
+  const W = 48;
+  const H = 46;
+  return {
+    w: W,
+    h: H,
+    foot: { w: 3, h: 1 },
+    frames: 2,
+    shut: true,
+    light: { x: 24, y: 24, r: 34, color: '#ffc87a' },
+    draw: (ctx, f) => {
+      shadow(ctx, 24, 44, 22, 2);
+      // poles
+      for (const x of [3, 43]) {
+        rect(ctx, x, 8, 2, 34, '#3a3a40');
+        px(ctx, x, 8, '#5a5a62');
+      }
+      // the cart
+      box(ctx, 1, 27, 46, 5, 12, '#c9a26a', look.panel);
+      hline(ctx, 2, 28, 44, shade('#c9a26a', 0.15));
+      for (let x = 6; x < 44; x += 10) vline(ctx, x, 33, 5, shade(look.panel, -0.18));
+      rect(ctx, 6, 40, 4, 3, '#2a2a2e');
+      rect(ctx, 38, 40, 4, 3, '#2a2a2e');
+      if (f === 0) {
+        // striped awning with a scalloped hem
+        rect(ctx, 0, 3, W, 9, look.a);
+        for (let x = 0; x < W; x += 8) rect(ctx, x + 4, 3, 4, 9, look.b);
+        for (let x = 0; x < W; x += 4) {
+          rect(ctx, x, 12, 4, 1, ((x / 4) & 1) === 0 ? look.a : look.b);
+          px(ctx, x + 1, 13, ((x / 4) & 1) === 0 ? look.a : look.b);
+          px(ctx, x + 2, 13, ((x / 4) & 1) === 0 ? look.a : look.b);
+        }
+        hline(ctx, 0, 3, W, shade(look.a, 0.25));
+        strokeRect(ctx, 0, 2, W, 11, O);
+        // hanging board
+        vline(ctx, 17, 13, 2, '#2a2a2e');
+        vline(ctx, 30, 13, 2, '#2a2a2e');
+        rect(ctx, 15, 15, 18, 10, '#f4ead2');
+        strokeRect(ctx, 15, 15, 18, 10, '#5a3a24');
+        look.sign(ctx, 17, 17);
+        lantern(ctx, 6, 14);
+        lantern(ctx, 37, 14);
+        look.goods(ctx);
+      } else {
+        // rolled-up awning and a tarp over the counter
+        rect(ctx, 0, 8, W, 4, look.a);
+        hline(ctx, 0, 8, W, shade(look.a, 0.25));
+        hline(ctx, 0, 11, W, shade(look.a, -0.3));
+        strokeRect(ctx, 0, 7, W, 6, O);
+        rect(ctx, 2, 22, 44, 10, '#4a5a6a');
+        hline(ctx, 2, 22, 44, '#6a7a8a');
+        for (const x of [12, 34]) vline(ctx, x, 22, 14, '#c9b48e');
+        strokeRect(ctx, 2, 22, 44, 10, '#2a323a');
+      }
+    },
+    night: (ctx, f) => {
+      if (f !== 0) return;
+      lanternGlow(ctx, 6, 14);
+      lanternGlow(ctx, 37, 14);
+      ctx.fillStyle = 'rgba(255,214,150,0.22)';
+      ctx.fillRect(4, 18, 40, 12);
+    },
+  };
+}
+
+def({
+  id: 'stall_wok',
+  ...stall({
+    a: '#c8283a',
+    b: '#f4ead2',
+    panel: '#8a2a22',
+    goods: (ctx) => {
+      // a wok over a burner, plates of noodles
+      ellipse(ctx, 14, 25, 8, 3, '#1a1a1e');
+      ellipse(ctx, 14, 24, 6, 2, '#5a3a24');
+      for (let i = 0; i < 5; i++) hline(ctx, 10 + i, 23 + (i % 2), 4, '#e8c06a');
+      rect(ctx, 21, 23, 4, 1, '#5a5a62');
+      for (const x of [29, 37]) {
+        ellipse(ctx, x, 26, 4, 2, '#f4f1ea');
+        hline(ctx, x - 2, 25, 4, '#c08a3a');
+      }
+    },
+    sign: (ctx, x, y) => {
+      ellipse(ctx, x + 7, y + 4, 6, 2, '#2a2a2e');
+      hline(ctx, x + 2, y + 2, 10, '#e0a83a');
+      rect(ctx, x + 12, y + 3, 3, 1, '#2a2a2e');
+    },
+  }),
+});
+def({
+  id: 'stall_grill',
+  ...stall({
+    a: '#2f5a8a',
+    b: '#f4ead2',
+    panel: '#2a3a52',
+    goods: (ctx) => {
+      // a charcoal grill full of skewers
+      rect(ctx, 6, 23, 24, 5, '#2a2a2e');
+      for (let x = 8; x < 29; x += 3) px(ctx, x, 26, ['#ff7a3a', '#ffb03a', '#c83a2a'][x % 3]);
+      for (let x = 8; x < 29; x += 4) {
+        vline(ctx, x, 19, 6, '#c9a26a');
+        rect(ctx, x - 1, 20, 3, 3, '#8a3a22');
+      }
+      // a pot of curry fish balls
+      rect(ctx, 33, 21, 10, 6, '#8a8f96');
+      hline(ctx, 33, 21, 10, '#c4c7cc');
+      for (const x of [35, 38, 41]) px(ctx, x, 22, '#e8b84a');
+    },
+    sign: (ctx, x, y) => {
+      for (let i = 0; i < 3; i++) {
+        hline(ctx, x + 1, y + 1 + i * 2, 12, '#c9a26a');
+        rect(ctx, x + 4 + i, y + i * 2, 3, 2, '#a8402a');
+        rect(ctx, x + 9 - i, y + i * 2, 2, 2, '#a8402a');
+      }
+    },
+  }),
+});
+def({
+  id: 'stall_sweets',
+  ...stall({
+    a: '#e87aa0',
+    b: '#fff2f6',
+    panel: '#9a3a5a',
+    goods: (ctx) => {
+      // a big pot of red bean soup, bowls and a tea urn
+      rect(ctx, 6, 19, 12, 8, '#c4c7cc');
+      ellipse(ctx, 12, 19, 6, 2, '#7a2a2a');
+      hline(ctx, 6, 26, 12, '#8a8f96');
+      for (const x of [22, 28]) {
+        ellipse(ctx, x, 26, 3, 2, '#f4f1ea');
+        px(ctx, x, 25, '#8a2a2a');
+      }
+      rect(ctx, 34, 17, 8, 10, '#a8701a');
+      rect(ctx, 35, 18, 6, 8, '#c8902a');
+      px(ctx, 42, 22, '#5a5a62');
+    },
+    sign: (ctx, x, y) => {
+      ellipse(ctx, x + 7, y + 4, 5, 2, '#f4f1ea');
+      ellipse(ctx, x + 7, y + 3, 4, 1, '#8a2a2a');
+      hline(ctx, x + 3, y + 6, 8, '#9a3a5a');
+    },
+  }),
+});
+def({
+  id: 'stall_books',
+  ...stall({
+    a: '#4a6a3a',
+    b: '#e8dcc0',
+    panel: '#3a4a2a',
+    goods: (ctx) => {
+      // stacks of old books, spines up
+      const cols = ['#a8402a', '#2f5a8a', '#e0b13e', '#5a3a24', '#4a6a3a', '#e8dcc0', '#7a2a5a'];
+      for (let i = 0; i < 9; i++) {
+        const x = 4 + i * 4;
+        const h = 4 + ((i * 7) % 4);
+        rect(ctx, x, 27 - h, 3, h, cols[i % cols.length]);
+        hline(ctx, x, 27 - h, 3, shade(cols[i % cols.length], 0.25));
+      }
+      rect(ctx, 40, 22, 5, 5, '#e8dcc0');
+      hline(ctx, 41, 23, 3, '#5a5a62');
+    },
+    sign: (ctx, x, y) => {
+      rect(ctx, x + 2, y, 5, 7, '#2f5a8a');
+      rect(ctx, x + 7, y, 5, 7, '#a8402a');
+      vline(ctx, x + 7, y, 7, '#1a1a1e');
+    },
+  }),
+});
+def({
+  id: 'stall_trinkets',
+  ...stall({
+    a: '#7a4aa8',
+    b: '#f4ead2',
+    panel: '#4a2a6a',
+    goods: (ctx) => {
+      // a cloth of hair clips, records in a crate, a bucket of flowers
+      rect(ctx, 4, 24, 16, 3, '#2a1a3a');
+      for (let x = 5; x < 20; x += 3) px(ctx, x, 25, ['#f4f1ea', '#e87aa0', '#e0b13e'][x % 3]);
+      rect(ctx, 23, 20, 10, 7, '#8a5a36');
+      for (let x = 24; x < 33; x += 2) vline(ctx, x, 18, 4, '#1a1a1e');
+      circle(ctx, 29, 19, 2, '#1a1a1e');
+      rect(ctx, 37, 22, 6, 5, '#5a606a');
+      for (const [x, y, c] of [[37, 19, '#e04a5a'], [40, 18, '#f2c94c'], [42, 20, '#f4f1ea'], [39, 21, '#e87aa0']] as [number, number, string][]) {
+        vline(ctx, x + 1, y + 1, 3, '#3f7a38');
+        px(ctx, x, y, c);
+        px(ctx, x + 1, y, c);
+      }
+    },
+    sign: (ctx, x, y) => {
+      circle(ctx, x + 4, y + 3, 2, '#e87aa0');
+      circle(ctx, x + 10, y + 3, 2, '#e0b13e');
+      px(ctx, x + 4, y + 3, '#f4f1ea');
+    },
+  }),
+});
+
+/** A string of lanterns overhead across the market aisle (lit while the market is open). */
+def({
+  id: 'lanterns',
+  w: 64,
+  h: 20,
+  // placed with noBlock: the footprint only centres the string over four tiles
+  foot: { w: 4, h: 1 },
+  overhead: true,
+  frames: 2,
+  shut: true,
+  draw: (ctx) => {
+    for (let x = 0; x < 64; x++) px(ctx, x, 3 + Math.round(Math.sin((x / 64) * Math.PI) * 4), '#2a2a2e');
+    for (const x of [6, 22, 38, 54]) lantern(ctx, x - 2, 5 + Math.round(Math.sin((x / 64) * Math.PI) * 4));
+  },
+  night: (ctx, f) => {
+    if (f !== 0) return;
+    for (const x of [6, 22, 38, 54]) lanternGlow(ctx, x - 2, 5 + Math.round(Math.sin((x / 64) * Math.PI) * 4));
+  },
+});
+
+/** Folding plastic table at the night market. */
+def({
+  id: 'nm_table',
+  w: 32,
+  h: 20,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 16, 18, 14, 2);
+    box(ctx, 1, 5, 30, 6, 4, '#d8342a', '#a82a22');
+    hline(ctx, 2, 6, 28, shade('#d8342a', 0.2));
+    for (const x of [3, 27]) rect(ctx, x, 15, 2, 4, '#8a2a22');
+    // bowls, chopsticks, a beer bottle
+    ellipse(ctx, 9, 7, 3, 1, '#f4f1ea');
+    px(ctx, 9, 7, '#c08a3a');
+    hline(ctx, 14, 8, 5, '#c9a26a');
+    ellipse(ctx, 22, 7, 3, 1, '#f4f1ea');
+    rect(ctx, 26, 2, 2, 6, '#3a7a3a');
+    px(ctx, 26, 2, '#8ac08a');
+  },
+});
+for (const [id, c] of [
+  ['nm_stool', '#2f5a9a'],
+  ['nm_stool_red', '#d8342a'],
+] as const) {
+  def({
+    id,
+    w: 12,
+    h: 12,
+    foot: { w: 1, h: 1 },
+    draw: (ctx) => {
+      shadow(ctx, 6, 10, 5, 1);
+      ellipse(ctx, 6, 4, 5, 2, c);
+      hline(ctx, 2, 4, 9, shade(c, 0.25));
+      for (const x of [2, 9]) vline(ctx, x, 5, 5, shade(c, -0.25));
+      hline(ctx, 3, 8, 6, shade(c, -0.25));
+    },
+  });
+}
+
+/** The fortune teller's table: red cloth, a candle, a cup of bamboo sticks, a banner. */
+def({
+  id: 'fortune_table',
+  w: 32,
+  h: 34,
+  foot: { w: 2, h: 1 },
+  light: { x: 9, y: 16, r: 20, color: '#ffb84a' },
+  draw: (ctx) => {
+    shadow(ctx, 16, 32, 14, 2);
+    box(ctx, 1, 17, 24, 4, 11, '#9a1a24', '#7a1420');
+    for (let x = 3; x < 25; x += 4) px(ctx, x, 27, '#e0b13e');
+    // candle and sticks
+    rect(ctx, 6, 13, 3, 5, '#f4ead2');
+    px(ctx, 7, 12, '#ffcf6a');
+    rect(ctx, 14, 12, 5, 6, '#8a5a36');
+    for (let i = 0; i < 4; i++) vline(ctx, 15 + i, 8 + (i % 2), 4, '#c9a26a');
+    // banner on a pole with the eight trigrams
+    vline(ctx, 28, 2, 30, '#5a3a24');
+    rect(ctx, 22, 3, 6, 14, '#f4ead2');
+    strokeRect(ctx, 22, 3, 6, 14, '#5a3a24');
+    circle(ctx, 25, 10, 2, '#1a1a1e');
+    px(ctx, 25, 9, '#f4ead2');
+    for (const y of [5, 14]) hline(ctx, 23, y, 4, '#1a1a1e');
+  },
+  night: (ctx) => {
+    ctx.fillStyle = 'rgba(255,200,110,0.4)';
+    ctx.fillRect(4, 10, 7, 6);
+    px(ctx, 7, 12, '#fff2b0');
+  },
+});
+
+/** The foreman's notice board at Pier 7: "workers wanted today, paid by the day". */
+def({
+  id: 'labor_board',
+  w: 22,
+  h: 30,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 11, 28, 9, 2);
+    for (const x of [3, 18]) rect(ctx, x, 14, 2, 14, '#5a3a24');
+    rect(ctx, 1, 2, 20, 15, '#8a5a36');
+    strokeRect(ctx, 1, 2, 20, 15, O);
+    rect(ctx, 3, 4, 16, 11, '#f4ead2');
+    rect(ctx, 3, 4, 16, 3, '#c8283a');
+    // a crate and lines of text
+    rect(ctx, 5, 9, 4, 4, '#c9a26a');
+    strokeRect(ctx, 5, 9, 4, 4, '#5a3a24');
+    for (const y of [9, 11, 13]) hline(ctx, 11, y, 6, '#5a5a62');
+  },
+});
+
+/** The pawnbroker's counter: dark wood with an iron grille and a small window. */
+def({
+  id: 'pawn_counter',
+  w: 48,
+  h: 36,
+  foot: { w: 3, h: 1 },
+  draw: (ctx) => {
+    box(ctx, 0, 18, 48, 5, 13, '#4a2a18', '#3a2012');
+    hline(ctx, 1, 19, 46, '#6a4228');
+    for (let x = 4; x < 46; x += 11) strokeRect(ctx, x, 25, 8, 5, '#2a160c');
+    // grille
+    hline(ctx, 0, 1, 48, '#2a2a2e');
+    for (let x = 1; x < 48; x += 4) {
+      if (x > 17 && x < 30) continue;
+      vline(ctx, x, 1, 17, '#3a3a40');
+      px(ctx, x, 1, '#6a6a72');
+    }
+    hline(ctx, 0, 9, 48, '#3a3a40');
+    // the window opening, a little brass bell, a ledger
+    strokeRect(ctx, 17, 4, 14, 14, '#a8801a');
+    rect(ctx, 37, 15, 4, 3, '#e0b13e');
+    px(ctx, 39, 14, '#a8801a');
+    rect(ctx, 21, 16, 7, 2, '#e8dcc0');
+    hline(ctx, 21, 16, 7, '#a8402a');
+  },
+});
+
+/** The pawnbroker's sign: three gold balls hanging from a bracket. */
+def({
+  id: 'pawn_sign',
+  w: 18,
+  h: 22,
+  foot: { w: 0, h: 0 },
+  wall: true,
+  draw: (ctx) => {
+    hline(ctx, 0, 2, 16, '#2a2a2e');
+    vline(ctx, 1, 0, 5, '#2a2a2e');
+    for (const x of [4, 9, 14]) vline(ctx, x, 3, 4, '#2a2a2e');
+    for (const [x, y] of [[4, 9], [14, 9], [9, 15]] as [number, number][]) {
+      circle(ctx, x, y, 3, O);
+      circle(ctx, x, y, 2, P.gold);
+      px(ctx, x - 1, y - 1, P.goldLight);
+    }
+    vline(ctx, 9, 7, 5, '#2a2a2e');
+  },
+});
+
+def({
+  id: 'safe',
+  w: 16,
+  h: 22,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 8, 20, 7, 2);
+    box(ctx, 1, 3, 14, 3, 15, '#5a6a5e', '#3e4a42');
+    circle(ctx, 8, 12, 3, '#a8a8a8');
+    circle(ctx, 8, 12, 2, '#5a5a62');
+    px(ctx, 8, 10, '#e8e8e8');
+    rect(ctx, 12, 9, 1, 6, '#a8a8a8');
+    hline(ctx, 2, 4, 12, '#7a8a7e');
+  },
+});
+
+/** The community kitchen's serving line: steel counter, three steaming pots. */
+def({
+  id: 'serving_line',
+  w: 48,
+  h: 30,
+  foot: { w: 3, h: 1 },
+  frames: 2,
+  draw: (ctx, f) => {
+    box(ctx, 0, 12, 48, 6, 11, '#c4c7cc', '#8a8f96');
+    hline(ctx, 1, 13, 46, '#e4e6ea');
+    for (let i = 0; i < 3; i++) {
+      const x = 4 + i * 15;
+      rect(ctx, x, 7, 11, 8, '#a8acb2');
+      hline(ctx, x, 7, 11, '#d4d8dc');
+      ellipse(ctx, x + 5, 8, 4, 1, ['#c08a3a', '#e8dcc0', '#8a3a22'][i]);
+      strokeRect(ctx, x, 7, 11, 8, '#5a5f66');
+      // steam
+      for (let k = 0; k < 2; k++) px(ctx, x + 3 + k * 4, 4 - ((f + k + i) % 2), 'rgba(255,255,255,0.7)');
+      px(ctx, x + 5, 2 + ((f + i) % 2), 'rgba(255,255,255,0.5)');
+    }
+    // ladle and a stack of trays
+    vline(ctx, 18, 3, 6, '#5a5f66');
+    rect(ctx, 42, 16, 5, 2, '#e8dcc0');
+  },
+});
+
+/** A long communal table, with benches drawn separately. */
+def({
+  id: 'long_table',
+  w: 64,
+  h: 18,
+  foot: { w: 4, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 32, 16, 30, 2);
+    box(ctx, 0, 4, 64, 6, 5, P.woodLight, P.wood);
+    hline(ctx, 1, 5, 62, P.woodPale);
+    for (const x of [2, 60]) rect(ctx, x, 14, 2, 3, P.woodDark);
+    for (const x of [8, 22, 38, 52]) {
+      ellipse(ctx, x, 6, 3, 1, '#f4f1ea');
+      px(ctx, x, 6, '#c08a3a');
+    }
+    rect(ctx, 30, 5, 3, 3, '#e0b13e');
+  },
+});
+def({
+  id: 'long_bench',
+  w: 64,
+  h: 10,
+  // placed with noBlock so people can sit on it
+  foot: { w: 4, h: 1 },
+  draw: (ctx) => {
+    rect(ctx, 1, 2, 62, 3, P.wood);
+    hline(ctx, 1, 2, 62, P.woodLight);
+    for (const x of [3, 59]) rect(ctx, x, 5, 2, 4, P.woodDark);
+    strokeRect(ctx, 1, 2, 62, 3, O);
+  },
+});
+
+def({
+  id: 'donation_box',
+  w: 16,
+  h: 24,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 8, 22, 6, 2);
+    rect(ctx, 6, 14, 4, 8, P.woodDark);
+    box(ctx, 2, 4, 12, 3, 8, P.woodLight, P.wood);
+    rect(ctx, 5, 5, 6, 1, '#1a1a1e');
+    rect(ctx, 5, 9, 6, 3, '#f4ead2');
+    px(ctx, 7, 10, '#c8283a');
+    px(ctx, 8, 10, '#c8283a');
+  },
+});
+
+/** The board of names in the dining hall: who gives to the kitchen. */
+def({
+  id: 'donor_board',
+  w: 32,
+  h: 36,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 16, 34, 13, 2);
+    for (const x of [4, 26]) rect(ctx, x, 22, 2, 12, P.woodDark);
+    rect(ctx, 0, 1, 32, 23, P.woodDark);
+    rect(ctx, 2, 3, 28, 19, '#3a2416');
+    rect(ctx, 4, 4, 24, 4, '#c8283a');
+    hline(ctx, 4, 8, 24, '#8a1a1a');
+    for (let i = 0; i < 4; i++) {
+      rect(ctx, 5, 11 + i * 3, 13 - (i % 3) * 3, 1, P.goldLight);
+      rect(ctx, 22, 11 + i * 3, 5, 1, P.gold);
+    }
+    strokeRect(ctx, 0, 1, 32, 23, O);
   },
 });
 

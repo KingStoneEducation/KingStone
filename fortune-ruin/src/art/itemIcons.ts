@@ -438,6 +438,111 @@ const ICONS: Record<string, Draw> = {
     px(c, 14, 13, '#e0b13e');
     px(c, 13, 14, '#e0b13e');
   },
+  // the night market
+  nm_noodles: (c) => {
+    plate(c);
+    ellipse(c, 8, 8, 5, 3, '#7a4a22');
+    for (let i = 0; i < 4; i++) hline(c, 4 + i, 6 + i, 8 - i, i % 2 ? '#e8c078' : '#c8904a');
+    px(c, 6, 7, '#4a8a3a');
+    px(c, 10, 8, '#4a8a3a');
+    rect(c, 9, 6, 2, 1, '#8a3a22');
+  },
+  nm_omelette: (c) => {
+    plate(c);
+    ellipse(c, 8, 8, 6, 3, '#e8b84a');
+    ellipse(c, 8, 8, 4, 2, '#f0d070');
+    for (const [x, y] of [[5, 8], [9, 7], [11, 9]] as [number, number][]) px(c, x, y, '#8a7a6a');
+    px(c, 7, 9, '#c8283a');
+    px(c, 10, 6, '#4a8a3a');
+  },
+  nm_skewers: (c) => {
+    for (let i = 0; i < 3; i++) {
+      const x = 4 + i * 3;
+      vline(c, x + 1, 2, 13, O);
+      vline(c, x + 1, 3, 11, '#c9a26a');
+      for (let k = 0; k < 3; k++) {
+        rect(c, x, 4 + k * 3, 3, 2, O);
+        px(c, x + 1, 4 + k * 3, k === 1 ? '#5a8a3a' : '#a8402a');
+        px(c, x + 1, 5 + k * 3, k === 1 ? '#3a6a2a' : '#7a2a1a');
+      }
+    }
+  },
+  nm_fishballs: (c) => {
+    vline(c, 8, 1, 14, O);
+    vline(c, 8, 2, 12, '#c9a26a');
+    for (let k = 0; k < 4; k++) {
+      circle(c, 8, 4 + k * 3, 2, O);
+      circle(c, 8, 4 + k * 3, 1, '#e8b84a');
+      px(c, 7, 3 + k * 3, '#f8e0a0');
+    }
+  },
+  nm_sweet_soup: (c) => {
+    ellipse(c, 8, 12, 6, 2, O);
+    rect(c, 2, 7, 12, 5, O);
+    rect(c, 3, 7, 10, 4, '#f4f1ea');
+    ellipse(c, 8, 7, 6, 2, O);
+    ellipse(c, 8, 7, 5, 1, '#8a2a2a');
+    px(c, 6, 7, '#c8483a');
+    px(c, 10, 7, '#5a1a1a');
+    rect(c, 11, 2, 1, 5, '#c8ccd4');
+  },
+  nm_milk_tea: (c) => {
+    rect(c, 4, 3, 8, 12, O);
+    rect(c, 5, 4, 6, 10, '#c8925a');
+    rect(c, 5, 4, 6, 2, '#e8c8a0');
+    vline(c, 5, 6, 8, '#d8a870');
+    rect(c, 12, 6, 2, 1, O);
+    rect(c, 13, 7, 1, 3, O);
+    rect(c, 12, 10, 2, 1, O);
+  },
+  nm_beer: (c) => bottle(c, '#3a7a3a', '#e8d8a0', '#c8ccd4'),
+  hair_clip: (c) => {
+    rect(c, 2, 7, 12, 3, O);
+    rect(c, 3, 8, 10, 1, '#c8ccd4');
+    for (const x of [4, 7, 10]) {
+      circle(c, x + 1, 6, 2, O);
+      circle(c, x + 1, 6, 1, '#f4f1ea');
+      px(c, x, 5, '#ffffff');
+    }
+    px(c, 13, 9, '#a8acb4');
+  },
+  vinyl_record: (c) => {
+    rect(c, 1, 2, 12, 12, O);
+    rect(c, 2, 3, 10, 10, '#c8483a');
+    hline(c, 3, 5, 6, '#f4e8c0');
+    hline(c, 3, 7, 4, '#f4e8c0');
+    circle(c, 10, 9, 5, O);
+    circle(c, 10, 9, 4, '#1a1a1e');
+    circle(c, 10, 9, 2, '#e0b13e');
+    px(c, 10, 9, O);
+    px(c, 8, 7, '#4a4a52');
+  },
+  guitar_used: (c) => {
+    vline(c, 11, 1, 6, O);
+    vline(c, 12, 1, 6, O);
+    rect(c, 11, 1, 2, 2, '#5a3a24');
+    vline(c, 11, 3, 4, '#c9a26a');
+    circle(c, 7, 11, 4, O);
+    circle(c, 7, 11, 3, '#c8803a');
+    circle(c, 9, 8, 3, O);
+    circle(c, 9, 8, 2, '#c8803a');
+    circle(c, 7, 11, 1, '#3a2416');
+    hline(c, 5, 13, 4, '#7a4a22');
+    px(c, 10, 7, '#e8a85a');
+  },
+  // the community kitchen
+  kitchen_meal: (c) => {
+    rect(c, 1, 9, 14, 5, O);
+    rect(c, 2, 9, 12, 4, '#c4c7cc');
+    hline(c, 2, 9, 12, '#e4e6ea');
+    ellipse(c, 5, 9, 3, 2, '#f4f1ea');
+    ellipse(c, 11, 9, 3, 2, '#a8502a');
+    px(c, 10, 8, '#e8a85a');
+    px(c, 12, 9, '#5a8a3a');
+    rect(c, 6, 3, 5, 5, O);
+    rect(c, 7, 4, 3, 3, '#e8c870');
+    hline(c, 7, 4, 3, '#f0d890');
+  },
   basketball: (c) => {
     circle(c, 8, 8, 6, O);
     circle(c, 8, 8, 5, '#e07a2a');

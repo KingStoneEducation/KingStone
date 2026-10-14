@@ -56,7 +56,7 @@ export const DIM_NAMES: Record<keyof RelDims, string> = {
 const BIPOLAR: (keyof RelDims)[] = ['affection', 'trust', 'respect'];
 
 /** Kinds that people like to talk about. */
-const GOSSIP_KINDS = new Set(['new_partner', 'big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend', 'donated']);
+const GOSSIP_KINDS = new Set(['new_partner', 'big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend', 'donated', 'pawned', 'volunteered', 'donated_kitchen', 'free_meal_rich']);
 
 export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   big_win: (m) => `在赌场赢了 ${formatG(Number(m.data.amount ?? 0))}${m.data.game ? `（${m.data.game}）` : ''}`,
@@ -118,6 +118,12 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   neglected: () => '很久没有联系我',
   invited_gamble: () => '约我去赌场',
   tempted: () => '在马可戒赌的时候约他去赌场',
+  pawned: (m) => `把${m.data.item ?? '东西'}拿去当铺当了`,
+  free_meal: () => '在社区食堂领免费的饭',
+  free_meal_rich: () => '穿着体面却去社区食堂领免费的饭',
+  volunteered: () => '在社区食堂做义工',
+  donated_kitchen: (m) => `给社区食堂捐了 ${formatG(Number(m.data.amount ?? 0))}`,
+  day_labor: () => '在码头打零工卸货',
   casino_night: (m) => `和我一起去了赌场${Number(m.data.net ?? 0) ? `（我${Number(m.data.net) > 0 ? '赢' : '输'}了 ${formatG(Math.abs(Number(m.data.net)))}）` : ''}`,
 };
 
@@ -853,6 +859,14 @@ export class SocialSystem {
         return { kind: m.kind, facets: { generosity: 0.5, wealthDisplay: 0.3 }, importance: m.importance, data: m.data };
       case 'helped_friend':
         return { kind: m.kind, facets: { kindness: 0.6 }, importance: m.importance, data: m.data };
+      case 'pawned':
+        return { kind: m.kind, facets: { wealthLoss: 0.3, crisis: 0.3 }, importance: m.importance, data: m.data };
+      case 'volunteered':
+        return { kind: m.kind, facets: { kindness: 0.5, generosity: 0.2 }, importance: m.importance, data: m.data };
+      case 'donated_kitchen':
+        return { kind: m.kind, facets: { generosity: Math.min(1, mag), kindness: 0.2 }, importance: m.importance, data: m.data };
+      case 'free_meal_rich':
+        return { kind: m.kind, facets: { stinginess: 0.5 }, importance: m.importance, data: m.data };
     }
     return null;
   }

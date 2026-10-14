@@ -167,6 +167,28 @@ export const LOCATIONS: Record<string, LocationDef> = {
     light: 0.9,
     desc: '集市街的临街铺面。',
   },
+  pawn: {
+    id: 'pawn',
+    name: '福来当铺',
+    nameEn: 'Fortune Pawn',
+    kind: 'interior',
+    ambience: 'store',
+    hours: [{ days: [0, 1, 2, 3, 4, 5], from: hm(9), to: hm(21) }, { days: [6], from: hm(10), to: hm(18) }],
+    priceLevel: 1,
+    light: 0.65,
+    desc: '老城区开了四十年的当铺，也收也卖。',
+  },
+  community_kitchen: {
+    id: 'community_kitchen',
+    name: '海员之家社区食堂',
+    nameEn: "Seafarers' Community Kitchen",
+    kind: 'interior',
+    ambience: 'restaurant',
+    hours: [{ days: ALL, from: hm(11), to: hm(14) }, { days: ALL, from: hm(17), to: hm(20) }],
+    priceLevel: 0,
+    light: 0.9,
+    desc: '街坊们办的食堂，每天两顿免费的热饭。',
+  },
   motors: {
     id: 'motors',
     name: '灰港汽车行',
@@ -180,7 +202,7 @@ export const LOCATIONS: Record<string, LocationDef> = {
   },
 };
 
-export function isOpen(loc: LocationDef, weekday: number, minuteOfDay: number): boolean {
+export function isOpen(loc: { hours?: OpenHours[] }, weekday: number, minuteOfDay: number): boolean {
   if (!loc.hours) return true;
   for (const h of loc.hours) {
     // today's window

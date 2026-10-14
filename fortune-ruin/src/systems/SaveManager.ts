@@ -4,6 +4,7 @@ import { GameCore } from '../core/GameCore';
 import { formatDateTime } from '../core/calendar';
 import { formatG } from '../core/money';
 import { LOCATIONS } from '../data/locations';
+import { emptyOldTown } from './OldTownSystem';
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -67,6 +68,7 @@ export function migrate(state: GameState): GameState {
   s.social.pairDay ??= {};
   s.stories ??= { active: [], done: [], ended: {} };
   s.economy.stakes ??= [];
+  s.oldtown ??= emptyOldTown();
   s.meta.version = SAVE_VERSION;
   return s;
 }

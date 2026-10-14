@@ -15,8 +15,10 @@ export function venueTheme(core: GameCore): string {
       return 'theme-bank';
     case 'cafe':
     case 'restaurant':
+    case 'community_kitchen':
       return 'theme-cafe';
     case 'bar':
+    case 'pawn':
       return 'theme-bar';
     case 'club':
     case 'fine_dining':

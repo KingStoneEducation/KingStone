@@ -133,6 +133,42 @@ export const FACT_LINES: Record<string, Partial<Record<Attitude, string[]>>> = {
   attended_party: {
     neutral: ['谢谢你那天能来，大家都很开心。'],
   },
+  pawned: {
+    caring: ['{src}你去了福来当铺……把{item}当了？手头要是紧，跟我说一声。', '{src}你进了当铺。别一个人硬撑。'],
+    opportunist: ['{src}你把{item}当了？……哦。'],
+    snob: ['当铺……我还以为只有老城区的人才去那种地方。'],
+    envious: ['{src}你把{item}当掉了。……谁都有难的时候。'],
+    prudent: ['当铺的综合费算下来一年超过一倍。能赎就早点赎回来。'],
+    disapprover: ['{src}你去当铺了。是不是又是因为赌场？'],
+    neutral: ['{src}你从当铺出来。还好吗？'],
+  },
+  volunteered: {
+    caring: ['{src}你在食堂帮忙打饭。你人真好。', '食堂的阿姨说你干活很利索。下次叫上我。'],
+    snob: ['{src}你在社区食堂做义工？……真是意外。'],
+    opportunist: ['做义工啊？挺好的，挺好的。'],
+    envious: ['{src}你去食堂帮忙了。……你还挺会做人的。'],
+    neutral: ['{src}你在社区食堂帮忙？挺好的。'],
+  },
+  donated_kitchen: {
+    caring: ['{src}你给食堂捐了钱。那里很需要。谢谢你。'],
+    snob: ['捐给社区食堂？嗯，不错的姿态。'],
+    opportunist: ['{src}你一出手就捐了 {amount}？大方！'],
+    prudent: ['{src}你捐了 {amount}。量力而行就好。'],
+    neutral: ['{src}你给食堂捐了 {amount}。了不起。'],
+  },
+  free_meal_rich: {
+    caring: ['{src}你去食堂领免费的饭……你是不是遇到什么事了？'],
+    snob: ['{src}你去领救济饭。我不明白你在想什么。'],
+    envious: ['穿成那样去领免费的饭？真有你的。'],
+    disapprover: ['那些饭是给吃不上饭的人的。', '{src}你在食堂排队领饭。你不缺那一顿吧？'],
+    neutral: ['{src}你在社区食堂领饭？'],
+  },
+  day_labor: {
+    caring: ['{src}你在码头扛货？别把腰累坏了。'],
+    snob: ['{src}你在码头做苦力……'],
+    prudent: ['打零工也是正经收入。不过别耽误了找份长久的工作。'],
+    neutral: ['{src}你在 7 号码头卸货？挺能吃苦啊。'],
+  },
 };
 
 /** Comments on the player's visible state. */

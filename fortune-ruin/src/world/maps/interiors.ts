@@ -809,6 +809,113 @@ const motors: Builder = () => {
   return b.finish();
 };
 
+
+// ------------------------------------------------------------------ the Old Town
+
+const pawnShop: Builder = () => {
+  const b = fromAscii(
+    'pawn',
+    [
+      '##############',
+      '##############',
+      '#,,,,,,,,,,,,#',
+      '#,,,,,,,,,,,,#',
+      '#............#',
+      '#............#',
+      '#............#',
+      '#............#',
+      '#............#',
+      '######D#######',
+    ],
+    { '.': 'tile_checker', ',': 'wood_dark' },
+    'green',
+  );
+  // behind the counter: the safe and the shelves of pledges
+  b.prop('safe', 1, 3);
+  b.prop('safe', 2, 3);
+  b.prop('shelf', 8, 3);
+  b.prop('filing', 11, 3);
+  b.prop('clock', 6, 1, undefined, { oy: -6 });
+  b.prop('pawn_sign', 11, 1, undefined, { oy: -4 });
+  // the counter with its iron grille runs wall to wall
+  b.prop('counter', 1, 4);
+  b.prop('counter', 2, 4);
+  b.prop('pawn_counter', 3, 4, { kind: 'pawn', label: '当铺柜台', data: { tab: 'pawn' } });
+  b.prop('pawn_counter', 6, 4);
+  b.prop('pawn_counter', 9, 4);
+  b.prop('counter', 12, 4);
+  b.staff(4, 3, 'down', 5101, '掌柜', 'pawnbroker');
+  // second-hand goods in glass cases
+  b.prop('display_case', 1, 6, { kind: 'pawn', label: '二手柜台', data: { tab: 'shelf' } });
+  b.prop('display_case', 11, 6, { kind: 'pawn', label: '二手柜台', data: { tab: 'shelf' } });
+  b.prop('display_case', 11, 8, { kind: 'pawn', label: '二手柜台', data: { tab: 'shelf' } });
+  b.prop('plant', 1, 8);
+  b.spot('pawn_customer', 5, 5, 'up');
+  b.spot('pawn_browse', 10, 7, 'right');
+  b.data.ambient = { day: 0.85, night: 0.62, color: 0x0e140e };
+  return b.finish();
+};
+
+const communityKitchen: Builder = () => {
+  const b = fromAscii(
+    'community_kitchen',
+    [
+      '##################',
+      '##################',
+      '#;;;;;;;;;;;;;;;;#',
+      '#;;;;;;;;;;;;;;;;#',
+      '#................#',
+      '#................#',
+      '#................#',
+      '#................#',
+      '#................#',
+      '#................#',
+      '#................#',
+      '########DD########',
+    ],
+    { '.': 'tile_beige', ';': 'tile_kitchen' },
+    'cream',
+  );
+  // the kitchen behind the serving line
+  b.prop('stove', 2, 2);
+  b.prop('stove', 3, 2);
+  b.prop('counter', 5, 2);
+  b.prop('sink', 6, 2);
+  b.prop('counter', 7, 2);
+  b.prop('shelf', 10, 2);
+  b.prop('sink', 14, 2);
+  b.prop('fridge', 16, 2);
+  b.prop('window', 8, 1, undefined, { oy: -2 });
+  b.prop('window', 13, 1, undefined, { oy: -2 });
+  b.prop('clock', 12, 1, undefined, { oy: -6 });
+  // the serving line, and the volunteers' end of the counter
+  b.prop('counter', 1, 4);
+  b.prop('counter', 2, 4);
+  b.prop('serving_line', 3, 4, { kind: 'charity', label: '打饭窗口', data: { tab: 'meal' } });
+  b.prop('serving_line', 6, 4, { kind: 'charity', label: '打饭窗口', data: { tab: 'meal' } });
+  for (let x = 9; x <= 16; x++) b.prop('counter', x, 4, x === 12 ? { kind: 'charity', label: '义工报名', data: { tab: 'volunteer' } } : undefined);
+  b.staff(4, 3, 'down', 5201, '大厨', 'cook');
+  b.staff(7, 3, 'down', 5202, '帮厨', 'cook');
+  b.staff(12, 3, 'down', 5203, '负责的阿姨', 'kitchen_lead');
+  // long tables in the hall
+  for (const [x, y] of [[1, 6], [1, 9], [11, 6], [11, 9]] as [number, number][]) {
+    b.prop('long_bench', x, y - 1, undefined, { noBlock: true });
+    b.prop('long_table', x, y);
+    b.prop('long_bench', x, y + 1, undefined, { noBlock: true });
+  }
+  b.prop('donor_board', 15, 6, { kind: 'charity', label: '捐赠板', data: { tab: 'donate' } });
+  b.prop('donation_box', 16, 9, { kind: 'charity', label: '捐款箱', data: { tab: 'donate' } });
+  b.prop('plant', 16, 10);
+  b.spot('ck_table1', 2, 5, 'down', true);
+  b.spot('ck_table2', 3, 7, 'up', true);
+  b.spot('ck_table3', 12, 8, 'down', true);
+  b.spot('ck_table4', 13, 10, 'up', true);
+  b.spot('ck_line', 5, 3, 'down');
+  b.spot('ck_queue', 6, 6, 'up');
+  b.data.ambient = { day: 1, night: 0.8, color: 0x140c1a };
+  return b.finish();
+};
+
 const BUILDERS: Record<string, Builder> = {
   home_basic: homeBasic,
   home_shared: homeShared,
@@ -828,6 +935,8 @@ const BUILDERS: Record<string, Builder> = {
   fine_dining: fineDining,
   luxury,
   motors,
+  pawn: pawnShop,
+  community_kitchen: communityKitchen,
   casino: buildCasinoMap,
 };
 

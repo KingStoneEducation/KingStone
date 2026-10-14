@@ -110,6 +110,34 @@ export function staffLine(role: string, core: GameCore): string {
       return pick(['有想听的曲子吗？', '这首是《港口的灯》。'], r);
     case 'jazz_singer':
       return pick(['谢谢，下一首慢一点。', '欢迎来到天穹之夜。'], r);
+    case 'pawnbroker': {
+      const open = core.pawn.openTickets();
+      const due = open.find((t) => core.today() >= t.due - 5);
+      if (due) return pick([`当票 ${due.id} 号快到期了，别忘了。`, '东西我替你收着，到期之前来赎就行。'], r);
+      if (core.oldtown.isRich()) return pick(['稀客。您是来当东西，还是来淘东西？', '柜台里有几块好表，要不要看看？'], r);
+      return pick(['来当东西？拿出来我看看。', '二手柜台每个礼拜一换货。', '我在这条街上干了四十年，什么样的人都见过。', '赌场一到周末，我这儿礼拜一就忙。'], r);
+    }
+    case 'kitchen_lead':
+      return pick(
+        core.oldtown.serving()
+          ? ['饭在窗口，排队就行。', '要来帮忙的话，跟我说一声，围裙在这儿。', '今天的炖菜是 Marlow 家送来的。']
+          : ['还没到开饭时间，十一点和五点开饭。', '下午我们备菜，要帮忙的话开饭前来。'],
+        r,
+      );
+    case 'vendor':
+      return pick(
+        core.inventory.appearancePrestige() >= 4
+          ? ['哟，穿这么好来夜市？尝尝我们的，不比法餐厅差。', '老板，来一份？只收现金哦。']
+          : ['来一份？刚出锅的。', '只收现金，不好意思。', '今晚人多，坐那边的桌子吧。', '周末开到两点。'],
+        r,
+      );
+    case 'foreman': {
+      const h = toDate(core.now()).hour;
+      if (h >= 5 && h < 9) return pick(['要干活的过来，卸完一船当场结钱。', '今天的船晚了半小时，先等着。'], r);
+      return pick(['今天的人招满了，明天早点来。', '老周以前是这儿的班长，现在还常来看看。', '五点半开始招人，礼拜天休息。'], r);
+    }
+    case 'fortune':
+      return pick(['看相吗？二十块，不灵不要钱——开玩笑的，灵不灵都要钱。', '坐下，让我看看你的眼睛。'], r);
     case 'guard_booth':
     default:
       return '你好。';

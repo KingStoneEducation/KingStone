@@ -41,9 +41,15 @@ export type Modal =
   | { type: 'settings' }
   | { type: 'intro' }
   | { type: 'saves'; mode: 'save' | 'load' }
-  | { type: 'concierge'; tab: ConciergeTab; lobby?: boolean };
+  | { type: 'concierge'; tab: ConciergeTab; lobby?: boolean }
+  | { type: 'pawn'; tab: PawnTab }
+  | { type: 'charity'; tab: CharityTab }
+  | { type: 'labor' }
+  | { type: 'fortune' };
 
 export type ConciergeTab = 'suite' | 'spa' | 'car' | 'dining' | 'store' | 'perks';
+export type PawnTab = 'pawn' | 'tickets' | 'sell' | 'shelf';
+export type CharityTab = 'meal' | 'volunteer' | 'donate';
 
 export interface Toast {
   id: number;

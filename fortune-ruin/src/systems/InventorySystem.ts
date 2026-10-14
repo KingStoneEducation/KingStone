@@ -10,7 +10,7 @@ export type ActionResult = { ok: true; message: string } | { ok: false; error: s
 export const MEAL_BASIC = 'meal_basic';
 export const MEAL_FRESH = 'meal_fresh';
 
-function categoryFor(item: ItemDef): TxnCategory {
+export function categoryFor(item: ItemDef): TxnCategory {
   switch (item.kind) {
     case 'food':
       return 'food';
@@ -134,6 +134,8 @@ export class InventorySystem {
     if (shopId === 'sky_bar') return itemId === 'champagne' && this.core.sky.isSkyNight() ? 0 : this.core.casino.barPrice(item.price);
     const until = Number(this.core.state.player.flags[`discount:${shopId}`] ?? -1);
     if (item.kind === 'outfit' && until >= this.core.today()) return mulRatio(item.price, 85, 100);
+    const f = SHOPS[shopId]?.priceFactor;
+    if (f) return Math.round(mulRatio(item.price, Math.round(f * 100), 100) / 10) * 10;
     return item.price;
   }
 
@@ -161,13 +163,14 @@ export class InventorySystem {
       const r = this.core.economy.spend(method === 'cash' ? 'cash' : 'bank', total, categoryFor(item), `${shop.name}：${item.name}${qty > 1 ? ` ×${qty}` : ''}`, shopId);
       if (!r.ok) return { ok: false, error: r.error };
     }
-    this.grant(item, qty);
+    this.give(item, qty);
     this.core.bus.emit('purchase', { itemId, shopId, amount: total });
     if (total >= G(1000)) this.core.journal.add('money', `在${shop.name}花 ${formatG(total)} 买了${item.name}`, total >= G(20000));
     return { ok: true, message: `购买了 ${item.name}${qty > 1 ? ` ×${qty}` : ''}${total > 0 ? `（${formatG(total)}）` : '（免费招待）'}` };
   }
 
-  private grant(item: ItemDef, qty: number): void {
+  /** Put something the player now owns where it belongs (wardrobe, garage, home, bag). */
+  give(item: ItemDef, qty: number): void {
     switch (item.kind) {
       case 'outfit':
         if (!this.inv.outfits.includes(item.id)) this.inv.outfits.push(item.id);
@@ -205,15 +208,6 @@ export class InventorySystem {
     this.core.economy.receive('bank', value, 'item_sale', `出售车辆：${v.name}`, 'motors');
     this.core.journal.add('money', `卖掉了${v.name}，到手 ${formatG(value)}`);
     return { ok: true, message: `已出售 ${v.name}，${formatG(value)} 已转入银行账户` };
-  }
-
-  /** Sell a valuable at its resale value (pawn / second hand). */
-  sellValuable(id: string): ActionResult {
-    const d = ITEMS[id];
-    if (!d || d.kind !== 'valuable' || !this.remove(id)) return { ok: false, error: '没有可出售的物品' };
-    const value = mulRatio(d.price, Math.round((d.resale ?? 0.4) * 100), 100);
-    this.core.economy.receive('cash', value, 'item_sale', `变卖：${d.name}`, 'pawn');
-    return { ok: true, message: `卖掉了${d.name}，得到 ${formatG(value)}` };
   }
 
   /** Consume food/drink/medicine/books. Advances time by the item's use time. */

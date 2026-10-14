@@ -29,10 +29,14 @@ export type InteractKind =
   | 'business'
   | 'elevator'
   | 'concierge'
-  | 'view';
+  | 'view'
+  | 'pawn'
+  | 'charity'
+  | 'labor'
+  | 'fortune';
 
-/** staff who are only there at certain times */
-export type StaffWhen = 'sky_night';
+/** staff (and props) that are only there, or only open, at certain times */
+export type StaffWhen = 'sky_night' | 'night_market';
 
 export interface Interaction {
   kind: InteractKind;
@@ -49,6 +53,8 @@ export interface PlacedProp {
   oy?: number;
   interact?: Interaction;
   flipX?: boolean;
+  /** a stall or light that is only open / lit at these times (props with `shut` show frame 1 otherwise) */
+  when?: StaffWhen;
 }
 
 export interface Door {
@@ -186,10 +192,10 @@ export class MapBuilder {
   }
 
   /** Place a prop and mark its footprint blocked. */
-  prop(id: string, x: number, y: number, interact?: Interaction, opts: { ox?: number; oy?: number; noBlock?: boolean; flipX?: boolean } = {}): PlacedProp {
+  prop(id: string, x: number, y: number, interact?: Interaction, opts: { ox?: number; oy?: number; noBlock?: boolean; flipX?: boolean; when?: StaffWhen } = {}): PlacedProp {
     const def = PROPS[id];
     if (!def) throw new Error(`unknown prop ${id}`);
-    const p: PlacedProp = { id, x, y, interact, ox: opts.ox, oy: opts.oy, flipX: opts.flipX };
+    const p: PlacedProp = { id, x, y, interact, ox: opts.ox, oy: opts.oy, flipX: opts.flipX, when: opts.when };
     this.data.props.push(p);
     if (!opts.noBlock && !def.ground && !def.wall) {
       for (let j = 0; j < def.foot.h; j++) {

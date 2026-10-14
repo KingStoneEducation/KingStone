@@ -43,6 +43,8 @@ const SPECS: Record<BuildingStyle, Spec> = {
   lofts: { wall: '#7a4a3a', material: 'brick', roof: 'flat', roofColor: P.roofDark, facade: 5, windows: 'tall', ground: 'office', trim: '#2a2a2e', sign: { bg: '#2a2a2e', fg: '#e8e2d0' }, lit: 0.55, litColor: P.windowLit },
   river_tower: { wall: '#dfe6ec', material: 'glass', roof: 'flat', roofColor: '#4a5260', facade: 5, windows: 'curtain', ground: 'office', trim: '#7a9ab4', sign: { bg: '#2a4a6a', fg: '#ffffff' }, lit: 0.36, litColor: '#c8b88e' },
   pharmacy: { wall: '#e6ece6', material: 'stucco', roof: 'flat', roofColor: P.roof, facade: 4, windows: 'grid', ground: 'closed', trim: '#4a8a5a', sign: { bg: '#2f7a4a', fg: '#ffffff' }, lit: 0.2, litColor: P.windowLit },
+  pawn: { wall: '#2f4a3a', material: 'wood', roof: 'flat', roofColor: P.roofDark, facade: 4, windows: 'small', ground: 'shop', trim: '#c9a24a', sign: { bg: '#141a14', fg: P.goldLight, border: '#c9a24a' }, lit: 0.5, litColor: '#ffd28a' },
+  kitchen: { wall: '#d8c4a0', material: 'stucco', roof: 'flat', roofColor: P.roofRedDark, facade: 4, windows: 'grid', ground: 'shop', trim: '#5a7a9a', awning: ['#2f5a8a', '#f4ead2'], sign: { bg: '#2f5a8a', fg: '#ffffff' }, lit: 0.6, litColor: P.windowLitWarm },
   bakery: { wall: '#e8cfa0', material: 'stucco', roof: 'flat', roofColor: P.roofRedDark, facade: 4, windows: 'grid', ground: 'closed', trim: '#8a5a36', awning: ['#8a5a36', '#e8cfa0'], sign: { bg: '#5a3a24', fg: '#f4e2c0' }, lit: 0.05, litColor: P.windowLit },
 };
 
@@ -548,6 +550,33 @@ export function drawBuilding(b: BuildingDef): BuildingArt {
     vline(ctx, ax, ay - 3, 7, '#c9965f');
     hline(ctx, ax - 3, ay + 2, 7, '#c9965f');
     drawText(night, '*', ax - 2, ay - 3, '#ff9f4a');
+  }
+  if (b.style === 'pawn') {
+    // iron bars over the shop windows, and the three gold balls by the sign
+    for (let xx = 4; xx < W - 4; xx += 26) {
+      if (xx + 22 > doorX - 2 && xx < doorX + doorW + 2) continue;
+      const pw = Math.min(22, W - 4 - xx);
+      if (pw < 8) continue;
+      for (let k = 1; k < pw; k += 3) vline(ctx, xx + k, gy + 6, 18, '#2a2a2e');
+      hline(ctx, xx, gy + 11, pw, '#2a2a2e');
+    }
+    const bx = W - 12;
+    const by = gy - 22;
+    hline(ctx, bx - 6, by, 10, '#2a2a2e');
+    for (const [x, y] of [[bx - 5, by + 6], [bx + 1, by + 6], [bx - 2, by + 11]] as [number, number][]) {
+      vline(ctx, x, by, y - by - 2, '#2a2a2e');
+      circle(ctx, x, y, 2, P.gold);
+      px(ctx, x - 1, y - 1, P.goldLight);
+      px(night, x, y, '#ffe9a0');
+    }
+  }
+  if (b.style === 'kitchen') {
+    // a bowl with steam over the door
+    const cx = doorX + Math.floor(doorW / 2);
+    const cy = gy - 7;
+    ellipse(ctx, cx, cy, 5, 2, '#f4f1ea');
+    hline(ctx, cx - 4, cy - 1, 9, '#c08a3a');
+    for (const x of [cx - 2, cx + 2]) vline(ctx, x, cy - 6, 3, rgba('#ffffff', 0.7));
   }
   if (b.style === 'pharmacy') {
     const cx = W - 14;

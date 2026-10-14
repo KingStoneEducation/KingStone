@@ -122,6 +122,21 @@ export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
       drink('sky_cocktail', '天穹特调', 38, '金酒、接骨木花和柠檬，杯口一圈金箔。', { mood: 9, stress: -8, drunk: 18 }, 15),
       drink('sky_whisky', '三十年单一麦芽', 120, '一杯就是一顿饭钱。', { mood: 10, stress: -12, drunk: 22 }, 20),
 
+      // the night market on the old pier (cash only)
+      food('nm_noodles', '干炒牛河', 8, '大火炒出来的河粉，一大盘。', { hunger: -45, mood: 3 }, 15),
+      food('nm_omelette', '蚵仔煎', 9, '鸡蛋、生蚝和番薯粉，边上煎得焦脆。', { hunger: -32, mood: 4 }, 12),
+      food('nm_skewers', '烤串（十串）', 10, '羊肉、鸡翅和韭菜，撒满孜然。', { hunger: -30, mood: 4 }, 15),
+      food('nm_fishballs', '咖喱鱼蛋', 5, '一串七颗，泡在咖喱汁里。', { hunger: -16, mood: 3 }, 6),
+      food('nm_sweet_soup', '红豆沙', 4, '熬得绵绵的，放了陈皮。', { hunger: -10, mood: 4, stress: -2 }, 8, ['sweet']),
+      drink('nm_milk_tea', '丝袜奶茶', 4, '茶味很浓，甜度自己加。', { energy: 6, mood: 2 }, 6),
+      drink('nm_beer', '冰镇瓶装啤酒', 5, '从冰桶里捞出来的，瓶身全是水珠。', { mood: 4, stress: -5, drunk: 12 }, 12),
+      { id: 'hair_clip', name: '珍珠发夹', kind: 'gift', price: G(15), desc: '夜市小摊上的仿珍珠发夹，做得挺精巧。', giftTags: ['beauty'] },
+      { id: 'vinyl_record', name: '旧黑胶唱片', kind: 'gift', price: G(25), desc: '七十年代的爵士乐，封套有点旧，唱片没有划痕。', giftTags: ['music'] },
+      // the pawn shop's second-hand shelf
+      { id: 'guitar_used', name: '二手木吉他', kind: 'gift', price: G(320), desc: '琴颈上刻着前主人名字的缩写，音色还很亮。', giftTags: ['music'], resale: 0.4 },
+      // the community kitchen (free)
+      food('kitchen_meal', '食堂热饭', 0, '米饭、一勺炖菜和一碗例汤。管饱。', { hunger: -55, mood: 2 }, 20),
+
       // boutique gifts
       { id: 'perfume', name: '香水', kind: 'gift', price: G(160), desc: '精致的礼物。', giftTags: ['luxury', 'beauty'] },
       { id: 'cufflinks', name: '银质袖扣', kind: 'gift', price: G(900), desc: '讲究的礼物。', giftTags: ['luxury', 'formal'] },
@@ -240,6 +255,8 @@ export interface ShopDef {
   /** which payment methods are accepted */
   accepts: ('cash' | 'card')[];
   greeting: string;
+  /** a second-hand stall sells below the list price */
+  priceFactor?: number;
 }
 
 export const SHOPS: Record<string, ShopDef> = {
@@ -326,6 +343,43 @@ export const SHOPS: Record<string, ShopDef> = {
     items: ['bicycle', 'used_car', 'sedan', 'sports_car', 'luxury_car'],
     accepts: ['card'],
     greeting: '看车吗？今天有优惠。',
+  },
+  // the night market's stalls take cash only
+  nm_wok: {
+    id: 'nm_wok',
+    name: '阿珍炒档',
+    items: ['nm_noodles', 'nm_omelette', 'nm_beer'],
+    accepts: ['cash'],
+    greeting: '坐！炒河粉还是蚵仔煎？',
+  },
+  nm_grill: {
+    id: 'nm_grill',
+    name: '老马烤串',
+    items: ['nm_skewers', 'nm_fishballs', 'nm_beer'],
+    accepts: ['cash'],
+    greeting: '刚烤好的，趁热。',
+  },
+  nm_sweets: {
+    id: 'nm_sweets',
+    name: '陈记糖水',
+    items: ['nm_sweet_soup', 'nm_milk_tea'],
+    accepts: ['cash'],
+    greeting: '红豆沙今天熬了四个钟头。',
+  },
+  nm_books: {
+    id: 'nm_books',
+    name: '旧书摊',
+    items: ['book_finance', 'book_career', 'book_social', 'book_cards'],
+    accepts: ['cash'],
+    greeting: '都是别人看过的，内容一个字没少。半价。',
+    priceFactor: 0.5,
+  },
+  nm_trinkets: {
+    id: 'nm_trinkets',
+    name: '杂货小摊',
+    items: ['hair_clip', 'vinyl_record', 'flowers'],
+    accepts: ['cash'],
+    greeting: '随便挑，看中了可以讲价——开玩笑的，不讲价。',
   },
   furniture: {
     id: 'furniture',

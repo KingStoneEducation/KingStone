@@ -24,6 +24,8 @@ import { RomanceSystem } from '../systems/RomanceSystem';
 import { BusinessSystem } from '../systems/BusinessSystem';
 import { CompanionSystem } from '../systems/CompanionSystem';
 import { SkyFloorSystem, SUITE_COMFORT } from '../systems/SkyFloorSystem';
+import { PawnSystem } from '../systems/PawnSystem';
+import { OldTownSystem } from '../systems/OldTownSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -110,6 +112,8 @@ export class GameCore {
   business: BusinessSystem;
   companions: CompanionSystem;
   sky: SkyFloorSystem;
+  pawn: PawnSystem;
+  oldtown: OldTownSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -136,6 +140,8 @@ export class GameCore {
     this.business = new BusinessSystem(this);
     this.companions = new CompanionSystem(this);
     this.sky = new SkyFloorSystem(this);
+    this.pawn = new PawnSystem(this);
+    this.oldtown = new OldTownSystem(this);
   }
 
   now(): number {
@@ -266,6 +272,7 @@ export class GameCore {
     this.social.dailyDrift(day);
     this.social.spreadRumors();
     this.casino.dailyUpdate();
+    this.pawn.daily(day);
     const d = toDate(day * MINUTES_PER_DAY);
     if (d.day === 1) {
       this.housing.issueMonthlyBills();
