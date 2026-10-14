@@ -64,9 +64,19 @@ export class HousingSystem {
     let total = d.utilities + PHONE_BILL + INSURANCE_BILL;
     if (this.h.tenure === 'rent') total += this.h.rent;
     for (const id of this.h.owned) total += HOMES[id].maintenance;
-    const v = this.core.inventory.vehicle();
-    if (v?.vehicle) total += v.vehicle.upkeep;
+    total += this.vehicleUpkeep();
     return total;
+  }
+
+  /** Monthly insurance and servicing for the car; a mechanic friend charges cost price. */
+  vehicleUpkeep(): Money {
+    const v = this.core.inventory.vehicle();
+    if (!v?.vehicle) return 0;
+    return this.mechanicFriend() ? mulRatio(v.vehicle.upkeep, 70, 100) : v.vehicle.upkeep;
+  }
+
+  private mechanicFriend(): boolean {
+    return !!this.core.state.player.flags.mechanicFriend && this.core.social.rel('daniel').affection >= 10;
   }
 
   /** Issued on the first day of each month; due on the 5th. */
@@ -89,7 +99,8 @@ export class HousingSystem {
       if (m > 0) eco.issueBill('maintenance', 'hoa', `${HOMES[id].name}物业`, m, 6, '物业与维护费');
     }
     const v = this.core.inventory.vehicle();
-    if (v?.vehicle && v.vehicle.upkeep > 0) eco.issueBill('other', 'auto', '车辆保险与保养', v.vehicle.upkeep, 6, `${v.name}月度费用`);
+    const upkeep = this.vehicleUpkeep();
+    if (v && upkeep > 0) eco.issueBill('other', 'auto', '车辆保险与保养', upkeep, 6, this.mechanicFriend() ? `${v.name}月度费用（丹尼尔按成本价）` : `${v.name}月度费用`);
   }
 
   rentOverdue(): boolean {

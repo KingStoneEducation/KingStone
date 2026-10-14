@@ -24,12 +24,13 @@ export function entryRefusal(core: GameCore, loc: string): string | null {
     if (p.stats.drunk >= 72) return '门口的安保打量了你一下：「先生/女士，您喝得太多了，今晚请回吧。」';
   }
   if (def.access === 'employees' && !worksHere) return '前台拦住了你：「这里是办公区域，访客请预约。」';
+  // guests of an event you accepted are on the list
+  const invited = core.events.upcoming().some((e) => e.status === 'accepted' && e.location === loc && Math.abs(e.at - core.now()) < 180);
   if (def.access === 'members') {
     const guest = Number(p.flags.clubGuestUntil ?? -1) >= core.today();
-    if (!core.services.isClubMember() && !guest) return '门房礼貌地欠身：「子午线会所仅接待会员与会员的宾客。」';
+    if (!core.services.isClubMember() && !guest && !invited) return '门房礼貌地欠身：「子午线会所仅接待会员与会员的宾客。」';
   }
   if (def.access === 'reservation') {
-    const invited = core.events.upcoming().some((e) => e.status === 'accepted' && e.location === loc && Math.abs(e.at - core.now()) < 180);
     if (p.flags.lumiereReservation !== core.today() && !invited) return '领位员查了查名单：「抱歉，没有您的预订。可以用手机提前预订。」';
   }
   if (def.dressCode !== undefined) {

@@ -87,6 +87,8 @@ export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
       food('bagel', '贝果三明治', 9, '扎实的一餐。', { hunger: -35, mood: 1 }, 10),
       food('cheesecake', '芝士蛋糕', 6, '甜蜜的小奢侈。', { hunger: -15, mood: 5 }, 8, ['sweet']),
       { id: 'coffee_beans', name: '精品咖啡豆', kind: 'gift', price: G(18), desc: '包装精美，适合送给咖啡爱好者。', giftTags: ['coffee'] },
+      // not sold anywhere: a present from the landlady
+      food('homemade_cookies', '玛格丽特的饼干', 0, '房东亲手烤的黄油饼干，装在铁盒里。', { hunger: -12, mood: 4 }, 5, ['sweet']),
 
       // restaurant
       food('lunch_set', '午市套餐', 18, '汤、主菜和饮料。', { hunger: -60, mood: 4 }, 30),

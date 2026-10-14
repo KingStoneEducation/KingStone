@@ -19,6 +19,7 @@ import { WealthSystem } from '../systems/WealthSystem';
 import { ServicesSystem } from '../systems/ServicesSystem';
 import { EncounterSystem } from '../systems/EncounterSystem';
 import { StorySystem } from '../systems/StorySystem';
+import { OUTREACH_HOURS, OutreachSystem } from '../systems/OutreachSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -100,6 +101,7 @@ export class GameCore {
   services: ServicesSystem;
   encounters: EncounterSystem;
   stories: StorySystem;
+  outreach: OutreachSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -121,6 +123,7 @@ export class GameCore {
     this.services = new ServicesSystem(this);
     this.encounters = new EncounterSystem(this);
     this.stories = new StorySystem(this);
+    this.outreach = new OutreachSystem(this);
   }
 
   now(): number {
@@ -233,6 +236,7 @@ export class GameCore {
       this.events.processPlayerDebts();
     }
     if (hour === 11) this.stories.dailyPass();
+    if (OUTREACH_HOURS.includes(hour)) this.outreach.pass(hour);
     if (hour === 18) this.events.dailyPass('evening');
     this.bus.emit('time:hour', { hour });
   }
@@ -319,6 +323,7 @@ export class GameCore {
     if (w.location !== location) {
       if (w.location === 'casino' && location !== 'casino') this.casino.leaveCasino();
       w.visited[location] = (w.visited[location] ?? 0) + 1;
+      (w.lastVisit ??= {})[location] = this.today();
       w.location = location;
       if (location === 'casino') this.casino.enterCasino();
     }

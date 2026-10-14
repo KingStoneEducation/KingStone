@@ -114,6 +114,26 @@ export class InventorySystem {
     return total;
   }
 
+  /** A free item someone promised you at this shop, as the flag that records it. */
+  private freebie(shopId: string, itemId: string): string | null {
+    const f = this.core.state.player.flags;
+    if (shopId === 'cafe' && itemId === 'latte' && Number(f.freeLatte ?? 0) > 0) return 'freeLatte';
+    if (shopId === 'restaurant' && itemId === 'pasta' && Number(f.freePasta ?? 0) > 0) return 'freePasta';
+    return null;
+  }
+
+  /** Price of one item at a shop, after membership perks, discounts and promised freebies. */
+  unitPrice(shopId: string, itemId: string, ignoreFreebie = false): Money {
+    const item = itemDef(itemId);
+    if (!item) return 0;
+    if (!ignoreFreebie && this.freebie(shopId, itemId)) return 0;
+    // casino membership discounts at the casino bar (comped drinks are handled by the caller)
+    if (shopId === 'casino_bar') return this.core.casino.barPrice(item.price);
+    const until = Number(this.core.state.player.flags[`discount:${shopId}`] ?? -1);
+    if (item.kind === 'outfit' && until >= this.core.today()) return mulRatio(item.price, 85, 100);
+    return item.price;
+  }
+
   /** Buy from a shop. Validates stock, payment method and funds. */
   buy(shopId: string, itemId: string, method: 'cash' | 'card', qty = 1): ActionResult {
     const shop = SHOPS[shopId];
@@ -129,10 +149,11 @@ export class InventorySystem {
       if (owned.includes(itemId)) return { ok: false, error: '家里已经有这件家具了' };
       if (owned.length >= this.core.housing.current().furnitureSlots) return { ok: false, error: '家里放不下了，换个大点的房子吧' };
     }
-    let unit = item.price;
-    // casino membership discounts at the casino bar (comped drinks are handled by the caller)
-    if (shopId === 'casino_bar') unit = this.core.casino.barPrice(item.price);
-    const total = unit * qty;
+    // a promised freebie covers one of them
+    const free = this.freebie(shopId, itemId);
+    const unit = this.unitPrice(shopId, itemId, true);
+    const total = unit * qty - (free ? unit : 0);
+    if (free) this.core.state.player.flags[free] = 0;
     if (total > 0) {
       const r = this.core.economy.spend(method === 'cash' ? 'cash' : 'bank', total, categoryFor(item), `${shop.name}：${item.name}${qty > 1 ? ` ×${qty}` : ''}`, shopId);
       if (!r.ok) return { ok: false, error: r.error };

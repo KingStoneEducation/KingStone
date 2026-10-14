@@ -55,7 +55,7 @@ export const DIM_NAMES: Record<keyof RelDims, string> = {
 const BIPOLAR: (keyof RelDims)[] = ['affection', 'trust', 'respect'];
 
 /** Kinds that people like to talk about. */
-const GOSSIP_KINDS = new Set(['big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend']);
+const GOSSIP_KINDS = new Set(['big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend', 'donated']);
 
 export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   big_win: (m) => `在赌场赢了 ${formatG(Number(m.data.amount ?? 0))}${m.data.game ? `（${m.data.game}）` : ''}`,
@@ -109,6 +109,7 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   sophisticated: () => '举止得体，很有修养',
   vulgar: () => '炫富、粗俗',
   advice_taken: () => '听取了我的建议',
+  donated: (m) => `在慈善晚宴上认捐了 ${formatG(Number(m.data.amount ?? 0))}`,
 };
 
 export function describeMemory(m: Memory): string {

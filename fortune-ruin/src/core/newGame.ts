@@ -317,6 +317,8 @@ function applyStart(state: GameState, preset: StartPreset, now: number): void {
     state.casino.membership.tier = 'silver';
     state.casino.membership.points = 260;
     state.casino.membership.lifetimePoints = 260;
+    state.casino.membership.visits = 4;
+    state.casino.membership.lastVisitDay = state.casino.membership.joinedDay - 6;
     for (const id of knownBy(state)) state.social.beliefs[id].wealth = { estimate: G(1500000), confidence: 0.4, t: now, basis: 'acquaintance' };
     state.player.reputation.social += 5;
     return;
@@ -329,6 +331,8 @@ function applyStart(state: GameState, preset: StartPreset, now: number): void {
   state.casino.membership.tier = 'gold';
   state.casino.membership.points = 1800;
   state.casino.membership.lifetimePoints = 1800;
+  state.casino.membership.visits = 12;
+  state.casino.membership.lastVisitDay = state.casino.membership.joinedDay - 5;
   befriend(state, 'victor', { familiarity: 35, affection: 18, respect: 25 });
   befriend(state, 'alexander', { familiarity: 22, respect: 15 });
   for (const id of knownBy(state)) state.social.beliefs[id].wealth = { estimate: G(5000000), confidence: 0.6, t: now, basis: 'acquaintance' };

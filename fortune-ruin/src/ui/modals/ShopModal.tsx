@@ -61,7 +61,10 @@ export function ShopModal(props: { shopId: string; consume: boolean }): JSX.Elem
         {shop.items.map((id) => {
           const d = ITEMS[id];
           if (!d) return null;
-          const price = isCasinoBar ? core.casino.barPrice(d.price) : d.price;
+          const price = core.inventory.unitPrice(props.shopId, id);
+          const full = core.inventory.unitPrice(props.shopId, id, true);
+          // a promised freebie covers the first one
+          const promised = price === 0 && full > 0;
           const owned = (d.kind === 'outfit' && core.inventory.ownsOutfit(id)) || (d.kind === 'vehicle' && core.state.player.vehicle === id) || (d.kind === 'furniture' && core.housing.furniture().includes(id));
           const stackable = d.kind === 'grocery' || d.kind === 'food' || d.kind === 'drink' || d.kind === 'gift' || d.kind === 'book' || d.kind === 'misc';
           const q = qty[id] ?? 1;
@@ -77,7 +80,23 @@ export function ShopModal(props: { shopId: string; consume: boolean }): JSX.Elem
                 {effectText(d) && <div className="desc" style={{ color: 'var(--info)' }}>{effectText(d)}</div>}
               </div>
               <div style={{ textAlign: 'right', minWidth: 90 }}>
-                {price === 0 ? <span className="good">招待</span> : <GV v={price * (stackable && !props.consume ? q : 1)} />}
+                {promised ? (
+                  <>
+                    <span className="good">第一份免费</span>
+                    {stackable && !props.consume && q > 1 && (
+                      <div>
+                        <GV v={full * (q - 1)} />
+                      </div>
+                    )}
+                  </>
+                ) : price === 0 ? (
+                  <span className="good">招待</span>
+                ) : (
+                  <>
+                    {d.kind === 'outfit' && price < d.price && <span className="tag good">八五折</span>}
+                    <GV v={price * (stackable && !props.consume ? q : 1)} />
+                  </>
+                )}
               </div>
               {stackable && !props.consume && (
                 <select value={q} onChange={(e) => setQty({ ...qty, [id]: Number(e.target.value) })} style={{ width: 56, padding: '4px' }}>

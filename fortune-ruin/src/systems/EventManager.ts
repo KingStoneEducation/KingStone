@@ -64,6 +64,48 @@ const npcName = (id: string) => NPC_BY_ID[id]?.name ?? id;
 // ---------------------------------------------------------------- social events (invitations)
 
 export const SOCIAL_EVENTS: Record<string, SocialEventDef> = {
+  gala: {
+    id: 'gala',
+    name: '慈善晚宴',
+    location: 'club',
+    spot: 'club_lounge1',
+    guests: (ev) => [String(ev.npc), ...String(ev.data.others ?? '').split(',').filter(Boolean)],
+    arrival: (core, ev) => `子午线会所的大厅点满了蜡烛，弦乐四重奏在角落里演奏。${npcName(String(ev.npc))}站在拍卖台边和客人寒暄，每张桌上都放着认捐卡。`,
+    choices: () => [
+      { id: 'donate_big', label: '认捐 50,000 G', hint: '整个晚上都会有人记得你' },
+      { id: 'donate', label: '认捐 10,000 G' },
+      { id: 'mingle', label: '不认捐，只是交际' },
+    ],
+    attend: (core, ev, choice) => {
+      const host = String(ev.npc);
+      const guests = SOCIAL_EVENTS.gala.guests!(ev);
+      core.advance(150, 'talking');
+      core.player.change('hunger', -35);
+      let amount = choice === 'donate_big' ? G(50000) : choice === 'donate' ? G(10000) : 0;
+      let note = '';
+      if (amount > 0) {
+        const r = core.economy.pay(amount, 'donation', '港区儿童医院慈善晚宴认捐', 'charity', ['bank', 'cash']);
+        if (!r.ok) {
+          note = '认捐卡填好了，转账却没能成功。你只好把卡片悄悄收了回来。';
+          amount = 0;
+        }
+      }
+      const dressed = (core.inventory.currentOutfit().prestige ?? 1) >= 3;
+      for (const g of guests) {
+        core.social.applyDirect(g, { kind: 'attended_party', facets: { attention: 0.5, ...(dressed ? { sophistication: 0.4 } : { vulgarity: 0.5 }) }, importance: 12, data: { event: '慈善晚宴' } }, { silent: true });
+        if (amount > 0) core.social.applyDirect(g, { kind: 'donated', facets: { generosity: amount >= G(50000) ? 1 : 0.6, kindness: 0.4, wealthDisplay: amount >= G(50000) ? 0.5 : 0.2 }, importance: amount >= G(50000) ? 34 : 22, data: { amount } }, { source: 'witnessed', silent: true });
+      }
+      core.player.adjustReputation('social', amount >= G(50000) ? 8 : amount > 0 ? 4 : 1);
+      if (amount > 0) {
+        core.state.player.flags.clubGuestUntil = Math.max(Number(core.state.player.flags.clubGuestUntil ?? -1), core.today() + 14);
+        return `你认捐了 ${formatG(amount)}。主持人念到你的名字时，大厅里响起掌声，${npcName(host)}隔着人群向你举杯。（获得两周的会所宾客资格）`;
+      }
+      return note || `你端着香槟在人群里转了一圈，认识了几位新面孔。${npcName(host)}对你点了点头。`;
+    },
+    miss: (core, ev) => {
+      core.social.applyDirect(String(ev.npc), { kind: 'missed_party', facets: { unreliability: 0.6, rudeness: 0.4 }, importance: 24, data: { event: '慈善晚宴' } });
+    },
+  },
   birthday: {
     id: 'birthday',
     name: '生日聚会',
@@ -272,7 +314,7 @@ export const SOCIAL_EVENTS: Record<string, SocialEventDef> = {
 
 // ---------------------------------------------------------------- daily world events
 
-function inviteMessage(core: GameCore, def: string, npc: string, at: number, durationMin: number, body: string, data: Record<string, string | number | boolean> = {}, others: string[] = []): void {
+export function inviteMessage(core: GameCore, def: string, npc: string, at: number, durationMin: number, body: string, data: Record<string, string | number | boolean> = {}, others: string[] = []): void {
   const sd = SOCIAL_EVENTS[def];
   const ev: ScheduledEvent = {
     id: `ev${++core.state.events.seq}`,
@@ -911,6 +953,8 @@ export class EventManager {
         return { text: '', resolve: false };
       case 'story':
         return core.stories.choose(a, b);
+      case 'out':
+        return core.outreach.act(a, b);
     }
     void msg;
     return { text: '' };

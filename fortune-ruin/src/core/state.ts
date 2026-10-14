@@ -93,6 +93,8 @@ export interface WorldState {
   /** Where the player stood in the city before entering a building. */
   cityReturn: { x: number; y: number } | null;
   visited: Record<LocationId, number>;
+  /** day of the latest visit to each place */
+  lastVisit?: Record<LocationId, number>;
 }
 
 // ------------------------------------------------------------------ economy
@@ -138,6 +140,7 @@ export type TxnCategory =
   | 'property_sale'
   | 'property_purchase'
   | 'business_income'
+  | 'donation'
   | 'business_cost'
   | 'item_sale'
   | 'tax'

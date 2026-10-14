@@ -46,6 +46,7 @@ export const CATEGORY_NAMES: Record<TxnCategory, string> = {
   property_sale: '出售房产',
   property_purchase: '购买房产',
   business_income: '经营收入',
+  donation: '慈善捐款',
   business_cost: '经营支出',
   item_sale: '变卖物品',
   tax: '税费',
@@ -502,5 +503,11 @@ export class EconomySystem {
     const bal = this.s.accounts.bank;
     const interest = Math.floor((bal * 150) / 10000 / 12);
     if (interest > 0) this.receive('bank', interest, 'interest_income', '储蓄利息（年化 1.5%）', 'bank');
+    // private banking clients earn another 1% on the part above 500,000 G
+    const above = bal - G(500000);
+    if (this.core.state.player.flags.privateBanking && above > 0) {
+      const extra = Math.floor((above * 100) / 10000 / 12);
+      if (extra > 0) this.receive('bank', extra, 'interest_income', '私人银行利息（超出 500,000 G 部分另加年化 1%）', 'bank');
+    }
   }
 }
