@@ -53,6 +53,7 @@ function Overview(): JSX.Element {
     ['别人欠你的钱', eco.receivablesValue()],
     ['私人投资（股份）', eco.stakesValue()],
     ...(core.state.business ? ([['自己的生意（估值）', core.business.value()]] as [string, number][]) : []),
+    ...(core.pawn.openTickets().length ? ([['当在当铺的东西（估价 − 赎回所需）', core.pawn.equity()]] as [string, number][]) : []),
   ];
   return (
     <div className="stack">
