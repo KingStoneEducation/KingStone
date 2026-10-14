@@ -2,7 +2,7 @@ import type { GameCore } from '../core/GameCore';
 import { G, formatG, type Money } from '../core/money';
 import { MINUTES_PER_DAY } from '../core/calendar';
 import type { Rng } from '../core/rng';
-import type { Belief, Memory, MemorySource, RelDims, Relationship } from '../core/state';
+import type { Belief, EncounterKind, Memory, MemorySource, RelDims, Relationship } from '../core/state';
 import { INITIAL_TIES, NPCS, NPC_BY_ID, type NpcDef, type Traits } from '../data/npcs';
 import { CITY_SPOTS } from '../world/maps/cityLayout';
 import { ISLE_SPOTS } from '../world/maps/isleLayout';
@@ -357,6 +357,50 @@ export function tieKey(a: string, b: string): string {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
 
+/** How close two people looked the last time the player saw them together. */
+export type TieBand = 'close' | 'friendly' | 'acquainted' | 'strained';
+export const TIE_BAND_NAMES: Record<TieBand, string> = { close: '很亲近', friendly: '熟络', acquainted: '认识', strained: '不太对付' };
+
+export function tieBand(tie: number, lastKind?: EncounterKind): TieBand {
+  if (lastKind === 'argue' && tie < 35) return 'strained';
+  if (tie >= 60) return 'close';
+  if (tie >= 35) return 'friendly';
+  if (tie >= 15) return 'acquainted';
+  return 'strained';
+}
+
+/** A pair of people the player has seen together. */
+export interface WebEdge {
+  a: string;
+  b: string;
+  tie: number;
+  band: TieBand;
+  /** what they were doing the last time, and who started it */
+  kind: EncounterKind;
+  by: string;
+  day: number;
+  location: string;
+  times: number;
+}
+
+/** One line for something the player saw happen between two people. */
+export function momentText(m: { a: string; b: string; kind: EncounterKind }, name: (id: string) => string): string {
+  const a = name(m.a);
+  const b = name(m.b);
+  switch (m.kind) {
+    case 'gossip':
+      return `${a}跟${b}说起了别人的事`;
+    case 'toast':
+      return `${a}和${b}碰了杯`;
+    case 'comfort':
+      return `${a}在安慰${b}`;
+    case 'argue':
+      return `${a}和${b}吵了一架`;
+    default:
+      return `${a}和${b}聊了一会儿`;
+  }
+}
+
 export function initialTies(): Record<string, number> {
   const ties: Record<string, number> = {};
   for (const [a, b, v] of INITIAL_TIES) ties[tieKey(a, b)] = v;
@@ -405,6 +449,23 @@ export class SocialSystem {
 
   tie(a: string, b: string): number {
     return this.s.ties[tieKey(a, b)] ?? 0;
+  }
+
+  /**
+   * What the player knows of who is close to whom: only the pairs they have seen together,
+   * among people whose names they know, as close as those two looked that time.
+   */
+  knownWeb(): { nodes: string[]; edges: WebEdge[] } {
+    const known = (id: string) => !!this.s.rel[id]?.knowsName;
+    const edges: WebEdge[] = [];
+    for (const [key, p] of Object.entries(this.s.seenPairs ?? {})) {
+      const [a, b] = key.split('|');
+      if (!known(a) || !known(b)) continue;
+      edges.push({ a, b, tie: p.tie, band: tieBand(p.tie, p.kind), kind: p.kind, by: p.by ?? a, day: p.day, location: p.location, times: p.times });
+    }
+    const order = new Map(NPCS.map((n, i) => [n.id, i]));
+    const nodes = [...new Set(edges.flatMap((e) => [e.a, e.b]))].sort((x, y) => (order.get(x) ?? 0) - (order.get(y) ?? 0));
+    return { nodes, edges };
   }
 
   // ------------------------------------------------------------ applying events

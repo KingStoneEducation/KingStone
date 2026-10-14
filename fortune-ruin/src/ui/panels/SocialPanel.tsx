@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { store } from '../store';
 import { useCore } from '../hooks';
-import { GV, Modal } from '../components';
+import { GV, Modal, Tabs } from '../components';
 import { Bust, BACKDROPS } from '../Bust';
 import { NPCS, NPC_BY_ID } from '../../data/npcs';
 import { faceFor } from '../../data/faces';
 import { moodFrom } from '../../systems/DialogueEngine';
-import { DIM_NAMES, describeMemory } from '../../systems/SocialSystem';
+import { DIM_NAMES, TIE_BAND_NAMES, describeMemory, momentText, type TieBand, type WebEdge } from '../../systems/SocialSystem';
 import { formatAgo } from '../../core/calendar';
 import { LOCATIONS } from '../../data/locations';
 import { HOMES } from '../../data/housing';
@@ -76,11 +76,29 @@ export function SocialPanel(): JSX.Element {
   const core = useCore();
   const met = NPCS.filter((n) => core.state.social.rel[n.id]?.met);
   const [sel, setSel] = useState<string | null>(met[0]?.id ?? null);
+  const [tab, setTab] = useState<'people' | 'web'>('people');
   const def = sel ? NPC_BY_ID[sel] : null;
   return (
     <Modal title="人际关系" wide="x" onClose={() => store.closePanel()}>
+      {met.length > 0 && (
+        <Tabs<'people' | 'web'>
+          tabs={[
+            { id: 'people', label: '认识的人' },
+            { id: 'web', label: '他们之间' },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+      )}
       {met.length === 0 ? (
         <div className="note">你还没有认识任何人。出门走走，和人聊聊吧。</div>
+      ) : tab === 'web' ? (
+        <SocialWeb
+          onOpen={(id) => {
+            setSel(id);
+            setTab('people');
+          }}
+        />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 14 }}>
           <div className="list" style={{ maxHeight: 'calc(var(--vh, 100vh) * 0.64)', overflow: 'auto' }}>
@@ -175,6 +193,7 @@ function Detail(props: { id: string }): JSX.Element {
           </div>
         </div>
       </div>
+      <PeopleAround id={props.id} />
       <div className="card">
         <h3>TA 记得的事</h3>
         {mems.length === 0 ? (
@@ -201,6 +220,170 @@ function Detail(props: { id: string }): JSX.Element {
             </tbody>
           </table>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ the web between them
+
+const BAND_COLOR: Record<TieBand, string> = { close: '#4caf6a', friendly: '#e0b13e', acquainted: '#9a9aa8', strained: '#d4483a' };
+const WEB_W = 520;
+const WEB_H = 330;
+
+/** Someone by name, or as a stranger if you do not know it. */
+function nameOf(core: ReturnType<typeof useCore>, id: string): string {
+  return core.state.social.rel[id]?.knowsName ? NPC_BY_ID[id].name : '一个你不认识的人';
+}
+
+/** Someone you have seen with another: how close they looked, and the last time (who did what, where). */
+function EdgeLine(props: { e: WebEdge; from: string }): JSX.Element {
+  const core = useCore();
+  const { e, from } = props;
+  const other = e.a === from ? e.b : e.a;
+  const where = LOCATIONS[e.location]?.name ?? '城里';
+  const ago = core.today() === e.day ? '今天' : formatAgo(core.now(), e.day * 1440 + 720);
+  const what = momentText({ a: e.by, b: e.by === e.a ? e.b : e.a, kind: e.kind }, (id) => nameOf(core, id));
+  return (
+    <div className="row" style={{ gap: 6, alignItems: 'baseline' }}>
+      <span style={{ display: 'inline-block', width: 12, height: e.band === 'close' ? 4 : 2, background: BAND_COLOR[e.band], flex: 'none' }} />
+      <span>
+        <b>{nameOf(core, other)}</b> · <span className={e.band === 'strained' ? 'bad' : undefined}>{TIE_BAND_NAMES[e.band]}</span> · 见过 {e.times} 次
+        <span className="dim">
+          {' '}
+          · 上次：{ago}在{where}，{what}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** The pairs you have seen together, drawn as a web: whom each person is close to, and who has fallen out. */
+function SocialWeb(props: { onOpen: (id: string) => void }): JSX.Element {
+  const core = useCore();
+  const { nodes, edges } = core.social.knownWeb();
+  const [sel, setSel] = useState<string | null>(null);
+  const moments = (core.state.social.pairLog ?? []).slice(-12).reverse();
+  if (edges.length === 0)
+    return (
+      <div className="note">
+        你还没见过认识的人彼此之间来往。在酒吧、咖啡馆、公园里多待一会儿，就能看到谁和谁聊得来、谁和谁合不来。
+      </div>
+    );
+  const pos = new Map<string, { x: number; y: number }>();
+  nodes.forEach((id, i) => {
+    const a = (i / nodes.length) * Math.PI * 2 - Math.PI / 2;
+    pos.set(id, { x: Math.round(WEB_W / 2 + Math.cos(a) * (WEB_W / 2 - 64)), y: Math.round(WEB_H / 2 + Math.sin(a) * (WEB_H / 2 - 26)) });
+  });
+  const mine = sel ? edges.filter((e) => e.a === sel || e.b === sel).sort((x, y) => y.tie - x.tie) : [];
+  return (
+    <div className="stack">
+      <div style={{ display: 'grid', gridTemplateColumns: `${WEB_W}px 1fr`, gap: 14, alignItems: 'start' }}>
+        <div style={{ position: 'relative', width: WEB_W, height: WEB_H }} className="card">
+          <svg width={WEB_W} height={WEB_H} style={{ position: 'absolute', left: 0, top: 0 }} shapeRendering="crispEdges">
+            {edges.map((e) => {
+              const p = pos.get(e.a)!;
+              const q = pos.get(e.b)!;
+              const lit = !sel || e.a === sel || e.b === sel;
+              return (
+                <line
+                  key={`${e.a}|${e.b}`}
+                  x1={p.x}
+                  y1={p.y}
+                  x2={q.x}
+                  y2={q.y}
+                  stroke={BAND_COLOR[e.band]}
+                  strokeWidth={e.band === 'close' ? 4 : 2}
+                  strokeDasharray={e.band === 'strained' ? '6 4' : undefined}
+                  opacity={lit ? 1 : 0.18}
+                />
+              );
+            })}
+          </svg>
+          {nodes.map((id) => {
+            const p = pos.get(id)!;
+            return (
+              <button
+                key={id}
+                className={`small ${sel === id ? 'primary' : ''}`}
+                style={{ position: 'absolute', left: p.x, top: p.y, transform: 'translate(-50%, -50%)', whiteSpace: 'nowrap' }}
+                onClick={() => setSel(sel === id ? null : id)}
+              >
+                {NPC_BY_ID[id].name}
+              </button>
+            );
+          })}
+        </div>
+        <div className="stack">
+          <div className="row wrap" style={{ gap: 8, fontSize: 12 }}>
+            {(Object.keys(BAND_COLOR) as TieBand[]).map((b) => (
+              <span key={b} className="row" style={{ gap: 4 }}>
+                <span style={{ display: 'inline-block', width: 16, height: b === 'close' ? 4 : 2, background: BAND_COLOR[b] }} />
+                {TIE_BAND_NAMES[b]}
+              </span>
+            ))}
+          </div>
+          {sel ? (
+            <div className="card">
+              <h3>
+                {NPC_BY_ID[sel].name}
+                <button className="small ghost" style={{ marginLeft: 8 }} onClick={() => props.onOpen(sel)}>
+                  看 TA 的资料
+                </button>
+              </h3>
+              <div className="stack" style={{ fontSize: 12 }}>
+                {mine.map((e) => (
+                  <EdgeLine key={`${e.a}|${e.b}`} e={e} from={sel} />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="muted" style={{ fontSize: 12 }}>
+              点一个人的名字，看 TA 和谁走得近。这里只有你亲眼见过的来往，远近是你上次见到他们在一起时的样子。
+            </div>
+          )}
+          <div className="dim" style={{ fontSize: 12 }}>
+            关于你的事会沿着这些关系传开：越亲近的两个人，越会把听到的事讲给对方。
+          </div>
+        </div>
+      </div>
+      <div className="card">
+        <h3>你看到的</h3>
+        <table className="data">
+          <tbody>
+            {moments.map((m, i) => (
+              <tr key={`${m.t}|${i}`}>
+                <td className="dim" style={{ whiteSpace: 'nowrap' }}>
+                  {formatAgo(core.now(), m.t)}
+                </td>
+                <td className="muted" style={{ whiteSpace: 'nowrap' }}>
+                  {LOCATIONS[m.location]?.name ?? '城里'}
+                </td>
+                <td className={m.kind === 'argue' ? 'bad' : m.kind === 'comfort' || m.kind === 'toast' ? 'good' : undefined}>{momentText(m, (id) => nameOf(core, id))}。</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/** In someone's details: the people you have seen them with. */
+function PeopleAround(props: { id: string }): JSX.Element | null {
+  const core = useCore();
+  const edges = core.social
+    .knownWeb()
+    .edges.filter((e) => e.a === props.id || e.b === props.id)
+    .sort((x, y) => y.tie - x.tie);
+  if (edges.length === 0) return null;
+  return (
+    <div className="card">
+      <h3>你见过 TA 和谁在一起</h3>
+      <div className="stack" style={{ fontSize: 12 }}>
+        {edges.map((e) => (
+          <EdgeLine key={`${e.a}|${e.b}`} e={e} from={props.id} />
+        ))}
       </div>
     </div>
   );

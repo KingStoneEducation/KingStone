@@ -510,6 +510,30 @@ export interface SocialState {
   encSeq: number;
   /** last day each pair met (keys like ties) */
   pairDay: Record<string, number>;
+  /** pairs the player has seen together (keys like ties): when, where, doing what, and how close they were then */
+  seenPairs?: Record<string, SeenPair>;
+  /** the NPC↔NPC moments the player saw, oldest first (the last PAIR_LOG_MAX) */
+  pairLog?: PairMoment[];
+}
+
+export interface SeenPair {
+  day: number;
+  kind: EncounterKind;
+  /** who started it (the one comforting, the one picking the quarrel) */
+  by: NpcId;
+  location: LocationId;
+  /** their tie at the time */
+  tie: number;
+  /** how many times the player has seen them together */
+  times: number;
+}
+
+export interface PairMoment {
+  a: NpcId;
+  b: NpcId;
+  kind: EncounterKind;
+  t: number;
+  location: LocationId;
 }
 
 // ------------------------------------------------------------------ events / phone / journal / stats

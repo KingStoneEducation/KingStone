@@ -13,6 +13,10 @@ const CHECK_EVERY = 5;
 const CITY_RANGE = 9;
 /** Minimum NPC↔NPC tie for a spontaneous conversation. */
 const MIN_TIE = 12;
+/** Outdoors the player sees two people meet this close (tiles), about a screen away. */
+const SEE_RANGE = 14;
+/** The moments between other people the player remembers. */
+export const PAIR_LOG_MAX = 80;
 
 const DURATION: Record<EncounterKind, [number, number]> = {
   chat: [8, 14],
@@ -195,9 +199,35 @@ export class EncounterSystem {
         break;
     }
     this.s.encounters.push(e);
+    if (this.playerSees(e)) this.saw(e);
     this.core.bus.emit('npc:encounter', { encounter: e });
     this.core.touch();
     return e;
+  }
+
+  /** Is the player there to see it: in the same room, or outdoors within sight of where it happens? */
+  playerSees(e: Encounter): boolean {
+    const w = this.core.state.world;
+    if (w.location !== e.location) return false;
+    const spots = e.location === 'city' ? CITY_SPOTS : e.location === 'isle' ? ISLE_SPOTS : null;
+    if (!spots) return true;
+    // the two are together: where either of them stands will do
+    return [e.a, e.b].some((id) => {
+      const spot = this.core.state.npcs[id]?.spot;
+      const p = spot ? spots[spot] : null;
+      return !!p && Math.abs(p.x - w.x) + Math.abs(p.y - w.y) <= SEE_RANGE;
+    });
+  }
+
+  /** Remember having seen these two together: who, where, what they were doing, how close they seemed. */
+  saw(e: Encounter): void {
+    const key = tieKey(e.a, e.b);
+    const seen = (this.s.seenPairs ??= {});
+    const prev = seen[key];
+    seen[key] = { day: Math.floor(e.start / MINUTES_PER_DAY), kind: e.kind, by: e.a, location: e.location, tie: this.core.social.tie(e.a, e.b), times: (prev?.times ?? 0) + 1 };
+    const log = (this.s.pairLog ??= []);
+    log.push({ a: e.a, b: e.b, kind: e.kind, t: e.start, location: e.location });
+    if (log.length > PAIR_LOG_MAX) log.splice(0, log.length - PAIR_LOG_MAX);
   }
 
   /**
