@@ -227,6 +227,7 @@ export const NPCS: NpcDef[] = [
       { days: [6], from: hm(14, 45), to: hm(17), loc: 'hotel', spot: 'auc_seat3', act: 'shop', chance: 0.6 },
       // Saturday mornings on the family's boat at the marina
       { days: [5], from: hm(10), to: hm(12, 30), loc: 'city', spot: 'marina_whitmore', act: 'leisure', chance: 0.8 },
+      { days: [2], from: hm(22, 45), to: hm(26), loc: 'casino', spot: 'poker_rail2', act: 'gamble', chance: 0.55 },
     ],
     circle: ['lillian', 'sophia', 'victor'],
     initial: { met: false, knowsName: false },
@@ -276,6 +277,8 @@ export const NPCS: NpcDef[] = [
       { days: [2], from: hm(19, 30), to: hm(20, 30), loc: 'hotel', spot: 'tea_chair1', act: 'eat', chance: 0.4 },
       // Sunday brunch at the resort
       { days: [6], from: hm(9, 30), to: hm(13, 45), loc: 'isle_resort', spot: 'isle_resort_t1', act: 'eat', chance: 0.5 },
+      // poker is not a game against the house: Thursday nights at the 5/10 table
+      { days: [3], from: hm(21, 45), to: hm(25), loc: 'casino', spot: 'poker_rail1', act: 'gamble', chance: 0.55 },
     ],
     circle: ['alexander', 'grace', 'lillian'],
     initial: { met: false, knowsName: false },
@@ -321,6 +324,7 @@ export const NPCS: NpcDef[] = [
       { days: [6], from: hm(13), to: hm(16), loc: 'city', spot: 'court', act: 'exercise', chance: 0.6 },
       { days: [5], from: hm(11), to: hm(13), loc: 'restaurant', spot: 'rest_table1', act: 'eat', chance: 0.4 },
       { days: [2], from: hm(19), to: hm(21, 30), loc: 'city', spot: 'nm_seat3', act: 'eat', chance: 0.6 },
+      { days: [6], from: hm(20), to: hm(23, 30), loc: 'casino', spot: 'poker_rail4', act: 'gamble', chance: 0.35 },
     ],
     circle: ['eileen', 'tommy', 'kiki', 'marco'],
     initial: { met: true, knowsName: true, affection: 55, trust: 50, respect: 30, familiarity: 72, status: 'friend' },
@@ -776,6 +780,7 @@ export const NPCS: NpcDef[] = [
       { days: [0, 1], from: hm(19, 30), to: hm(23), loc: 'city', spot: 'nm_busk', act: 'busk', chance: 0.7 },
       // Monday afternoons playing for the beach shack on the island
       { days: [0], from: hm(12, 15), to: hm(16, 45), loc: 'isle', spot: 'isle_busk', act: 'busk', chance: 0.5 },
+      { days: [1], from: hm(23, 15), to: hm(26, 30), loc: 'casino', spot: 'poker_rail3', act: 'gamble', chance: 0.45 },
     ],
     circle: ['daniel', 'eileen', 'kiki', 'marco', 'natasha'],
     initial: { met: false, knowsName: false },

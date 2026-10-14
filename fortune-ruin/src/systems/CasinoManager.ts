@@ -30,6 +30,20 @@ const fail = (error: string): CasinoResult<never> => ({ ok: false, error });
 /** Default favourite table for named NPC gamblers. */
 const NPC_TABLES: Record<string, string> = { marco: 'bj2', kiki: 'rl1', lillian: 'bacv', alexander: 'bacv' };
 
+/**
+ * Named NPCs who come to play poker: their table, how they play, and when they get up (a share
+ * of what they brought: below stopLoss they are done, at winGoal times it they cash out).
+ * They play on the nights their schedule takes them to the poker room's rail.
+ */
+export const NPC_POKER: Record<string, { table: string; style: PokerStyleId; stopLoss: number; winGoal: number }> = {
+  sophia: { table: 'pk2', style: 'tight', stopLoss: 0.5, winGoal: 1.8 },
+  alexander: { table: 'pk2', style: 'aggressive', stopLoss: 0.2, winGoal: 3 },
+  tommy: { table: 'pk1', style: 'loose', stopLoss: 0.1, winGoal: 2.5 },
+  daniel: { table: 'pk1', style: 'tilter', stopLoss: 0.05, winGoal: 2 },
+};
+/** Where poker players wait to be seated. */
+export const POKER_RAIL = 'poker_rail';
+
 export class CasinoManager {
   constructor(private core: GameCore) {}
 
@@ -376,6 +390,12 @@ export class CasinoManager {
       const st = this.pk(tableId);
       const i = PK.seatOfPoker(st, p.id);
       if (i >= 0 && !PK.handInProgress(st)) p.bankroll += PK.leavePoker(st, i);
+      // a named player's chips go back into their own money
+      const rt = p.npc ? this.core.state.npcs[p.npc] : undefined;
+      if (rt) {
+        rt.money = p.bankroll + Math.max(0, Number(rt.flags.heldBack ?? 0));
+        rt.flags.heldBack = 0;
+      }
     }
     p.state = 'gone';
     p.seat = null;
@@ -405,6 +425,15 @@ export class CasinoManager {
   /** Named NPCs scheduled to gamble (or out with the player tonight) become patrons with their own money. */
   private syncNpcPatrons(releaseAll: boolean): void {
     const tables: [string, string][] = Object.entries(NPC_TABLES);
+    // poker nights: whoever is on the poker room's rail (or still at a poker table) plays at their own table
+    for (const [id, pk] of Object.entries(NPC_POKER)) {
+      const rt = this.core.state.npcs[id];
+      const at = this.cs.patrons.find((p) => p.npc === id && p.state !== 'gone')?.seat?.split(':')[0];
+      if (!rt || !(rt.spot?.startsWith(POKER_RAIL) || (at && TABLE_BY_ID[at]?.game === 'poker'))) continue;
+      const i = tables.findIndex(([n]) => n === id);
+      if (i >= 0) tables[i] = [id, pk.table];
+      else tables.push([id, pk.table]);
+    }
     for (const id of this.core.companions.playing()) {
       const at = this.core.companions.tableFor(id);
       const i = tables.findIndex(([n]) => n === id);
@@ -426,13 +455,24 @@ export class CasinoManager {
           existing = undefined;
         }
       }
-      const shouldPlay = !releaseAll && rt.location === 'casino' && rt.activity === 'gamble' && rt.money > G(30);
-      if (existing && (!shouldPlay || existing.bankroll < this.tableMin(TABLE_BY_ID[tableId]))) {
+      const poker = TABLE_BY_ID[tableId].game === 'poker';
+      const shouldPlay = !releaseAll && rt.location === 'casino' && rt.activity === 'gamble' && rt.money > (poker ? this.tableMin(TABLE_BY_ID[tableId]) : G(30));
+      if (existing && (!shouldPlay || this.holding(existing) < this.tableMin(TABLE_BY_ID[tableId]))) {
         if ((this.roundInProgress(tableId) || tableId === this.cs.activeTable) && !releaseAll) continue;
-        rt.money = existing.bankroll + Math.max(0, Number(rt.flags.heldBack ?? 0));
-        rt.flags.heldBack = 0;
-        this.retirePatron(existing);
-        if (existing.bankroll < this.tableMin(TABLE_BY_ID[tableId])) rt.flags.bustedTonight = this.core.today();
+        const broke = this.holding(existing) < this.tableMin(TABLE_BY_ID[tableId]);
+        if (poker) {
+          // the stack comes off the felt, and everything goes back into their own money (see retirePatron)
+          this.retirePatron(existing);
+        } else {
+          rt.money = existing.bankroll + Math.max(0, Number(rt.flags.heldBack ?? 0));
+          rt.flags.heldBack = 0;
+          this.retirePatron(existing);
+        }
+        if (broke) rt.flags.bustedTonight = this.core.today();
+        continue;
+      }
+      if (!existing && shouldPlay && rt.flags.bustedTonight !== this.core.today() && poker) {
+        this.seatPokerNpc(npcId, tableId);
         continue;
       }
       if (!existing && shouldPlay && rt.flags.bustedTonight !== this.core.today()) {
@@ -471,9 +511,65 @@ export class CasinoManager {
         this.cs.patrons.push(p);
         if (TABLE_BY_ID[tableId].game === 'blackjack') BJ.sit(this.bj(tableId), seat, p.id);
       } else if (existing) {
-        rt.money = existing.bankroll + Number(rt.flags.heldBack ?? 0);
+        rt.money = this.holding(existing) + Number(rt.flags.heldBack ?? 0);
       }
     }
+  }
+
+  /** Everything a patron has: in hand, and in front of them at a poker table. */
+  private holding(p: Patron): Money {
+    const tableId = p.seat?.split(':')[0];
+    if (!tableId || TABLE_BY_ID[tableId]?.game !== 'poker' || !this.cs.tables[tableId]) return p.bankroll;
+    const s = this.pk(tableId);
+    const i = PK.seatOfPoker(s, p.id);
+    return p.bankroll + (i >= 0 ? s.seats[i].stack : 0);
+  }
+
+  /** The seat at a poker table a named NPC is playing in, if any (for what they say at the table). */
+  npcPokerTable(npcId: string): string | null {
+    const p = this.cs.patrons.find((x) => x.npc === npcId && x.state !== 'gone');
+    const tableId = p?.seat?.split(':')[0];
+    return tableId && TABLE_BY_ID[tableId]?.game === 'poker' ? tableId : null;
+  }
+
+  /** A named NPC sits down at a poker table between hands and buys in with part of what they brought. */
+  private seatPokerNpc(npcId: string, tableId: string): void {
+    const s = this.pk(tableId);
+    if (PK.handInProgress(s)) return;
+    const rt = this.core.state.npcs[npcId];
+    const def = NPC_BY_ID[npcId];
+    const how = NPC_POKER[npcId];
+    const rules = s.rules;
+    let seat = this.pkFreeSeat(s);
+    // a stranger gives up a seat to a regular (but not the one kept for the player)
+    const keep = PK.seatOfPoker(s, PLAYER) >= 0 || this.cs.activeTable === tableId ? 1 : 0;
+    if (seat < 0 || s.seats.filter((x) => !x.occupant).length <= keep) {
+      const p = this.patronsAt(tableId).find((x) => !x.npc);
+      if (!p) return;
+      this.retirePatron(p);
+      seat = this.pkFreeSeat(s);
+    }
+    if (seat < 0) return;
+    // they bring part of their money (the careful ones less), and put some of it on the table
+    const share = Math.max(0.12, 0.25 + def.traits.gamblingView * 0.25);
+    const bring = Math.min(rt.money, Math.max(rules.minBuyIn * 3, Math.round((rt.money * share) / G(10)) * G(10)));
+    if (bring < rules.minBuyIn) return;
+    const buyIn = Math.max(rules.minBuyIn, Math.min(rules.maxBuyIn, Math.round((bring * 0.5) / G(10)) * G(10)));
+    rt.flags.heldBack = rt.money - bring;
+    const p = generatePatron(`npc:${npcId}`, this.crowdRng, 'main', 'poker', this.core.now());
+    p.name = def.name;
+    p.npc = npcId;
+    p.startBankroll = bring;
+    p.bankroll = bring - buyIn;
+    p.pokerStyle = how.style;
+    p.stopLoss = how.stopLoss;
+    p.winGoal = how.winGoal;
+    p.leaveAt = this.core.now() + 600;
+    p.seat = `${tableId}:${seat}`;
+    p.state = 'playing';
+    PK.sitPoker(s, seat, p.id, buyIn);
+    this.cs.patrons.push(p);
+    this.core.bus.emit('patron:arrived', { id: p.id, tableId });
   }
 
   patronById(id: string): Patron | undefined {
@@ -679,7 +775,7 @@ export class CasinoManager {
     if (p.npc) {
       const rt = this.core.state.npcs[p.npc];
       if (rt) {
-        rt.money = p.bankroll + Number(rt.flags.heldBack ?? 0);
+        rt.money = this.holding(p) + Number(rt.flags.heldBack ?? 0);
         // the casino session after midnight still belongs to the evening's schedule
         rt.flags.liveGambleDay = Math.floor((this.core.now() - 6 * 60) / MINUTES_PER_DAY);
       }
@@ -1140,6 +1236,11 @@ export class CasinoManager {
         p.bankroll += stack;
         p.state = 'gone';
         p.seat = null;
+        const rt = p.npc ? this.core.state.npcs[p.npc] : undefined;
+        if (rt) {
+          rt.money = p.bankroll + Math.max(0, Number(rt.flags.heldBack ?? 0));
+          rt.flags.heldBack = 0;
+        }
       }
     });
   }
@@ -1199,7 +1300,14 @@ export class CasinoManager {
           PK.topUp(s, i, add);
         } else if (st.stack < rules.bigBlind) leave = true;
       }
-      if (leave) this.retirePatron(p);
+      if (leave) {
+        // a named player who gets up (cashing out, or done for) goes home for the night
+        if (p.npc) {
+          const rt = this.core.state.npcs[p.npc];
+          if (rt) rt.flags.bustedTonight = this.core.today();
+        }
+        this.retirePatron(p);
+      }
     }
     const playerSeated = PK.seatOfPoker(s, PLAYER) >= 0;
     const playerHere = this.cs.activeTable === tableId;

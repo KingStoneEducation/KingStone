@@ -244,6 +244,11 @@ export function buildCasinoMap(): MapData {
   b.block(CASINO_TABLES.bj1.dealer.x, CASINO_TABLES.bj1.dealer.y);
   b.spot('dealer_staff', CASINO_TABLES.bj3.dealer.x, CASINO_TABLES.bj3.dealer.y + 0, 'down');
   b.spot('bj_patron', 11, 19, 'up');
+  // the poker room's rail: regulars wait here for a seat
+  b.spot('poker_rail1', 20, 3, 'down');
+  b.spot('poker_rail2', 13, 8, 'up');
+  b.spot('poker_rail3', 21, 9, 'up');
+  b.spot('poker_rail4', 16, 3, 'down');
   b.spot('roulette_watch', 27, 20, 'up');
   b.interactable('dealer_work', 18, 14, 1, 1, { kind: 'work', label: '荷官打卡', data: { job: 'dealer' } });
   b.data.ambient = { day: 0.42, night: 0.42, color: 0x12081c };

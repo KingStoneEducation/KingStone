@@ -81,6 +81,14 @@ const FACT_MOOD: Record<string, Expression> = {
   yacht_trip: 'smile',
 };
 
+/** What the regulars say when you stop by their seat at the poker table. */
+const POKER_TALK: Record<string, string[]> = {
+  sophia: ['扑克和别的不一样：赌场只抽水，不跟你对赌。输赢看的是桌上的人。', '底池赔率不够的牌，我一律不跟。', '今晚的牌很冷，我已经弃了二十手了。', '别跟我说话，我在算。'],
+  alexander: ['坐吧，这桌还有位子。', '筹码只是计分用的。', '这桌的人都太怕输了，所以赢不了。', '你会打吗？……那就别坐我左手边。'],
+  tommy: ['我就是来凑个热闹，赢了今晚的酒我请。', '每手牌我都想看看翻牌，没办法。', '刚才那手同花就差一张……', '别告诉我老板我在这儿。'],
+  daniel: ['礼拜天晚上来打两手，别告诉艾琳。', '我手一热就收不住，你帮我看着点。', '刚才那手我不该跟的……', '再输一个买入我就走，说到做到。'],
+};
+
 /** Read a reaction from the change in how they feel about the player. */
 export function moodFrom(delta: number, disposition: number, temper: number): Expression | undefined {
   if (delta >= 3) return 'grin';
@@ -178,9 +186,9 @@ export class DialogueEngine {
         this.session.hint = FACT_MOOD[fact.kind] ?? null;
       }
     }
-    // Visible state comments
+    // Visible state comments; at the poker table, the game in front of them
     if (!fact) {
-      const sl = this.stateLine(npcId);
+      const sl = this.core.casino.npcPokerTable(npcId) ? (this.pick(npcId, POKER_TALK[npcId] ?? []) ?? null) : this.stateLine(npcId);
       if (sl) lines.push(sl);
     }
     // Upcoming shared plans

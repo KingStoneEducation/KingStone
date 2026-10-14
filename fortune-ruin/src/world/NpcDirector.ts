@@ -282,6 +282,17 @@ export class NpcDirector {
           this.walkBack(def.id);
         }
         const want = rt.spot;
+        // at the casino: someone just given a seat at a table walks over and sits down; someone who gave it up gets up
+        if (loc === 'casino' && sprite.path.length === 0 && !this.talking.has(def.id) && !this.displaced.has(def.id)) {
+          const seat = this.host.seatFor(def.id);
+          if (seat && (Math.abs(sprite.x - seat.x) > 1 || Math.abs(sprite.y - seat.y) > 1)) {
+            const from = { x: Math.floor(sprite.x / 16), y: Math.floor(sprite.y / 16) };
+            sprite.fixedDepth = null;
+            sprite.setSitting(false);
+            const path = findPath(this.host.map, from.x, from.y, Math.floor(seat.x / 16), Math.floor(seat.y / 16), false) ?? [];
+            sprite.walkPath(path, WALK_SPEED, () => this.place(def.id, sprite, want));
+          } else if (!seat && sprite.fixedDepth !== null) this.targetSpot.set(def.id, '');
+        }
         if (this.targetSpot.get(def.id) !== want && sprite.path.length === 0) {
           this.targetSpot.set(def.id, want);
           this.displaced.delete(def.id);
