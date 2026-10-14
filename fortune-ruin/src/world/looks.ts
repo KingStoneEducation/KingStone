@@ -53,6 +53,12 @@ const UNIFORMS: Record<string, Partial<CharacterLook>> = {
   maitre: { style: 'suit', top: '#121218', topShade: '#08080c', bottom: '#0e0e12', shoes: '#050505', accent: '#f4f1ea' },
   butler: { style: 'suit', top: '#16161c', topShade: '#0c0c10', bottom: '#121216', shoes: '#050505', accent: '#e8e2d0' },
   roommate: { style: 'hoodie', top: '#6a7a4a', topShade: '#4f5c36', bottom: '#3a3a42', shoes: '#d8d8d8' },
+  // the casino's members' floor
+  lift: { style: 'uniform', top: '#1d2742', topShade: '#121a30', bottom: '#151a28', shoes: '#0b0b0b', accent: '#e0b13e' },
+  concierge: { style: 'suit', top: '#1d2742', topShade: '#121a30', bottom: '#121828', shoes: '#08080c', accent: '#e0b13e' },
+  spa: { style: 'shirt', top: '#e8e2d4', topShade: '#c8c0ae', bottom: '#8a9a88', shoes: '#e8e2d4', accent: '#8a9a88' },
+  pianist: { style: 'suit', top: '#141218', topShade: '#0a090e', bottom: '#101016', shoes: '#050505', accent: '#f4f1ea' },
+  jazz_singer: { style: 'gown', top: '#2a3a7a', topShade: '#1a2656', bottom: '#2a3a7a', shoes: '#111111', accent: '#d8dce8', body: 'f' },
 };
 
 /** Generic staff and extras get a uniform matching their role. */

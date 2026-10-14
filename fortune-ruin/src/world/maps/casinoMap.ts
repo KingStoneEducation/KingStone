@@ -18,10 +18,28 @@ export const CASINO_TABLES: Record<string, { x: number; y: number; prop: string;
   pk2: { x: 17, y: 8, prop: 'poker_table', ox: 8, dealer: { x: 19, y: 6, face: 'down' } },
 };
 
-export type CasinoArea = 'floor' | 'poker' | 'vip' | 'high' | 'office';
+export type CasinoArea = 'floor' | 'poker' | 'vip' | 'high' | 'office' | 'sky_lobby' | 'sky_lounge' | 'sky_bar' | 'spa' | 'boutique' | 'suite';
+
+/** Width of the ground floor; the upper floor starts at SKY_X. */
+export const MAIN_W = 64;
+export const SKY_X = 70;
+export const SKY_W = 50;
+export const SKY_H = 36;
+/** Tiles in front of the two lift doors. */
+export const LIFT_GROUND = { x: 42, y: 2 };
+export const LIFT_SKY = { x: SKY_X + 24, y: 2 };
+
+export function isSkyFloor(tx: number): boolean {
+  return tx >= SKY_X;
+}
 
 /** Which room of the casino a floor tile belongs to (matches the partitions drawn below). */
 export function casinoArea(tx: number, ty: number): CasinoArea {
+  if (tx >= SKY_X) {
+    const lx = tx - SKY_X;
+    if (ty >= 21) return lx <= 15 ? 'spa' : lx <= 30 ? 'boutique' : 'suite';
+    return lx <= 17 ? 'sky_lounge' : lx <= 31 ? 'sky_lobby' : 'sky_bar';
+  }
   if (tx >= 12 && tx <= 21 && ty >= 2 && ty <= 9) return 'poker';
   if (tx >= 23 && tx <= 40 && ty >= 2 && ty <= 10) return 'vip';
   if (tx >= 45 && tx <= 62 && ty >= 2 && ty <= 11) return 'high';
@@ -30,9 +48,9 @@ export function casinoArea(tx: number, ty: number): CasinoArea {
 }
 
 export function buildCasinoMap(): MapData {
-  const W = 64;
+  const W = MAIN_W;
   const H = 44;
-  const b = new MapBuilder('casino', W, H, 'carpet_casino0', false);
+  const b = new MapBuilder('casino', SKY_X + SKY_W, H, 'carpet_casino0', false);
   b.fill(0, 0, W, H, (x, y) => `carpet_casino${(x % 2) + (y % 2) * 2}`);
   const wall = new Set<number>();
   const w = (x: number, y: number) => wall.add(y * W + x);
@@ -79,7 +97,7 @@ export function buildCasinoMap(): MapData {
   b.fill(1, 37, 9, 6, 'carpet_grey');
   b.fill(26, 37, 12, 6, 'marble');
   b.fill(42, 26, 21, 4, 'wood_dark');
-  b.applyWalls((x, y) => wall.has(y * W + x), 'red');
+  b.applyWalls((x, y) => x < W && wall.has(y * W + x), 'red');
   // the doors are floor
   b.set(31, H - 1, 'mat', false);
   b.set(32, H - 1, 'mat', false);
@@ -102,6 +120,14 @@ export function buildCasinoMap(): MapData {
   b.prop('velvet_post', 51, 13);
   b.prop('velvet_post', 54, 13);
   b.prop('poker_sign', 13, 10, undefined, { oy: -2 });
+
+  // the members' lift, at the end of the corridor between the VIP salon and the high-limit room
+  b.fill(42, 2, 2, 11, 'marble_dark');
+  b.prop('lift_ground', LIFT_GROUND.x, 1, undefined);
+  b.interactable('lift_ground', LIFT_GROUND.x, 1, 2, 1, { kind: 'elevator', label: '会员电梯 · 天穹层', data: { to: `${LIFT_SKY.x},${LIFT_SKY.y}`, floor: 'sky' } });
+  b.staff(43, 4, 'left', 1601, '电梯礼宾', 'lift');
+  b.prop('sign_lift', 42, 9, undefined, { noBlock: true, ox: 8 });
+  b.prop('palm', 41, 12);
 
   // cashier cage
   for (let x = 2; x <= 9; x++) b.prop('cage', x, 7, { kind: 'cashier', label: '筹码兑换台' });
@@ -221,5 +247,160 @@ export function buildCasinoMap(): MapData {
   b.spot('roulette_watch', 27, 20, 'up');
   b.interactable('dealer_work', 18, 14, 1, 1, { kind: 'work', label: '荷官打卡', data: { job: 'dealer' } });
   b.data.ambient = { day: 0.42, night: 0.42, color: 0x12081c };
+  buildSkyFloor(b, H);
+  b.data.regions = [
+    { id: 'ground', name: '灰港大赌场', x: 0, y: 0, w: W, h: H, entry: { x: 31, y: H - 2 } },
+    { id: 'sky', name: '天穹层', x: SKY_X, y: 0, w: SKY_W, h: SKY_H, entry: LIFT_SKY, ambient: { day: 0.62, night: 0.4, color: 0x0c1430 } },
+  ];
   return b.finish();
+}
+
+/**
+ * The members' floor at the top of the building: lounge, lobby with the
+ * concierge, sky bar, spa, the comp boutique and suite 1201. Drawn to the
+ * right of the ground floor in the same map and reached only by lift.
+ */
+function buildSkyFloor(b: MapBuilder, mapH: number): void {
+  const X = SKY_X;
+  const walls = new Set<string>();
+  const w = (lx: number, y: number) => walls.add(`${X + lx},${y}`);
+  const hw = (x0: number, x1: number, y: number) => {
+    for (let x = x0; x <= x1; x++) w(x, y);
+  };
+  const vw = (x: number, y0: number, y1: number) => {
+    for (let y = y0; y <= y1; y++) w(x, y);
+  };
+  const gap = (lx: number, y: number) => walls.delete(`${X + lx},${y}`);
+  // outer walls
+  hw(0, SKY_W - 1, 0);
+  hw(0, SKY_W - 1, 1);
+  hw(0, SKY_W - 1, SKY_H - 1);
+  vw(0, 0, SKY_H - 1);
+  vw(SKY_W - 1, 0, SKY_H - 1);
+  // short partitions between the lounge, the lobby and the bar
+  vw(18, 2, 7);
+  vw(31, 2, 7);
+  // the corridor wall in front of the spa, the boutique and the suite
+  hw(1, SKY_W - 2, 19);
+  hw(1, SKY_W - 2, 20);
+  vw(16, 21, SKY_H - 2);
+  vw(31, 21, SKY_H - 2);
+  for (const lx of [7, 8, 23, 24]) {
+    gap(lx, 19);
+    gap(lx, 20);
+  }
+  // floors
+  b.fill(X + 1, 2, 17, 17, (x, y) => `carpet_sky${(x % 2) + (y % 2) * 2}`);
+  b.fill(X + 18, 8, 14, 11, 'marble');
+  b.fill(X + 19, 2, 12, 6, 'marble');
+  b.fill(X + 32, 2, 17, 17, 'parquet_dark');
+  b.fill(X + 1, 19, 15, 16, 'spa_stone');
+  b.fill(X + 17, 19, 14, 16, 'marble_dark');
+  b.fill(X + 32, 21, 17, 14, 'wood_mid');
+  // between the floors and below the upper one: solid
+  for (let y = 0; y < mapH; y++) for (let x = MAIN_W; x < X + SKY_W; x++) if (x < X || y >= SKY_H) walls.add(`${x},${y}`);
+  b.applyWalls((x, y) => walls.has(`${x},${y}`), 'navy');
+  const P = (id: string, lx: number, y: number, interact?: Parameters<MapBuilder['prop']>[3], opts?: Parameters<MapBuilder['prop']>[4]) => b.prop(id, X + lx, y, interact, opts);
+
+  // ---- lobby: the lift, the concierge
+  P('lift_sky', 24, 1);
+  b.interactable('lift_sky', LIFT_SKY.x, 1, 2, 1, { kind: 'elevator', label: '电梯 · 下行至大厅', data: { to: `${LIFT_GROUND.x},${LIFT_GROUND.y}`, floor: 'ground' } });
+  b.spawn('sky_lift', LIFT_SKY.x, LIFT_SKY.y, 'down');
+  b.staff(X + 22, 3, 'down', 1602, '电梯礼宾', 'lift');
+  P('sign_skyline', 28, 1, undefined, { oy: -8 });
+  P('art_large', 20, 1, undefined, { oy: -6 });
+  P('flower_vase', 20, 4);
+  P('flower_vase', 29, 4);
+  P('concierge_desk', 22, 10, { kind: 'concierge', label: '礼宾台', data: { tab: 'suite' } });
+  b.staff(X + 23, 9, 'down', 1603, '礼宾', 'concierge');
+  b.staff(X + 25, 9, 'down', 1604, '礼宾', 'concierge');
+  P('chandelier', 24, 6, undefined, { noBlock: true });
+  P('rug_round', 23, 16);
+  P('palm', 18, 17);
+  P('palm', 31, 17);
+
+  // ---- members' lounge
+  for (const lx of [2, 6, 10, 14]) P('sky_window', lx, 1, lx === 6 ? { kind: 'view', label: '落地窗' } : undefined);
+  for (const [lx, sweet] of [[2, false], [4, false], [6, true]] as [number, boolean][]) P(sweet ? 'buffet_sweet' : 'buffet', lx, 16, lx === 4 ? { kind: 'order', label: '会员自助餐台', data: { shop: 'sky_lounge' } } : undefined);
+  b.staff(X + 5, 15, 'down', 1605, '侍应', 'waiter');
+  for (const cx of [2, 8]) {
+    P('sofa_cognac', cx, 9);
+    P('rug_round', cx, 12);
+    P('side_table', cx + 1, 11);
+    P('armchair_cognac', cx - 1, 11);
+    P('armchair_cognac', cx + 3, 11);
+  }
+  P('piano', 13, 6, { kind: 'piano', label: '三角钢琴' });
+  b.staff(X + 14, 5, 'down', 1606, '钢琴师', 'pianist', 'sky_night');
+  b.staff(X + 16, 6, 'down', 1607, '爵士歌手', 'jazz_singer', 'sky_night');
+  P('armchair_cognac', 13, 10);
+  P('armchair_cognac', 15, 10);
+  P('champagne_tower', 10, 5);
+  P('lamp_floor', 1, 3);
+  P('lamp_floor', 17, 3);
+  P('plant', 1, 17);
+  P('plant', 17, 13);
+  P('chandelier', 8, 7, undefined, { noBlock: true });
+
+  // ---- sky bar
+  P('sky_window', 33, 1);
+  P('sky_window', 46, 1, { kind: 'view', label: '落地窗' });
+  P('bottle_shelf', 39, 1, undefined, { oy: -4 });
+  P('sign_skybar', 43, 1, undefined, { oy: -8 });
+  for (let lx = 35; lx <= 43; lx++) P('bar_counter_lux', lx, 6, lx === 39 ? { kind: 'order', label: '天穹酒廊吧台', data: { shop: 'sky_bar' } } : undefined);
+  for (const lx of [35, 37, 41, 43]) P('stool', lx, 7, undefined, { noBlock: true });
+  b.staff(X + 37, 5, 'down', 1608, '调酒师', 'bartender');
+  b.staff(X + 41, 5, 'down', 1609, '调酒师', 'bartender');
+  for (const [lx, y] of [[35, 11], [39, 11], [43, 11], [37, 15], [41, 15]] as [number, number][]) P('high_table', lx, y);
+  P('telescope', 47, 3, { kind: 'view', label: '望远镜' });
+  P('sofa_navy', 45, 9);
+  P('side_table', 46, 11);
+  P('palm', 48, 17);
+  P('plant', 32, 13);
+  P('chandelier', 40, 9, undefined, { noBlock: true });
+
+  // ---- spa
+  P('sign_spa', 4, 20, undefined, { oy: -10 });
+  P('spa_desk', 4, 23, { kind: 'concierge', label: '水疗中心前台', data: { tab: 'spa' } });
+  b.staff(X + 5, 22, 'down', 1610, '水疗接待', 'spa');
+  for (const [lx, y] of [[2, 27], [2, 31], [6, 31]] as [number, number][]) P('massage_bed', lx, y);
+  b.staff(X + 4, 27, 'left', 1611, '理疗师', 'spa');
+  P('sauna', 11, 27, { kind: 'concierge', label: '桑拿房', data: { tab: 'spa' } });
+  for (const [lx, y] of [[1, 22], [14, 22], [14, 33], [10, 33]] as [number, number][]) P('orchid', lx, y);
+
+  // ---- comp boutique
+  P('sign_boutique', 20, 20, undefined, { oy: -10 });
+  P('art_large', 27, 20, undefined, { oy: -6 });
+  for (const [lx, y] of [[18, 23], [27, 23], [18, 28], [27, 28]] as [number, number][]) P('display_case', lx, y);
+  P('display_case', 22, 26, { kind: 'concierge', label: '会员精品店', data: { tab: 'store' } });
+  P('display_case', 24, 26);
+  b.staff(X + 23, 25, 'down', 1612, '店员', 'reception');
+  for (const lx of [19, 21, 26, 28]) P('mannequin', lx, 32);
+  P('palm', 17, 33);
+  P('palm', 30, 33);
+
+  // ---- suite 1201 (key card)
+  P('suite_door', 40, 20);
+  b.interactable('gate_suite', X + 40, 19, 2, 2, { kind: 'gate', label: '1201 套房', data: { area: 'suite', inside: `${X + 40},21`, outside: `${X + 40},18` } });
+  P('art_large', 44, 20, undefined, { oy: -6 });
+  P('bed_luxury', 44, 24, { kind: 'bed', label: '套房大床', data: { suite: true } });
+  P('lamp_floor', 43, 22);
+  P('lamp_floor', 47, 22);
+  P('wardrobe', 33, 22, { kind: 'wardrobe', label: '衣帽间' });
+  P('tv', 36, 22, { kind: 'tv', label: '电视' });
+  P('rug_round', 35, 28);
+  P('sofa_navy', 35, 26);
+  P('coffee_table', 36, 29);
+  P('bathtub_claw', 46, 33);
+  P('orchid', 48, 31);
+  P('flower_vase', 33, 33);
+
+  // where named people stand or sit up here
+  b.spot('sky_host', X + 26, 13, 'down');
+  b.spot('sky_lounge1', X + 3, 10, 'down', true);
+  b.spot('sky_lounge2', X + 9, 10, 'down', true);
+  b.spot('sky_piano', X + 12, 9, 'up');
+  b.spot('sky_bar1', X + 37, 7, 'up', true);
+  b.spot('sky_bar2', X + 41, 7, 'up', true);
+  b.spot('sky_window', X + 46, 3, 'up');
 }

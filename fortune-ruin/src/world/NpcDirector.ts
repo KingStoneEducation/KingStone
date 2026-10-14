@@ -17,6 +17,8 @@ export interface WorldHost {
   core: GameCore;
   /** entry tile of the current interior (where people come in) */
   entryTile(): Pt;
+  /** where someone heading for (x, y) comes in: that part of the map's entry (the casino's upper floor has its lift) */
+  regionEntry(x: number, y: number): Pt;
   /** seat position for a named NPC playing at a casino table */
   seatFor(npcId: string): { x: number; y: number; dir: CharDir; depth: number } | null;
   playerPos(): { x: number; y: number };
@@ -77,14 +79,19 @@ export class NpcDirector {
   private spotFor(npcId: string, spot: string | null): SpotDef {
     const m = this.host.map;
     if (spot && m.spots[spot]) return m.spots[spot];
-    // deterministic fallback somewhere walkable near the middle
+    // deterministic fallback somewhere walkable near the middle (of the part of the map people walk in to)
     const h = hashString(npcId + m.id);
+    const e = this.host.entryTile();
+    const r = m.regions?.find((g) => e.x >= g.x && e.x < g.x + g.w && e.y >= g.y && e.y < g.y + g.h);
+    const x0 = r ? r.x : 0;
+    const y0 = r ? r.y : 0;
+    const w = r ? r.w : m.w;
+    const hh = r ? r.h : m.h;
     for (let i = 0; i < 200; i++) {
-      const x = 2 + ((h + i * 7919) % Math.max(1, m.w - 4));
-      const y = 3 + ((h >>> 8) + i * 104729) % Math.max(1, m.h - 5);
+      const x = x0 + 2 + ((h + i * 7919) % Math.max(1, w - 4));
+      const y = y0 + 3 + (((h >>> 8) + i * 104729) % Math.max(1, hh - 5));
       if (!m.blocked[y * m.w + x]) return { x, y, face: 'down' };
     }
-    const e = this.host.entryTile();
     return { x: e.x, y: e.y, face: 'up' };
   }
 
@@ -172,10 +179,10 @@ export class NpcDirector {
         this.targetSpot.set(def.id, rt.spot);
         const seat = loc === 'casino' ? this.host.seatFor(def.id) : null;
         const spot = this.spotFor(def.id, rt.spot);
-        const startTile = loc === 'city' ? this.cityAnchorTile(rt.travel?.from ?? null, def.district) ?? { x: spot.x, y: spot.y } : this.host.entryTile();
+        const goal = seat ? { x: Math.floor(seat.x / 16), y: Math.floor(seat.y / 16) } : { x: spot.x, y: spot.y };
+        const startTile = loc === 'city' ? this.cityAnchorTile(rt.travel?.from ?? null, def.district) ?? { x: spot.x, y: spot.y } : this.host.regionEntry(goal.x, goal.y);
         const p = tilePx(startTile);
         s.setPos(p.x, p.y);
-        const goal = seat ? { x: Math.floor(seat.x / 16), y: Math.floor(seat.y / 16) } : { x: spot.x, y: spot.y };
         const path = findPath(this.host.map, startTile.x, startTile.y, goal.x, goal.y, loc === 'city') ?? [];
         s.walkPath(path, WALK_SPEED, () => this.place(def.id, s, rt.spot));
         continue;
@@ -185,8 +192,8 @@ export class NpcDirector {
         this.leaving.add(def.id);
         sprite.fixedDepth = null;
         sprite.setSitting(false);
-        const exit = loc === 'city' ? this.cityAnchorTile(rt.travel?.to ?? null, def.district) : this.host.entryTile();
         const from = { x: Math.floor(sprite.x / 16), y: Math.floor(sprite.y / 16) };
+        const exit = loc === 'city' ? this.cityAnchorTile(rt.travel?.to ?? null, def.district) : this.host.regionEntry(from.x, from.y);
         const path = exit ? findPath(this.host.map, from.x, from.y, exit.x, exit.y, loc === 'city') ?? [] : [];
         sprite.walkPath(path.slice(0, loc === 'city' ? 14 : 80), WALK_SPEED + 8, () => {
           sprite.destroy();

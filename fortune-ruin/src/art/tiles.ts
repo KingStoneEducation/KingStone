@@ -245,6 +245,7 @@ export const WALL_STYLES: WallStyle[] = [
   { id: 'marble', color: '#d9d5cc', pattern: 'marble', trim: '#f4f1ea', base: '#8c8476' },
   { id: 'purple', color: '#3a1a4e', pattern: 'damask', trim: P.goldLight, base: '#1c0c26' },
   { id: 'wood', color: '#9a6a40', pattern: 'wood', trim: '#c9965f', base: '#5e3e26' },
+  { id: 'navy', color: '#1f2a46', pattern: 'panel', trim: '#c9a24a', base: '#121a2e' },
 ];
 
 function wallPattern(ctx: Ctx, s: WallStyle, x: number, y: number, h: number, yOffset: number): void {
@@ -505,6 +506,74 @@ def('tile_blue', tiles8('#9cc6dc', '#9cc6dc', '#7aa4ba', false, 4));
 def('tile_kitchen', tiles8('#e9dcc0', '#c4704a', '#a89c84', true, 4));
 for (let i = 0; i < 4; i++) def(`carpet_casino${i}`, carpetPattern(P.carpetRed, shade(P.carpetRed, -0.14), mix(P.goldDark, P.carpetRed, 0.35), mix(P.gold, P.carpetRed, 0.2), i));
 for (let i = 0; i < 4; i++) def(`carpet_vip${i}`, carpetPattern(P.carpetPurple, '#2a1238', P.goldDark, P.goldLight, i));
+// the upper floor: night-blue carpet with small gold stars (a 32 × 32 repeat)
+for (let i = 0; i < 4; i++) {
+  def(`carpet_sky${i}`, (ctx, x, y) => {
+    const ox = (i % 2) * 16;
+    const oy = Math.floor(i / 2) * 16;
+    rect(ctx, x, y, 16, 16, '#1e2846');
+    dither(ctx, x, y, 16, 16, '#1a2340', i);
+    const stars: [number, number, number][] = [
+      [5, 6, 2],
+      [21, 3, 1],
+      [13, 17, 2],
+      [27, 22, 1],
+      [6, 27, 1],
+      [29, 11, 1],
+    ];
+    for (const [sx, sy, r] of stars) {
+      const lx = sx - ox;
+      const ly = sy - oy;
+      if (lx < -2 || ly < -2 || lx > 17 || ly > 17) continue;
+      const put = (dx: number, dy: number, c: string) => {
+        const px0 = lx + dx;
+        const py0 = ly + dy;
+        if (px0 >= 0 && py0 >= 0 && px0 < 16 && py0 < 16) px(ctx, x + px0, y + py0, c);
+      };
+      put(0, 0, '#f0d68a');
+      for (let k = 1; k <= r; k++) {
+        put(k, 0, '#c9a24a');
+        put(-k, 0, '#c9a24a');
+        put(0, k, '#c9a24a');
+        put(0, -k, '#c9a24a');
+      }
+    }
+    for (let k = 0; k < 5; k++) {
+      const dx = Math.floor(hash2(k, i, 301) * 16);
+      const dy = Math.floor(hash2(i, k, 302) * 16);
+      px(ctx, x + dx, y + dy, '#3a4670');
+    }
+  });
+}
+def('parquet_dark', (ctx, x, y) => {
+  // basket-weave walnut: pairs of planks turning every 8 px, seams kept soft
+  for (let j = 0; j < 16; j += 8)
+    for (let i = 0; i < 16; i += 8) {
+      const horiz = ((i + j) / 8) % 2 === 0;
+      for (let k = 0; k < 8; k += 4) {
+        const c = hash2(x + i + k, y + j, 311) < 0.5 ? '#5e3a26' : '#563422';
+        if (horiz) {
+          rect(ctx, x + i, y + j + k, 8, 4, c);
+          hline(ctx, x + i, y + j + k, 8, '#674330');
+          hline(ctx, x + i, y + j + k + 3, 8, '#4c2e1e');
+        } else {
+          rect(ctx, x + i + k, y + j, 4, 8, c);
+          vline(ctx, x + i + k, y + j, 8, '#674330');
+          vline(ctx, x + i + k + 3, y + j, 8, '#4c2e1e');
+        }
+      }
+    }
+  speckle(ctx, x, y, 16, 16, '#6e4a34', 0.04, 313);
+});
+def('spa_stone', (ctx, x, y) => {
+  // large travertine slabs: soft pores, a fine joint on two sides
+  rect(ctx, x, y, 16, 16, '#ddd2bc');
+  speckle(ctx, x, y, 16, 16, '#d0c4ac', 0.14, 321);
+  speckle(ctx, x, y, 16, 16, '#e8dfcc', 0.08, 322);
+  for (let k = 0; k < 3; k++) hline(ctx, x + Math.floor(hash2(x, y + k, 323) * 10), y + 3 + k * 5, 4, '#d6cab2');
+  hline(ctx, x, y, 16, '#c9bca2');
+  vline(ctx, x, y, 16, '#c9bca2');
+});
 def('carpet_blue', (ctx, x, y) => {
   rect(ctx, x, y, 16, 16, P.carpetBlue);
   speckle(ctx, x, y, 16, 16, shade(P.carpetBlue, -0.1), 0.2, 91);

@@ -114,11 +114,21 @@ export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
       food('tasting_menu', 'Lumière 品鉴菜单', 280, '七道菜的法式晚宴。', { hunger: -80, mood: 20, stress: -12 }, 120),
       drink('wine_pairing', '配餐酒', 160, '侍酒师精选。', { mood: 10, stress: -8, drunk: 22 }, 60),
       drink('club_scotch', '会所单一麦芽', 45, '只对会员与宾客供应。', { mood: 8, stress: -10, drunk: 20 }, 20),
+      // the casino's members' floor
+      food('sky_canapes', '冷盘与小食', 26, '天穹层会员休息室的自助餐台：生蚝、火腿和几样小点心。', { hunger: -35, mood: 4 }, 20),
+      food('sky_hot', '热菜拼盘', 34, '主厨当天准备的几样热菜。', { hunger: -55, mood: 4 }, 25),
+      food('sky_dessert', '甜品', 18, '马卡龙、水果和一小块蛋糕。', { hunger: -15, mood: 6 }, 10),
+      drink('sky_tea', '伯爵茶', 12, '一壶热茶，适合在窗边坐一会儿。', { stress: -6, energy: 4 }, 15),
+      drink('sky_cocktail', '天穹特调', 38, '金酒、接骨木花和柠檬，杯口一圈金箔。', { mood: 9, stress: -8, drunk: 18 }, 15),
+      drink('sky_whisky', '三十年单一麦芽', 120, '一杯就是一顿饭钱。', { mood: 10, stress: -12, drunk: 22 }, 20),
 
       // boutique gifts
       { id: 'perfume', name: '香水', kind: 'gift', price: G(160), desc: '精致的礼物。', giftTags: ['luxury', 'beauty'] },
       { id: 'cufflinks', name: '银质袖扣', kind: 'gift', price: G(900), desc: '讲究的礼物。', giftTags: ['luxury', 'formal'] },
       { id: 'concert_tickets', name: '爵士音乐会门票', kind: 'gift', price: G(120), desc: '两张周末音乐会门票。', giftTags: ['music'] },
+      { id: 'champagne_bottle', name: '年份香槟（整瓶）', kind: 'gift', price: G(150), desc: '赌场会员精品店的香槟，装在丝绒盒里。', giftTags: ['wine', 'luxury'] },
+      { id: 'praline_box', name: '手工巧克力礼盒', kind: 'gift', price: G(70), desc: '十二颗夹心巧克力，配一张手写卡片。', giftTags: ['sweet', 'luxury'] },
+      { id: 'silk_scarf', name: '真丝方巾', kind: 'gift', price: G(230), desc: '印着灰港港口的地图。', giftTags: ['luxury', 'beauty'] },
       { id: 'basketball', name: '篮球', kind: 'gift', price: G(35), desc: '室外用篮球。', giftTags: ['sports'] },
 
       // valuables
@@ -267,6 +277,20 @@ export const SHOPS: Record<string, ShopDef> = {
     items: ['casino_cocktail', 'champagne', 'mineral_water', 'club_sandwich'],
     accepts: ['cash', 'card'],
     greeting: '欢迎来到幸运七。',
+  },
+  sky_lounge: {
+    id: 'sky_lounge',
+    name: '天穹层 · 会员休息室',
+    items: ['sky_canapes', 'sky_hot', 'sky_dessert', 'sky_tea', 'mineral_water'],
+    accepts: ['cash', 'card'],
+    greeting: '自助餐台对天穹层的客人免费开放，请随意。',
+  },
+  sky_bar: {
+    id: 'sky_bar',
+    name: '天穹酒廊',
+    items: ['sky_cocktail', 'champagne', 'sky_whisky', 'mineral_water'],
+    accepts: ['cash', 'card'],
+    greeting: '晚上好。窗边的位子还空着。',
   },
   fine_dining: {
     id: 'fine_dining',

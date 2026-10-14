@@ -144,6 +144,8 @@ export type TxnCategory =
   | 'business_income'
   | 'donation'
   | 'business_cost'
+  | 'lodging'
+  | 'wellness'
   | 'item_sale'
   | 'tax'
   | 'other';
@@ -369,8 +371,25 @@ export interface CasinoState {
   paidRounds: Record<string, number>;
   /** table the player is seated at (restored on load) */
   activeTable: string | null;
-  /** extra access granted by the host */
-  invites: { highLimit: number; vip: number };
+  /** extra access granted by the host (last day it is valid) */
+  invites: { highLimit: number; vip: number; sky: number };
+  /** the members' floor: suite, spa and other services */
+  sky: SkyState;
+}
+
+export interface SkyState {
+  /** when the key card to suite 1201 works: [from, until) in game minutes */
+  suiteFrom: number;
+  suiteUntil: number;
+  /** week of the last free night (platinum members get one a week) */
+  suiteCompWeek: number;
+  /** day of the last free treatment (platinum members get one a day) */
+  spaFreeDay: number;
+  nights: number;
+  treatments: number;
+  limoRides: number;
+  /** dining credit spent in the boutique */
+  redeemed: Money;
 }
 
 // ------------------------------------------------------------------ NPCs & social

@@ -61,17 +61,24 @@ export class ServicesSystem {
 
   // ------------------------------------------------------------ Lumière
 
-  /** Book a table for today (before 21:00) or tomorrow. */
-  bookLumiere(tomorrow: boolean): ServiceResult {
+  /**
+   * Book a table for today (before 21:00) or tomorrow. Through the casino's
+   * concierge, platinum members pay no booking fee and diamond members still
+   * get a table late in the evening.
+   */
+  bookLumiere(tomorrow: boolean, via: { waiveFee?: boolean; late?: boolean } = {}): ServiceResult {
     const day = this.core.today() + (tomorrow ? 1 : 0);
     const d = toDate(this.core.now());
-    if (!tomorrow && d.hour >= 21) return { ok: false, error: '今晚已经订满了，请预订明天' };
+    if (!tomorrow && d.hour >= (via.late ? 23 : 21)) return { ok: false, error: '今晚已经订满了，请预订明天' };
     if (Number(this.core.state.player.flags.lumiereReservation ?? -1) === day) return { ok: false, error: '那天你已经有预订了' };
-    const r = this.core.economy.spend('bank', LUMIERE_BOOKING_FEE, 'food', 'Lumière 订位费', 'fine_dining');
-    if (!r.ok) return { ok: false, error: r.error };
+    if (!via.waiveFee) {
+      const r = this.core.economy.spend('bank', LUMIERE_BOOKING_FEE, 'food', 'Lumière 订位费', 'fine_dining');
+      if (!r.ok) return { ok: false, error: r.error };
+    }
     this.core.state.player.flags.lumiereReservation = day;
     this.core.touch();
-    return { ok: true, message: `已预订 ${tomorrow ? '明天' : '今天'}晚上的 Lumière 餐位（订位费 ${formatG(LUMIERE_BOOKING_FEE)}，不可退）。请注意着装要求。` };
+    const fee = via.waiveFee ? '赌场礼宾代订，免订位费' : `订位费 ${formatG(LUMIERE_BOOKING_FEE)}，不可退`;
+    return { ok: true, message: `已预订 ${tomorrow ? '明天' : '今天'}晚上的 Lumière 餐位（${fee}）。请注意着装要求。` };
   }
 
   // ------------------------------------------------------------ getting around

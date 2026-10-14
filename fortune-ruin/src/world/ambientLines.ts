@@ -95,6 +95,21 @@ export function staffLine(role: string, core: GameCore): string {
       return pick(['需要为您准备晚餐吗？', '花园的玫瑰开了。'], r);
     case 'roommate':
       return pick(['冰箱里那盒牛奶是我的，别动啊。', '这个月的水电费你转我一半？', '我今晚带朋友回来，可能会有点吵。', '你最近回来得好晚。'], r);
+    case 'lift': {
+      const up = core.sky.upstairs();
+      if (up) return pick(['需要下楼的话，请按电梯。', '祝您在天穹层度过愉快的时光。'], r);
+      const err = core.sky.access();
+      if (err) return pick(['这部电梯通往天穹层，只对会员开放。', '金卡及以上会员、套房住客可以上楼。周六晚上银卡会员也可以。'], r);
+      return pick([`${tier}会员您好，请上楼。`, core.sky.isSkyNight() ? '今晚是天穹之夜，楼上有现场爵士乐。' : '楼上的休息室有自助餐，请随意取用。'], r);
+    }
+    case 'concierge':
+      return pick(['晚上好，需要为您安排什么？', core.sky.suiteGuest() ? '您的套房已经准备好了。' : '今晚的套房还可以预订。', '需要用车的话，请告诉我。'], r);
+    case 'spa':
+      return pick(['欢迎来到水疗中心，请问要预约吗？', '桑拿房一直开着。', '做完按摩，记得多喝水。'], r);
+    case 'pianist':
+      return pick(['有想听的曲子吗？', '这首是《港口的灯》。'], r);
+    case 'jazz_singer':
+      return pick(['谢谢，下一首慢一点。', '欢迎来到天穹之夜。'], r);
     case 'guard_booth':
     default:
       return '你好。';

@@ -172,10 +172,10 @@ export interface TierInfo {
  */
 export const TIERS: TierInfo[] = [
   { id: 'visitor', name: '普通访客', minPoints: 0, color: '#9aa3ad', perks: ['基础赌场服务', '可使用大厅所有赌桌'], compRate: 0, barDiscount: 0 },
-  { id: 'silver', name: 'Silver 银卡', minPoints: 200, color: '#cfd6de', perks: ['赌场酒吧 9 折', '少量餐饮积分（理论损失的 8%）'], compRate: 0.08, barDiscount: 10 },
-  { id: 'gold', name: 'Gold 金卡', minPoints: 1500, color: '#e3b341', perks: ['赌场酒吧饮品免费招待', '客户经理接待与活动邀请', '餐饮积分 15%'], compRate: 0.15, barDiscount: 100 },
-  { id: 'platinum', name: 'Platinum 白金卡', minPoints: 8000, color: '#b9e0ff', perks: ['高额投注区通行', '专属服务与信用额度申请', '餐饮积分 20%'], compRate: 0.2, barDiscount: 100 },
-  { id: 'diamond', name: 'Diamond 钻石卡', minPoints: 40000, color: '#f3a6ff', perks: ['VIP 私人厅', '专属客户经理维克多', '私人晚宴邀请', '餐饮积分 25%'], compRate: 0.25, barDiscount: 100 },
+  { id: 'silver', name: 'Silver 银卡', minPoints: 200, color: '#cfd6de', perks: ['赌场酒吧 9 折', '少量餐饮积分（理论损失的 8%）', '周六天穹之夜可以上楼'], compRate: 0.08, barDiscount: 10 },
+  { id: 'gold', name: 'Gold 金卡', minPoints: 1500, color: '#e3b341', perks: ['赌场酒吧饮品免费招待', '客户经理接待与活动邀请', '餐饮积分 15%', '天穹层会员休息室（自助餐免费）', '套房会员价、水疗八折'], compRate: 0.15, barDiscount: 100 },
+  { id: 'platinum', name: 'Platinum 白金卡', minPoints: 8000, color: '#b9e0ff', perks: ['高额投注区通行', '专属服务与信用额度申请', '餐饮积分 20%', '每周一晚免费套房、每天一次免费水疗', '礼宾专车免费'], compRate: 0.2, barDiscount: 100 },
+  { id: 'diamond', name: 'Diamond 钻石卡', minPoints: 40000, color: '#f3a6ff', perks: ['VIP 私人厅', '专属客户经理维克多', '私人晚宴邀请', '餐饮积分 25%', '套房与水疗全部免费'], compRate: 0.25, barDiscount: 100 },
 ];
 
 export const TIER_INDEX: Record<MemberTier, number> = { visitor: 0, silver: 1, gold: 2, platinum: 3, diamond: 4 };

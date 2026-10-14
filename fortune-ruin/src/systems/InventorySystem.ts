@@ -129,6 +129,9 @@ export class InventorySystem {
     if (!ignoreFreebie && this.freebie(shopId, itemId)) return 0;
     // casino membership discounts at the casino bar (comped drinks are handled by the caller)
     if (shopId === 'casino_bar') return this.core.casino.barPrice(item.price);
+    // the members' floor: the lounge buffet is complimentary; the sky bar follows the bar discount, champagne is free on Saturday nights
+    if (shopId === 'sky_lounge') return 0;
+    if (shopId === 'sky_bar') return itemId === 'champagne' && this.core.sky.isSkyNight() ? 0 : this.core.casino.barPrice(item.price);
     const until = Number(this.core.state.player.flags[`discount:${shopId}`] ?? -1);
     if (item.kind === 'outfit' && until >= this.core.today()) return mulRatio(item.price, 85, 100);
     return item.price;

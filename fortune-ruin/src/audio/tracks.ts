@@ -10,6 +10,8 @@ import cafe from './music/cafe.mp3';
 import bar from './music/bar.mp3';
 import upscale from './music/upscale.mp3';
 import shop from './music/shop.mp3';
+import skyline from './music/skyline.mp3';
+import spa from './music/spa.mp3';
 import sfxWin from './sfx/win.mp3';
 import sfxBigwin from './sfx/bigwin.mp3';
 import sfxBlackjack from './sfx/blackjack.mp3';
@@ -25,7 +27,7 @@ import sfxPhone from './sfx/phone.mp3';
  * `period` are exact, so the engine loops between sample positions without a
  * seam. (A track with an intro starts at 0 and loops from `loopStart`.)
  */
-export type TrackId = 'menu' | 'casino_day' | 'casino_night' | 'highlimit' | 'poker' | 'city_day' | 'city_night' | 'home' | 'cafe' | 'bar' | 'upscale' | 'shop';
+export type TrackId = 'menu' | 'casino_day' | 'casino_night' | 'highlimit' | 'poker' | 'city_day' | 'city_night' | 'home' | 'cafe' | 'bar' | 'upscale' | 'shop' | 'skyline' | 'spa';
 
 export interface TrackInfo {
   url: string;
@@ -51,6 +53,8 @@ export const TRACKS: Record<TrackId, TrackInfo> = {
   bar: { url: bar, title: '最后一杯（酒吧）', loopStart: 0, period: 80, duration: 81 },
   upscale: { url: upscale, title: '水晶灯下（高级场所）', loopStart: 0, period: 80, duration: 81 },
   shop: { url: shop, title: '营业中（商店与办公）', loopStart: 0, period: 76.8, duration: 77.8 },
+  skyline: { url: skyline, title: '十二楼的窗（天穹层）', loopStart: 0, period: 204.8, duration: 205.8 },
+  spa: { url: spa, title: '温水与竖琴（水疗中心）', loopStart: 0, period: 96, duration: 97 },
 };
 
 export type StingerId = 'win' | 'bigwin' | 'blackjack' | 'lose' | 'phone';

@@ -411,6 +411,7 @@ export class DialogueEngine {
         out.push({ id: 'svc_tiers', label: '了解会员等级与权益', tone: 'service' });
         out.push({ id: 'svc_highlimit', label: '请求进入高额投注区', tone: 'service' });
         out.push({ id: 'svc_vip', label: '请求进入 VIP 私人厅', tone: 'service' });
+        out.push({ id: 'svc_sky', label: '「楼上的天穹层，我能上去看看吗？」', tone: 'service' });
         out.push({ id: 'svc_comp', label: `用餐饮积分兑换一杯香槟（积分 ${fmt(cs.comps)}）`, tone: 'service', disabled: cs.comps < G(28) ? '积分不足' : undefined });
         out.push({ id: 'svc_credit', label: '申请赌场信用额度（marker）', tone: 'risky' });
         out.push({ id: 'svc_limit', label: '申请自我限制（暂停入场 28 天）', tone: 'warm' });
@@ -882,6 +883,16 @@ export class DialogueEngine {
           return { lines: ['我为您安排三天的私人厅资格。提醒您，私人厅需着正装。'] };
         }
         return { lines: ['私人厅只对钻石卡会员和特别邀请的贵宾开放。您的潜力我看得到，再等等。'] };
+      }
+      case 'svc_sky': {
+        if (core.sky.access() === null) return { lines: ['您随时可以上楼。会员电梯在 VIP 厅和高额区之间的走廊尽头。'] };
+        const theo = cs.membership.lifetimeTheo;
+        const disp = soc.disposition('victor');
+        if (TIER_INDEX[cs.membership.tier] >= 1 && (theo >= G(300) || disp > 20)) {
+          cs.invites.sky = core.today() + 1;
+          return { lines: ['当然。我跟电梯那边打过招呼了，今天和明天您都可以上去。休息室的自助餐请随意。'] };
+        }
+        return { lines: ['天穹层是金卡会员的楼层。不过——您也可以在电梯口订一晚套房，住客随时可以上楼。', '要是您常来，我会记得的。'] };
       }
       case 'svc_comp': {
         if (cs.comps < G(28)) return { lines: ['您的积分还不够。'] };

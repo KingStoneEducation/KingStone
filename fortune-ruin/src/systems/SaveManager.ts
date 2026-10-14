@@ -58,7 +58,9 @@ export function migrate(state: GameState): GameState {
   // defensive defaults for fields added after v1
   s.casino.paidRounds ??= {};
   s.casino.activeTable ??= null;
-  s.casino.invites ??= { highLimit: -1, vip: -1 };
+  s.casino.invites ??= { highLimit: -1, vip: -1, sky: -1 };
+  s.casino.invites.sky ??= -1;
+  s.casino.sky ??= { suiteFrom: -1, suiteUntil: -1, suiteCompWeek: -1, spaFreeDay: -1, nights: 0, treatments: 0, limoRides: 0, redeemed: 0 };
   for (const rt of Object.values(s.npcs)) rt.overrides ??= [];
   s.social.encounters ??= [];
   s.social.encSeq ??= 0;

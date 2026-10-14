@@ -40,7 +40,10 @@ export type Modal =
   | { type: 'collapse'; text: string }
   | { type: 'settings' }
   | { type: 'intro' }
-  | { type: 'saves'; mode: 'save' | 'load' };
+  | { type: 'saves'; mode: 'save' | 'load' }
+  | { type: 'concierge'; tab: ConciergeTab; lobby?: boolean };
+
+export type ConciergeTab = 'suite' | 'spa' | 'car' | 'dining' | 'store' | 'perks';
 
 export interface Toast {
   id: number;
@@ -112,6 +115,8 @@ class UIStore {
   tableUi: TableUiState = { chip: 25, busy: false, phase: 'betting', message: '', result: null };
   locationBanner: { name: string; sub: string; t: number } | null = null;
   fade = false;
+  /** the lift's floor display while the car is moving */
+  lift: { floor: string; up: boolean } | null = null;
   /** location the map should open on (set by openMap) */
   mapFocus: string | null = null;
   settings: Settings = loadSettings();

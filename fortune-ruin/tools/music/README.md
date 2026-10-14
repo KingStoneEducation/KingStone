@@ -1,6 +1,6 @@
 # 配乐工具
 
-游戏里的 12 首循环曲目和 5 段音效短句都是为本项目写的原创作品：旋律、和声与编曲写在
+游戏里的 14 首循环曲目和 5 段音效短句都是为本项目写的原创作品：旋律、和声与编曲写在
 `tracks.py` / `sfx.py` 里，用 [FluidR3 GM](https://member.keymusician.com/Member/FluidR3_GM/) 音色库（MIT 许可）渲染。
 
 ## 依赖

@@ -18,7 +18,17 @@ function gates(m: MapData): { it: Interactable; inside: { x: number; y: number }
     });
 }
 
-/** Everything the player can walk to from where they arrive, through doors' and gates' own rules. */
+/** Lifts: standing in front of one takes you to the tile in front of the other. */
+function lifts(m: MapData): { front: { x: number; y: number }; to: { x: number; y: number } }[] {
+  return m.interactables
+    .filter((it) => it.interact.kind === 'elevator')
+    .map((it) => {
+      const [tx, ty] = String(it.interact.data?.to).split(',').map(Number);
+      return { front: { x: it.x, y: it.y + it.h }, to: { x: tx, y: ty } };
+    });
+}
+
+/** Everything the player can walk to from where they arrive, through doors', gates' and lifts' own rules. */
 function accessible(m: MapData): Uint8Array {
   const start = m.spawns.entry ?? m.spawns.start;
   const acc = reachable(m, start.x, start.y);
@@ -29,6 +39,12 @@ function accessible(m: MapData): Uint8Array {
       const ins = acc[g.inside.y * m.w + g.inside.x];
       if (out && !ins) {
         reachable(m, g.inside.x, g.inside.y).forEach((v, i) => v && (acc[i] = 1));
+        changed = true;
+      }
+    }
+    for (const l of lifts(m)) {
+      if (acc[l.front.y * m.w + l.front.x] && !acc[l.to.y * m.w + l.to.x]) {
+        reachable(m, l.to.x, l.to.y).forEach((v, i) => v && (acc[i] = 1));
         changed = true;
       }
     }
@@ -83,6 +99,17 @@ describe('maps: nobody gets stuck', () => {
           let ok = false;
           for (let j = it.y; j < it.y + it.h && !ok; j++) for (let i = it.x; i < it.x + it.w && !ok; i++) ok = near(i, j);
           expect(ok, `${it.id} (${it.interact.label}) at ${it.x},${it.y}`).toBe(true);
+        }
+      });
+
+      it('every lift leads to the front of another lift, and back', () => {
+        const ls = lifts(m);
+        for (const l of ls) {
+          expect(free(m, l.front.x, l.front.y), `lift front ${l.front.x},${l.front.y}`).toBe(true);
+          expect(free(m, l.to.x, l.to.y), `lift destination ${l.to.x},${l.to.y}`).toBe(true);
+          const back = ls.find((o) => o.front.x === l.to.x && o.front.y === l.to.y);
+          expect(back, `lift to ${l.to.x},${l.to.y} has a lift there`).toBeTruthy();
+          expect(back!.to).toEqual(l.front);
         }
       });
 

@@ -48,6 +48,8 @@ export const CATEGORY_NAMES: Record<TxnCategory, string> = {
   business_income: '经营收入',
   donation: '慈善捐款',
   business_cost: '经营支出',
+  lodging: '酒店住宿',
+  wellness: '水疗按摩',
   item_sale: '变卖物品',
   tax: '税费',
   other: '其他',

@@ -175,6 +175,8 @@ export const NPCS: NpcDef[] = [
     schedule: [
       { days: [1, 2, 3, 4, 5, 6], from: hm(15), to: hm(27), loc: 'casino', spot: 'vip_host', act: 'work' },
       { days: [0], from: hm(14), to: hm(18), loc: 'club', spot: 'club_lounge2', act: 'leisure', chance: 0.5 },
+      // hosts the members' Saturday night upstairs
+      { days: [5], from: hm(21), to: hm(25), loc: 'casino', spot: 'sky_host', act: 'work' },
     ],
     circle: ['natasha', 'jack', 'lillian', 'alexander', 'marco'],
     initial: { met: false, knowsName: false },
@@ -219,6 +221,7 @@ export const NPCS: NpcDef[] = [
       { days: [2, 4, 5], from: hm(19, 30), to: hm(22, 30), loc: 'fine_dining', spot: 'fd_table1', act: 'eat' },
       { days: [5], from: hm(23), to: hm(26, 30), loc: 'casino', spot: 'vip_bac1', act: 'gamble', chance: 0.8 },
       { days: [6], from: hm(11), to: hm(13), loc: 'city', spot: 'hill_garden', act: 'leisure', chance: 0.7 },
+      { days: [5], from: hm(21, 45), to: hm(23), loc: 'casino', spot: 'sky_bar1', act: 'drink', chance: 0.7 },
     ],
     circle: ['lillian', 'sophia', 'victor'],
     initial: { met: false, knowsName: false },
@@ -525,6 +528,7 @@ export const NPCS: NpcDef[] = [
       { days: ALL, from: hm(15), to: hm(18), loc: 'club', spot: 'club_lounge3', act: 'leisure' },
       { days: [1, 2], from: hm(19, 30), to: hm(22), loc: 'fine_dining', spot: 'fd_table3', act: 'eat', chance: 0.7 },
       { days: [3, 4, 5], from: hm(21, 30), to: hm(26, 30), loc: 'casino', spot: 'vip_bac2', act: 'gamble', chance: 0.85 },
+      { days: [5], from: hm(21), to: hm(23), loc: 'casino', spot: 'sky_lounge1', act: 'leisure', chance: 0.8 },
     ],
     circle: ['alexander', 'victor', 'sophia', 'isabella'],
     initial: { met: false, knowsName: false },

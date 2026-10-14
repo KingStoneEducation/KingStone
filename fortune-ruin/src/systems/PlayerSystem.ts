@@ -1,9 +1,10 @@
 import type { GameCore } from '../core/GameCore';
 import type { PlayerStats, SkillId } from '../core/state';
+import { daylight } from '../core/calendar';
 
 export type Activity = 'idle' | 'walking' | 'gambling' | 'working' | 'sleeping' | 'talking' | 'exercising' | 'eating' | 'reading';
 
-export type LeisureKind = 'tv' | 'piano' | 'exercise' | 'bench';
+export type LeisureKind = 'tv' | 'piano' | 'exercise' | 'bench' | 'view';
 
 export const STAT_NAMES: Record<keyof PlayerStats, string> = {
   energy: '体力',
@@ -113,7 +114,7 @@ export class PlayerSystem {
     const s = this.stats;
     const now = this.core.now();
     if (activity === 'sleeping') {
-      const comfort = 1 + this.core.housing.comfort();
+      const comfort = 1 + this.core.sleepComfort();
       s.sleep = clamp(s.sleep + 0.2 * comfort * minutes);
       s.energy = clamp(s.energy + 0.19 * comfort * minutes);
       s.stress = clamp(s.stress - 0.035 * comfort * minutes);
@@ -265,6 +266,18 @@ export class PlayerSystem {
         core.advance(20, 'idle');
         this.change('stress', -3);
         return { ok: true, text: '你在长椅上坐了一会儿，看着来来往往的人。' };
+      }
+      case 'view': {
+        core.advance(15, 'idle');
+        this.change('stress', -4);
+        this.addMoodBuff('view', 3, 180, '在高处看了会儿城市');
+        const night = daylight(core.now()) < 0.35;
+        return {
+          ok: true,
+          text: night
+            ? '整座灰港的灯都在脚下。码头的吊车亮着红灯，河上的桥像一串珠子，远处的车流慢慢地移动。'
+            : '白天能看得很远：港口的集装箱、河、山丘上的庄园，还有你住的那片街区。',
+        };
       }
     }
   }

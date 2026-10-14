@@ -30,6 +30,11 @@ describe('which music plays where', () => {
     expect(musicFor(at('casino', { casinoArea: 'poker' }))).toBe('poker');
     expect(musicFor(at('casino', { casinoArea: 'vip' }))).toBe('highlimit');
     expect(musicFor(at('casino', { casinoArea: 'high' }))).toBe('highlimit');
+    // the members' floor upstairs has its own pieces and no casino floor sounds
+    expect(musicFor(at('casino', { casinoArea: 'sky_lounge' }))).toBe('skyline');
+    expect(musicFor(at('casino', { casinoArea: 'suite' }))).toBe('skyline');
+    expect(musicFor(at('casino', { casinoArea: 'spa' }))).toBe('spa');
+    expect(ambienceFor(at('casino', { casinoArea: 'sky_bar' }))).toBeNull();
   });
 
   it('at a table, the table decides', () => {

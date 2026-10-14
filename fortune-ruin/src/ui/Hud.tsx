@@ -13,7 +13,9 @@ function Clock(): JSX.Element {
   const d = toDate(core.now());
   const loc = core.state.world.location;
   const inCasino = loc === 'casino';
-  const hide = inCasino && !store.settings.showCasinoClock;
+  // the members' floor has windows: you can see what time of day it is
+  const upstairs = inCasino && core.sky.upstairs();
+  const hide = inCasino && !upstairs && !store.settings.showCasinoClock;
   const def = LOCATIONS[loc];
   let status = '';
   if (def?.hours && loc !== 'city') status = isOpen(def, d.weekday, d.minuteOfDay) ? '' : ' · 已过营业时间';
@@ -27,6 +29,7 @@ function Clock(): JSX.Element {
       </div>
       <div className="loc">
         <Icon name="pin" /> {def?.name ?? loc}
+        {upstairs && ' · 天穹层'}
         <span className="muted">{status}</span>
         {hide && <span className="dim" style={{ fontSize: 12 }}> · 这里看不到时钟</span>}
       </div>
@@ -44,7 +47,7 @@ function span(minutes: number): string {
 function WorkLine(): JSX.Element | null {
   const core = useCore();
   const items = core.career.agenda();
-  if (core.state.world.location === 'casino' && !store.settings.showCasinoClock) return null;
+  if (core.state.world.location === 'casino' && !core.sky.upstairs() && !store.settings.showCasinoClock) return null;
   if (items.length === 0) {
     if (core.career.activeJobs().length > 0) return null;
     // nobody has to tell the well-off to go job hunting

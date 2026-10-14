@@ -616,7 +616,104 @@ def shop():
     return s
 
 
-TRACKS = {f.__name__: f for f in (menu, casino_day, casino_night, highlimit, poker, city_day, city_night, home, cafe, bar, upscale, shop)}
+def skyline():
+    """The casino's members' floor: a slow lounge ballad in E-flat for alto sax, Rhodes and brushes."""
+    s = Song('skyline', bpm=75, swing=0.6, seed=131)
+    s.part('sax', 65, 0, vol=94, pan=70, reverb=54)
+    s.part('vibes', 11, 1, vol=88, pan=44, reverb=56)
+    s.part('rhodes', 4, 2, vol=86, pan=56, reverb=48, chorus=24)
+    s.part('bass', 32, 3, vol=110, pan=64, reverb=22, humanize=0.008)
+    s.part('drums', 40, 9, vol=80, pan=64, reverb=36, humanize=0.006, vel_jitter=4)
+    s.part('strings', 49, 4, vol=70, pan=60, reverb=74, humanize=0.0)
+    A1 = 'Ebmaj9 | Cm9 | Fm9 | Bb13 | Gm7 | C7b9 | Fm9 | Bb13'
+    A2 = 'Ebmaj9 | Cm9 | Fm9 | Bb13 | Abmaj9 | Abm6 Db9 | Gm7 C7b9 | Fm9 Bb13'
+    B = 'Bbm7 | Eb9 | Abmaj9 | Abmaj9 | Am7 | D7b9 | Gm7 C7 | Fm9 Bb13'
+    A3 = 'Ebmaj9 | Cm9 | Fm9 | Bb13 | Abmaj9 | Abm6 Db9 | Gm7 C7b9 | Fm7 Bb13'
+    head = 'r:1 Bb4:.5 C5:.5 D5:1.5 Eb5:.5 | G5:2 F5:1 Eb5:1 | r:.5 Ab4:.5 C5:.5 Eb5:1.5 G5:1 | F5:1.5 Eb5:.5 D5:2 | '
+    m_a1 = head + 'r:.5 D5:.5 F5:.5 Bb5:1.5 A5:1 | G5:1.5 E5:.5 Db5:2 | C5:1 Eb5:1 Ab5:1 G5:1 | F5:3 r:1'
+    m_a2 = head + 'r:.5 C5:.5 Eb5:.5 G5:1.5 Bb5:1 | B4:1 F5:1 Eb5:1 B4:1 | Bb4:1 D5:1 E5:1 Db5:1 | C5:2 D5:1 r:1'
+    m_b = ('r:1 Db5:.5 F5:.5 Ab5:2 | G5:1.5 F5:.5 Db5:2 | Eb5:1 G5:1 Bb5:1 C6:1 | Bb5:2 G5:2 | '
+           'r:.5 E5:.5 G5:.5 C6:1.5 B5:1 | A5:1.5 F#5:.5 Eb5:2 | D5:1 F5:1 E5:1 G5:1 | Ab5:2 G5:1 F5:1')
+    m_a3 = head + 'r:.5 C5:.5 Eb5:.5 G5:1.5 Bb5:1 | B4:1 F5:1 Eb5:1 B4:1 | Bb4:1 D5:1 E5:1 Db5:1 | Ab4:1 C5:1 D5:2'
+    # second time the vibes take the tune, pushed a little later in the bar
+    vhead = 'r:1.5 Bb4:.5 C5:.5 D5:1 Eb5:.5 | G5:1.5 F5:1 Eb5:1.5 | r:1 Ab4:.5 C5:.5 Eb5:1 G5:1 | F5:1.5 Eb5:.5 D5:2 | '
+    v_a1 = vhead + 'r:1 D5:.5 F5:.5 Bb5:1 A5:1 | G5:1 E5:1 Db5:2 | C5:.5 Eb5:.5 Ab5:1.5 G5:1.5 | F5:3 r:1'
+    v_a2 = vhead + 'r:1 C5:.5 Eb5:.5 G5:1 Bb5:1 | B4:1.5 F5:.5 Eb5:1 B4:1 | Bb4:.5 D5:.5 E5:1.5 Db5:1.5 | C5:2 D5:1 r:1'
+    v_a3 = vhead + 'r:1 C5:.5 Eb5:.5 G5:1 Bb5:1 | B4:1.5 F5:.5 Eb5:1 B4:1 | Bb4:.5 D5:.5 E5:1.5 Db5:1.5 | Ab4:1 C5:1 D5:2'
+    form = [A1, A2, B, A3]
+    mels = [[m_a1, m_a2, m_b, m_a3], [v_a1, v_a2, m_b, v_a3]]
+    for chorus in range(2):
+        for sec, line in enumerate(form):
+            b0 = chorus * 32 + sec * 8
+            s.harmony_line(line, b0)
+            lead = 'sax' if chorus == 0 else 'vibes'
+            s.melody(lead, b0 * 4, mels[chorus][sec], vel=72 + (4 if sec == 2 else 0))
+            # Rhodes: soft held chords, a push on the "and" of 2 in full bars
+            t = b0 * 4
+            prev = None
+            for sym, beats in bars(line):
+                v = voice(Chord(sym), prev, 51, 72)
+                prev = v
+                s.chord_notes('rhodes', t, beats * 0.55, v, 46)
+                if beats == 4:
+                    s.chord_notes('rhodes', t + 2.5, 1.2, v, 36)
+                t += beats
+            if chorus == 0:
+                two_feel(s, 'bass', line, b0, vel=76)
+            else:
+                walking_bass(s, 'bass', bars(line), start_bar=b0, vel=74)
+            if chorus == 1 or sec == 2:
+                comp_hold(s, 'strings', line, b0, vel=24 + (6 if sec == 2 else 0), low=55, high=79, kind='close')
+            for k in range(8):
+                bb = (b0 + k) * 4
+                for at, v in ((0, 42), (1, 48), (1.5, 32), (2, 42), (3, 48), (3.5, 32)):
+                    s.note('drums', bb + at, 0.25, 51, v)
+                for at in (1, 3):
+                    s.note('drums', bb + at, 0.3, 38, 26 if chorus == 0 else 32)
+            if sec == 3:
+                # the sax answers the vibes in the last eight
+                if chorus == 1:
+                    s.melody('sax', (b0 + 4) * 4, 'r:2 G4:1 Bb4:1 | D5:4 | r:2 Db5:1 Bb4:1 | Ab4:4', vel=58)
+    s.finish(64)
+    return s
+
+
+def spa():
+    """The spa upstairs: slow harp and strings in D, a flute now and then."""
+    s = Song('spa', bpm=60, beats_per_bar=3, seed=141)
+    s.part('harp', 46, 0, vol=92, pan=50, reverb=70)
+    s.part('strings', 49, 1, vol=72, pan=70, reverb=78, humanize=0.0)
+    s.part('flute', 73, 2, vol=78, pan=60, reverb=66)
+    s.part('celesta', 8, 3, vol=62, pan=36, reverb=74)
+    s.part('bass', 32, 4, vol=84, pan=64, reverb=40)
+    A = 'Dmaj9 | Gmaj7#11 | Bm9 | Gmaj9 | Dmaj9 | Em9 | Gmaj7#11 | A9sus'
+    B = 'Bm9 | Gmaj9 | Em9 | A9sus | Dmaj9 | F#m7 | Gmaj7#11 | A9sus'
+    m_a = 'F#5:3 | E5:1.5 D5:1.5 | C#5:3 | D5:1 E5:1 F#5:1 | A5:3 | G5:1.5 F#5:1.5 | E5:3 | r:3'
+    m_b = 'D5:3 | B4:1.5 D5:1.5 | G5:3 | E5:3 | F#5:1 E5:1 D5:1 | C#5:3 | D5:1.5 E5:1.5 | E5:3'
+    form = [(A, None), (A, m_a), (B, m_b), (A, None)]
+    for sec, (line, mel) in enumerate(form):
+        b0 = sec * 8
+        s.harmony_line(line, b0)
+        arp_lh(s, 'harp', line, b0, vel=44, pattern=(0, 7, 14, 16, 19, 14), step=0.5)
+        comp_hold(s, 'strings', line, b0, vel=22 + (4 if sec == 2 else 0), low=50, high=74, kind='close')
+        t = b0 * 3
+        for sym, beats in bars(line, 3):
+            c = Chord(sym)
+            r = nearest(c.bass, P('D2'))
+            if r > P('A2'):
+                r -= 12
+            s.note('bass', t, beats * 0.95, r, 50)
+            t += beats
+        if mel:
+            s.melody('flute', b0 * 3, mel, vel=56)
+    for bar in (7, 15, 23, 31):
+        for i, p in enumerate(('A5', 'D6', 'F#6', 'A6')):
+            s.note('celesta', bar * 3 + i * 0.5, 1.6, P(p), 34)
+    s.finish(32)
+    return s
+
+
+TRACKS = {f.__name__: f for f in (menu, casino_day, casino_night, highlimit, poker, city_day, city_night, home, cafe, bar, upscale, shop, skyline, spa)}
 
 ROLES = {
     'menu': {'piano': 'lead', 'lh': 'comp', 'tpt': 'lead', 'strings': 'pad', 'bass': 'bass', 'drums': 'brush', 'strmel': 'lead'},
@@ -631,12 +728,14 @@ ROLES = {
     'bar': {'piano': 'lead', 'lh': 'comp', 'sax': 'lead', 'bass': 'bass', 'drums': 'brush'},
     'upscale': {'piano': 'lead', 'lh': 'comp', 'strings': 'pad'},
     'shop': {'guitar': 'lead', 'rhodes': 'comp', 'bass': 'bass', 'drums': 'drums'},
+    'skyline': {'sax': 'lead', 'vibes': 'lead', 'rhodes': 'comp', 'bass': 'bass', 'drums': 'brush', 'strings': 'pad'},
+    'spa': {'harp': 'arp', 'strings': 'pad', 'flute': 'lead', 'celesta': 'accent', 'bass': 'bass'},
 }
 
 ROOMS = {  # rt60 (s), wet level
     'menu': (2.2, 0.45), 'casino_day': (1.4, 0.36), 'casino_night': (1.8, 0.42), 'highlimit': (2.4, 0.5),
     'poker': (1.5, 0.38), 'city_day': (1.2, 0.3), 'city_night': (1.6, 0.4), 'home': (1.6, 0.36), 'cafe': (1.2, 0.32),
-    'bar': (1.4, 0.36), 'upscale': (2.2, 0.46), 'shop': (1.2, 0.3),
+    'bar': (1.4, 0.36), 'upscale': (2.2, 0.46), 'shop': (1.2, 0.3), 'skyline': (2.0, 0.44), 'spa': (2.8, 0.52),
 }
 
 if __name__ == '__main__':

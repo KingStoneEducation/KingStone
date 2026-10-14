@@ -18,6 +18,7 @@ export interface SoundContext {
 }
 
 const LUXURY_HOMES = new Set(['home_penthouse', 'home_estate']);
+const SKY_AREAS = new Set<CasinoArea>(['sky_lobby', 'sky_lounge', 'sky_bar', 'spa', 'boutique', 'suite']);
 
 /** The casino has no windows: it follows the clock, the evening crowd from eight. */
 function casinoFloor(hour: number): TrackId {
@@ -42,6 +43,14 @@ export function musicFor(c: SoundContext): TrackId | null {
         return 'highlimit';
       case 'office':
         return 'upscale';
+      case 'spa':
+        return 'spa';
+      case 'sky_lobby':
+      case 'sky_lounge':
+      case 'sky_bar':
+      case 'boutique':
+      case 'suite':
+        return 'skyline';
       default:
         return casinoFloor(c.hour);
     }
@@ -75,7 +84,8 @@ export type SpotAmbience = 'casino' | 'city_night' | 'cafe' | null;
 
 export function ambienceFor(c: SoundContext): SpotAmbience {
   if (c.screen !== 'game') return null;
-  if (c.location === 'casino' && !c.table) return 'casino';
+  // no chips clicking on the quiet members' floor
+  if (c.location === 'casino' && !c.table) return c.casinoArea && SKY_AREAS.has(c.casinoArea) ? null : 'casino';
   if (c.location === 'city' && c.night) return 'city_night';
   if (c.ambience === 'cafe' || (c.ambience === 'restaurant' && c.location !== 'fine_dining')) return 'cafe';
   return null;

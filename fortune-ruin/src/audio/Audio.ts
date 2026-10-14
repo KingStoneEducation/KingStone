@@ -9,7 +9,7 @@ import type { SpotAmbience } from './soundscape';
  * sparse, quiet spot sounds — no continuous noise beds.
  */
 
-export type SfxName = 'card' | 'chip' | 'chips' | 'win' | 'bigwin' | 'lose' | 'click' | 'door' | 'shuffle' | 'cash' | 'phone' | 'ball' | 'deny' | 'blackjack';
+export type SfxName = 'card' | 'chip' | 'chips' | 'win' | 'bigwin' | 'lose' | 'click' | 'door' | 'shuffle' | 'cash' | 'phone' | 'ball' | 'deny' | 'blackjack' | 'ding' | 'slide' | 'lift';
 
 interface Volumes {
   music: number;
@@ -315,6 +315,23 @@ class AudioEngine {
         break;
       case 'ball':
         this.tone(3000 + Math.random() * 800, t, 0.025, 'sine', 0.09, b);
+        break;
+      case 'ding':
+        // the lift's chime: two soft bell notes, high then low
+        this.tone(1319, t, 0.9, 'sine', 0.09, b, 0.004);
+        this.tone(2637, t, 0.3, 'sine', 0.02, b, 0.004);
+        this.tone(1047, t + 0.3, 1.3, 'sine', 0.09, b, 0.004);
+        this.tone(2093, t + 0.3, 0.35, 'sine', 0.018, b, 0.004);
+        break;
+      case 'slide':
+        // doors rolling on their track: a low, soft tone rather than a hiss
+        this.tone(110, t, 0.42, 'triangle', 0.035, b, 0.12);
+        this.tone(165, t, 0.3, 'sine', 0.012, b, 0.1);
+        break;
+      case 'lift':
+        // the car moving: a slow low swell
+        this.tone(55, t, 1.5, 'sine', 0.08, b, 0.5);
+        this.tone(82.5, t, 1.4, 'sine', 0.03, b, 0.5);
         break;
     }
   }

@@ -355,7 +355,7 @@ export function CasinoMemberModal(): JSX.Element {
         <div className="card">
           <h3>餐饮积分</h3>
           <GV v={cs.comps} />
-          <div className="muted" style={{ fontSize: 12 }}>只能用于赌场餐饮，不能兑现</div>
+          <div className="muted" style={{ fontSize: 12 }}>可在天穹层支付套房、水疗或兑换礼品，不能兑现</div>
         </div>
       </div>
       <div className="card" style={{ marginTop: 10 }}>

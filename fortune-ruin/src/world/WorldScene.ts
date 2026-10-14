@@ -6,7 +6,7 @@ import { interiorMap } from './maps/interiors';
 import { ownShopMap } from './maps/ownShop';
 import { BIZ_TYPES } from '../data/business';
 import { CASINO_TABLES, casinoArea, type CasinoArea } from './maps/casinoMap';
-import type { Door, Face, Interactable, InteractKind, MapData } from './maps/types';
+import { regionAt, type Door, type Face, type Interactable, type InteractKind, type MapData, type MapRegion, type StaffWhen } from './maps/types';
 import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING } from './maps/cityLayout';
 import { PROPS, propFrameName, type PropDef } from '../art/props';
 import { displayTile, tileIndex } from '../art/tiles';
@@ -29,6 +29,7 @@ import { NPC_BY_ID } from '../data/npcs';
 import { TABLE_BY_ID, type TableConfig } from '../casino/tables';
 import { formatG } from '../core/money';
 import { patronLine, pedestrianLine, staffLine } from './ambientLines';
+import { sfx } from '../audio/Audio';
 
 const DIR_VEC: Record<CharDir, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
@@ -62,6 +63,9 @@ const VERBS: Record<InteractKind, string> = {
   piano: '弹钢琴',
   slots: '查看',
   business: '打理生意',
+  elevator: '乘电梯',
+  concierge: '礼宾服务',
+  view: '眺望',
 };
 
 const WALK_SPEED = 58;
@@ -120,6 +124,8 @@ interface NightView {
   em: Emissive | null;
   /** fraction of windows that stay lit late at night */
   lateFactor: number;
+  /** a window: shows night only when it is dark outside, even indoors */
+  daylit?: boolean;
 }
 
 interface StaffView {
@@ -128,6 +134,7 @@ interface StaffView {
   label: string;
   x: number;
   y: number;
+  when?: StaffWhen;
 }
 
 type Focus =
@@ -187,6 +194,10 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private attractT = 0;
   private tableKey: string | null = null;
   private playerLight: LightSource = { x: 0, y: 0, r: 30, color: 0xffffff, always: true, strength: 0.55 };
+  /** the part of the map the camera is limited to */
+  private regionId: string | null = null;
+  /** temporary images of a lift ride in progress */
+  private liftParts: Phaser.GameObjects.GameObject[] = [];
   private pendingLight: { darkness: number; color: number; lights: LightSource[]; glow: number; time: number } | null = null;
 
   constructor() {
@@ -239,6 +250,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private shutdown(): void {
     for (const off of this.offs) off();
     this.offs = [];
+    this.endLiftParts();
+    if (store.lift) store.lift = null;
+    this.core?.paused.delete('transition');
     this.clearMap();
     this.lighting?.destroy();
     this.input.keyboard?.off('keydown', this.onKey, this);
@@ -257,6 +271,17 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   entryTile(): Pt {
     const e = this.map.spawns.entry ?? this.map.spawns.start;
     return e ? { x: e.x, y: e.y } : { x: 1, y: 1 };
+  }
+
+  /** Where someone walking to (x, y) comes in: the entry of that part of the map. */
+  regionEntry(x: number, y: number): Pt {
+    const r = regionAt(this.map, x, y);
+    return r ? { x: r.entry.x, y: r.entry.y } : this.entryTile();
+  }
+
+  private region(): MapRegion | null {
+    if (!this.player || !this.map?.regions) return null;
+    return regionAt(this.map, Math.floor(this.player.x / 16), Math.floor((this.player.y - 3) / 16));
   }
 
   seatFor(npcId: string): { x: number; y: number; dir: CharDir; depth: number } | null {
@@ -418,7 +443,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
           view.em = { key: view.nightRefs[0].key, frame: view.nightRefs[0].frame, x, y, w: d.w, h: d.h, alpha: 0 };
           this.emissives.push(view.em);
         }
-        this.nights.push({ img: nimg, em: view.em, lateFactor: 1 });
+        this.nights.push({ img: nimg, em: view.em, lateFactor: 1, daylit: !!d.daylit });
       }
       if (d.light) {
         const lx = p.flipX ? d.w - d.light.x : d.light.x;
@@ -468,7 +493,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private buildStaff(map: MapData): void {
     for (const s of map.staff) {
       const sprite = new CharacterSprite(this, staffLook(s.role, s.look), s.x * 16 + 8, s.y * 16 + 14, s.face);
-      this.staff.push({ sprite, role: s.role, label: s.label, x: s.x, y: s.y });
+      this.staff.push({ sprite, role: s.role, label: s.label, x: s.x, y: s.y, when: s.when });
     }
     if (map.id === 'casino') {
       // relief dealer at table 1 while Natasha is off shift
@@ -493,12 +518,17 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const cam = this.cameras.main;
     const z = this.zoom();
     cam.setZoom(z);
-    const W = this.map.w * 16;
-    const H = this.map.h * 16;
+    // a map in several parts (the casino's two floors): keep the camera inside the player's part
+    const r = this.region();
+    this.regionId = r?.id ?? null;
+    const ox = r ? r.x * 16 : 0;
+    const oy = r ? r.y * 16 : 0;
+    const W = (r ? r.w : this.map.w) * 16;
+    const H = (r ? r.h : this.map.h) * 16;
     const vw = this.scale.width / z;
     const vh = this.scale.height / z;
-    const bx = W < vw ? (W - vw) / 2 : 0;
-    const by = H < vh ? (H - vh) / 2 : 0;
+    const bx = ox + (W < vw ? (W - vw) / 2 : 0);
+    const by = oy + (H < vh ? (H - vh) / 2 : 0);
     cam.setBounds(bx, by, Math.max(W, vw), Math.max(H, vh));
     cam.setRoundPixels(true);
     if (this.player) {
@@ -519,6 +549,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const core = this.core;
     if (!this.transitioning && !this.tableKey) this.updatePlayer(dt);
     this.player.update(dt, time);
+    if (this.map.regions && !this.transitioning && (this.region()?.id ?? null) !== this.regionId) this.layoutCamera();
     if (this.player.path.length > 0) this.checkDoor(this.player.dir);
     this.npcDir?.update(dt, time, core.nowFloat());
     this.city?.update(dt, time, toDate(core.now()).hour);
@@ -658,14 +689,16 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private updateLighting(time: number, t: number): void {
     const m = this.map;
     const dl = daylight(t);
-    const amb = m.ambient.night + (m.ambient.day - m.ambient.night) * dl;
+    const ambient = this.region()?.ambient ?? m.ambient;
+    const amb = ambient.night + (ambient.day - ambient.night) * dl;
     const darkness = 1 - amb;
     const night = this.nightFactor(t);
     this.sunShade?.setAlpha(m.outdoor ? 1 - night : clamp01((dl - 0.3) / 0.45));
     const hour = toDate(Math.floor(t)).hour;
     const late = m.outdoor && hour >= 1 && hour < 6;
+    const dark = clamp01((0.72 - dl) / 0.45);
     for (const n of this.nights) {
-      const a = night * (late ? n.lateFactor : 1);
+      const a = n.daylit ? dark : night * (late ? n.lateFactor : 1);
       n.img.setAlpha(a);
       if (n.em) n.em.alpha = a;
     }
@@ -678,7 +711,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       this.playerLight.r = 26;
       lights.push(this.playerLight);
     }
-    this.pendingLight = { darkness, color: m.ambient.color, lights, glow: m.outdoor ? night : 1, time };
+    this.pendingLight = { darkness, color: ambient.color, lights, glow: m.outdoor ? night : 1, time };
     // rendered from the camera's FOLLOW_UPDATE so it uses this frame's view
   }
 
@@ -725,8 +758,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       const sx = s.x * 16 + 8;
       const sy = s.y * 16 + 14;
       const covered = sprites.some((n) => Math.abs(n.x - sx) < 10 && Math.abs(n.y - sy) < 10);
-      s.sprite.sprite.setVisible(!covered);
-      s.sprite.shadow.setVisible(!covered);
+      const away = s.when === 'sky_night' && !this.core.sky.isSkyNight();
+      s.sprite.sprite.setVisible(!covered && !away);
+      s.sprite.shadow.setVisible(!covered && !away);
     }
   }
 
@@ -884,6 +918,11 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       verb = job ? '上班' : '查看';
     } else if (k === 'gate') {
       verb = this.isInsideGate(it) ? '离开' : '进入';
+    } else if (k === 'concierge') {
+      const tab = it.interact.data?.tab;
+      verb = tab === 'spa' ? '预约水疗' : tab === 'store' ? '兑换礼品' : '礼宾服务';
+    } else if (k === 'elevator') {
+      verb = it.interact.data?.floor === 'sky' ? '上楼' : '下楼';
     } else if (k === 'shop' || k === 'order') {
       const loc = LOCATIONS[this.map.id];
       if (loc?.name) label = `${label}`;
@@ -1102,6 +1141,17 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
           text: '一排闪烁的老虎机。机台旁贴着告示：「本区机台正在进行合规检测与回报率公示，暂停对外开放。」\n\n（开发说明：老虎机不在第一阶段范围内，尚未实现。可以去 21 点、百家乐和轮盘桌游戏。）',
         });
         break;
+      case 'elevator':
+        void this.rideLift(it);
+        break;
+      case 'concierge':
+        store.openModal({ type: 'concierge', tab: (String(d.tab ?? 'suite') as 'suite' | 'spa' | 'store') });
+        break;
+      case 'view': {
+        const r = core.player.leisure('view');
+        store.toast(r.text, r.ok ? 'good' : 'warn');
+        break;
+      }
       case 'business':
         if (d.action === 'work') {
           const r = core.business.workShift();
@@ -1163,7 +1213,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const going = !this.isInsideGate(it);
     if (going) {
       let err: string | null = null;
-      if (area === 'office') {
+      if (area === 'suite') {
+        if (!this.core.sky.suiteGuest()) err = '读卡器亮起红灯。1201 是住客的房间，入住手续在礼宾台办理。';
+      } else if (area === 'office') {
         const victor = this.core.social.rel('victor');
         const invited = Number(this.core.state.player.flags.officeInviteUntil ?? -1) >= this.core.today();
         if (!invited && !(victor.met && victor.familiarity >= 35 && this.core.casino.tierAtLeast('platinum'))) err = '保安拦住了你：「经理办公室，非请勿入。」';
@@ -1177,7 +1229,158 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.cameras.main.flash(120, 10, 6, 18);
     p.setPos(target.x * 16 + 8, target.y * 16 + 14);
     p.face(going ? (target.y < outside.y ? 'up' : target.x < outside.x ? 'left' : 'right') : 'down');
-    if (going) store.banner(area === 'vip' ? 'VIP 私人厅' : area === 'high' ? '高额投注区' : '经理办公室', area === 'vip' ? '仅限受邀贵宾' : area === 'high' ? 'High Limit Salon' : '');
+    if (going && area === 'suite') sfx('door');
+    if (going) store.banner(area === 'vip' ? 'VIP 私人厅' : area === 'high' ? '高额投注区' : area === 'suite' ? '1201 套房' : '经理办公室', area === 'vip' ? '仅限受邀贵宾' : area === 'high' ? 'High Limit Salon' : area === 'suite' ? '天穹层' : '');
+  }
+
+  // ------------------------------------------------------------------ the members' lift
+
+  private wait(ms: number): Promise<void> {
+    return new Promise((res) => this.time.delayedCall(ms, () => res()));
+  }
+
+  private tweenTo(target: object, props: Record<string, number>, ms: number): Promise<void> {
+    return new Promise((res) => this.tweens.add({ targets: target, ...props, duration: ms, ease: 'Sine.easeInOut', onComplete: () => res() }));
+  }
+
+  private endLiftParts(): void {
+    for (const o of this.liftParts) o.destroy();
+    this.liftParts = [];
+    if (this.player) {
+      this.player.sprite.clearMask(true);
+      this.player.shadow.clearMask(true);
+    }
+  }
+
+  /** The car behind a lift's doors: the inside, two sliding doors, and the mask that keeps them in the frame. */
+  private liftCar(it: Interactable): { doorL: Phaser.GameObjects.Image; doorR: Phaser.GameObjects.Image; x0: number; y0: number; mask: Phaser.Display.Masks.GeometryMask; below: Phaser.Display.Masks.GeometryMask } {
+    const x0 = it.x * 16;
+    const y0 = (it.y + 1) * 16 - 32;
+    const cabRef = frameRef(propFrameName('lift_cab', 0));
+    const lRef = frameRef(propFrameName('lift_door_l', 0));
+    const rRef = frameRef(propFrameName('lift_door_r', 0));
+    const cab = this.add.image(x0 + 4, y0 + 10, cabRef.key, cabRef.frame).setOrigin(0, 0).setDepth(-790);
+    const shape = this.make.graphics({}, false);
+    shape.fillStyle(0xffffff);
+    shape.fillRect(x0 + 4, y0 + 10, 24, 22);
+    const mask = shape.createGeometryMask();
+    // the player inside is hidden above the door frame but whole once out in the room
+    const shape2 = this.make.graphics({}, false);
+    shape2.fillStyle(0xffffff);
+    shape2.fillRect(x0 + 4, y0 + 10, 24, 22);
+    shape2.fillRect(x0 - 32, y0 + 32, 96, 96);
+    const below = shape2.createGeometryMask();
+    const doorL = this.add.image(x0 + 4, y0 + 11, lRef.key, lRef.frame).setOrigin(0, 0).setDepth(-780).setMask(mask);
+    const doorR = this.add.image(x0 + 16, y0 + 11, rRef.key, rRef.frame).setOrigin(0, 0).setDepth(-780).setMask(mask);
+    this.liftParts.push(cab, doorL, doorR, shape, shape2);
+    return { doorL, doorR, x0, y0, mask, below };
+  }
+
+  /**
+   * Ride the members' lift: walk up, the doors open, step in, they close; the
+   * floor display counts while the screen is dark; the doors open on the other
+   * floor and you step out. One minute of game time.
+   */
+  private async rideLift(it: Interactable): Promise<void> {
+    if (this.transitioning || !this.player) return;
+    const d = it.interact.data ?? {};
+    const up = d.floor === 'sky';
+    if (up) {
+      const err = this.core.sky.access();
+      if (err) {
+        const att = this.staff.find((s) => s.role === 'lift' && Math.abs(s.x - it.x) < 4 && Math.abs(s.y - it.y) < 6);
+        att?.sprite.say('抱歉，天穹层只对会员和住客开放。', 2600, this.time.now);
+        sfx('deny');
+        // a room upstairs is the way in for everyone else
+        store.openModal({ type: 'concierge', tab: 'suite', lobby: true });
+        return;
+      }
+    }
+    const [tx, ty] = String(d.to).split(',').map(Number);
+    const dest = this.map.interactables.find((o) => o.interact.kind === 'elevator' && o !== it && o.x === tx && o.y === ty - 1);
+    if (!dest) return;
+    const p = this.player;
+    const scene = this.scene;
+    this.transitioning = true;
+    this.core.paused.add('transition');
+    this.setFocus(null);
+    this.marker?.setVisible(false);
+    p.stop();
+    p.path = [];
+    this.arriveAction = null;
+    if (this.benchSit) this.standUpFromBench();
+    const a = this.liftCar(it);
+    const cx = a.x0 + 16;
+    // to the doors
+    const front = (it.y + 1) * 16 + 14;
+    if (Math.abs(p.x - cx) > 1 || Math.abs(p.y - front) > 1) {
+      p.setMoving(true, Math.abs(p.x - cx) > Math.abs(p.y - front) ? (p.x < cx ? 'right' : 'left') : 'up');
+      await this.tweenTo(p, { x: cx, y: front }, 260);
+    }
+    p.setMoving(false, 'up');
+    p.face('up');
+    sfx('ding');
+    await this.wait(160);
+    sfx('slide');
+    await Promise.all([this.tweenTo(a.doorL, { x: a.x0 + 4 - 11 }, 420), this.tweenTo(a.doorR, { x: a.x0 + 16 + 11 }, 420)]);
+    // step in
+    p.sprite.setMask(a.below);
+    p.shadow.setMask(a.below);
+    p.setMoving(true, 'up');
+    await this.tweenTo(p, { y: it.y * 16 + 14 }, 420);
+    p.setMoving(false, 'down');
+    p.face('down');
+    a.doorL.setDepth(LABEL_DEPTH - 10);
+    a.doorR.setDepth(LABEL_DEPTH - 10);
+    await this.wait(120);
+    sfx('slide');
+    await Promise.all([this.tweenTo(a.doorL, { x: a.x0 + 4 }, 420), this.tweenTo(a.doorR, { x: a.x0 + 16 }, 420)]);
+    if (!scene.isActive()) return;
+    // the ride
+    const cam = this.cameras.main;
+    cam.fadeOut(300, 8, 6, 14);
+    await this.wait(320);
+    sfx('lift');
+    const floors = up ? ['1', '2', '3', '5', '8', '10', '11', '12'] : ['12', '11', '9', '6', '4', '2', '1'];
+    for (const f of floors) {
+      store.lift = { floor: f, up };
+      store.notify();
+      await this.wait(170);
+    }
+    this.core.advance(1, 'idle');
+    this.endLiftParts();
+    const b = this.liftCar(dest);
+    const bx = b.x0 + 16;
+    b.doorL.setDepth(LABEL_DEPTH - 10);
+    b.doorR.setDepth(LABEL_DEPTH - 10);
+    p.sprite.setMask(b.below);
+    p.shadow.setMask(b.below);
+    p.setPos(bx, dest.y * 16 + 14);
+    p.face('down');
+    this.layoutCamera();
+    cam.centerOn(p.x, p.y - 12);
+    await this.wait(250);
+    store.lift = null;
+    store.notify();
+    cam.fadeIn(320, 8, 6, 14);
+    sfx('ding');
+    await this.wait(360);
+    sfx('slide');
+    await Promise.all([this.tweenTo(b.doorL, { x: b.x0 + 4 - 11 }, 420), this.tweenTo(b.doorR, { x: b.x0 + 16 + 11 }, 420)]);
+    p.setMoving(true, 'down');
+    await this.tweenTo(p, { y: (dest.y + 1) * 16 + 14 }, 420);
+    p.setMoving(false, 'down');
+    p.sprite.clearMask(false);
+    p.shadow.clearMask(false);
+    b.doorL.setDepth(-780);
+    b.doorR.setDepth(-780);
+    store.banner(up ? '天穹层' : '灰港大赌场', up ? (this.core.sky.isSkyNight() ? '天穹之夜 · 现场爵士' : '会员楼层 · 12F') : '大厅');
+    for (const id of this.core.social.presentNpcs(10)) this.core.social.observePlayer(id);
+    this.core.paused.delete('transition');
+    this.transitioning = false;
+    sfx('slide');
+    await Promise.all([this.tweenTo(b.doorL, { x: b.x0 + 4 }, 420), this.tweenTo(b.doorR, { x: b.x0 + 16 }, 420)]);
+    this.endLiftParts();
   }
 
   // ------------------------------------------------------------------ casino tables

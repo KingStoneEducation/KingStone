@@ -23,6 +23,7 @@ import { OUTREACH_HOURS, OutreachSystem } from '../systems/OutreachSystem';
 import { RomanceSystem } from '../systems/RomanceSystem';
 import { BusinessSystem } from '../systems/BusinessSystem';
 import { CompanionSystem } from '../systems/CompanionSystem';
+import { SkyFloorSystem, SUITE_COMFORT } from '../systems/SkyFloorSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -108,6 +109,7 @@ export class GameCore {
   romance: RomanceSystem;
   business: BusinessSystem;
   companions: CompanionSystem;
+  sky: SkyFloorSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -133,6 +135,7 @@ export class GameCore {
     this.romance = new RomanceSystem(this);
     this.business = new BusinessSystem(this);
     this.companions = new CompanionSystem(this);
+    this.sky = new SkyFloorSystem(this);
   }
 
   now(): number {
@@ -248,6 +251,7 @@ export class GameCore {
     if (hour === 7) this.romance.dailyPass();
     if (OUTREACH_HOURS.includes(hour)) this.outreach.pass(hour);
     if (hour === 18) this.events.dailyPass('evening');
+    this.sky.hourly(hour);
     this.bus.emit('time:hour', { hour });
   }
 
@@ -278,9 +282,17 @@ export class GameCore {
   // ------------------------------------------------------------ sleep & collapse
 
   canSleep(): string | null {
-    if (!this.isAtHome()) return '只能在家里睡觉';
+    if (!this.isAtHome()) {
+      const err = this.sky.sleepRefusal();
+      if (err) return err;
+    }
     if (this.state.player.stats.sleep > 92) return '你现在一点也不困';
     return null;
+  }
+
+  /** How restful sleep is where the player is: their home, or the casino suite. */
+  sleepComfort(): number {
+    return !this.isAtHome() && this.sky.inSuite() ? SUITE_COMFORT : this.housing.comfort();
   }
 
   /** Sleep until the given hour (next occurrence) or for N hours. */

@@ -1,5 +1,5 @@
 import { P } from './palette';
-import { box, circle, dither, ellipse, hash2, hline, makeCanvas, px, rect, rgba, ring, roundRect, shade, speckle, strokeRect, vline, type Ctx } from './canvas';
+import { box, circle, dither, ellipse, hash2, hline, makeCanvas, mix, px, rect, rgba, ring, roundRect, shade, speckle, strokeRect, vline, type Ctx } from './canvas';
 import { drawText, drawTextCentered, measureText } from './font';
 
 /**
@@ -28,6 +28,8 @@ export interface PropDef {
   wall?: boolean;
   /** depth override: draw above characters */
   overhead?: boolean;
+  /** indoors, the night image follows the daylight outside (windows) instead of staying lit */
+  daylit?: boolean;
 }
 
 const O = P.outline;
@@ -1930,6 +1932,552 @@ def({
     rect(ctx, 3, 4, 2, 12, P.gold);
     rect(ctx, 2, 15, 4, 2, P.goldDark);
     circle(ctx, 4, 3, 2, P.goldLight);
+  },
+});
+
+// ------------------------------------------------------------------ casino upper floor (天穹层)
+
+const NAVY = '#1d2742';
+const NAVY_DARK = '#121a30';
+const NAVY_LIGHT = '#33416a';
+const BRASS = '#c9a24a';
+const BRASS_DARK = '#8a6a2a';
+const BRASS_LIGHT = '#f0d68a';
+const STEEL = '#a9aeb8';
+const STEEL_DARK = '#7c818c';
+const STEEL_LIGHT = '#d6dae2';
+
+/** Lift doors set into a wall, with the floor indicator above. */
+function drawLift(ctx: Ctx, floorLabel: string, up: boolean): void {
+  // surround
+  rect(ctx, 1, 0, 30, 32, BRASS_DARK);
+  rect(ctx, 2, 1, 28, 31, BRASS);
+  hline(ctx, 2, 1, 28, BRASS_LIGHT);
+  vline(ctx, 2, 1, 31, BRASS_LIGHT);
+  // indicator panel
+  rect(ctx, 9, 2, 14, 7, '#14101a');
+  strokeRect(ctx, 9, 2, 14, 7, BRASS_DARK);
+  const tw = measureText(floorLabel, '3x5');
+  drawText(ctx, floorLabel, 18 - Math.round(tw / 2), 3, '#ffb347', '3x5');
+  // direction arrow
+  const ax = 12;
+  if (up) {
+    px(ctx, ax, 4, '#ffb347');
+    hline(ctx, ax - 1, 5, 3, '#ffb347');
+    hline(ctx, ax - 2, 6, 5, '#ffb347');
+  } else {
+    hline(ctx, ax - 2, 4, 5, '#ffb347');
+    hline(ctx, ax - 1, 5, 3, '#ffb347');
+    px(ctx, ax, 6, '#ffb347');
+  }
+  // door opening
+  rect(ctx, 4, 10, 24, 22, '#2a2430');
+  liftDoor(ctx, 5, 11, 11, 21, false);
+  liftDoor(ctx, 16, 11, 11, 21, true);
+  // call buttons on the frame
+  rect(ctx, 28, 17, 3, 7, '#3a3040');
+  px(ctx, 29, 19, '#ffd28a');
+  px(ctx, 29, 22, '#7a6a5a');
+  // threshold
+  rect(ctx, 3, 31, 26, 1, STEEL_LIGHT);
+  strokeRect(ctx, 1, 0, 30, 32, O);
+}
+
+function liftDoor(ctx: Ctx, x: number, y: number, w: number, h: number, right: boolean): void {
+  rect(ctx, x, y, w, h, STEEL);
+  for (let i = 1; i < w; i += 3) vline(ctx, x + i, y + 1, h - 2, STEEL_LIGHT);
+  for (let i = 2; i < w; i += 3) vline(ctx, x + i, y + 1, h - 2, shade(STEEL, -0.06));
+  hline(ctx, x, y + h - 3, w, STEEL_DARK);
+  // engraved panel
+  strokeRect(ctx, x + 2, y + 3, w - 4, h - 8, STEEL_DARK);
+  vline(ctx, right ? x : x + w - 1, y, h, '#4a4652');
+}
+
+def({ id: 'lift_ground', w: 32, h: 32, foot: { w: 2, h: 0 }, wall: true, light: { x: 16, y: 5, r: 14, color: '#ffb347', always: true }, draw: (ctx) => drawLift(ctx, '1', true) });
+def({ id: 'lift_sky', w: 32, h: 32, foot: { w: 2, h: 0 }, wall: true, light: { x: 16, y: 5, r: 14, color: '#ffb347', always: true }, draw: (ctx) => drawLift(ctx, '12', false) });
+/** the inside of the car, seen through the open doors (cutscene only) */
+def({
+  id: 'lift_cab',
+  w: 24,
+  h: 22,
+  foot: { w: 0, h: 0 },
+  wall: true,
+  draw: (ctx) => {
+    rect(ctx, 0, 0, 24, 22, '#5a3a26');
+    for (let x = 1; x < 24; x += 4) vline(ctx, x, 0, 22, '#6a4830');
+    rect(ctx, 4, 2, 16, 11, '#9ab0c4');
+    rect(ctx, 5, 3, 14, 9, '#b9cad8');
+    hline(ctx, 5, 3, 14, '#dde8f0');
+    hline(ctx, 0, 14, 24, BRASS);
+    hline(ctx, 0, 15, 24, BRASS_DARK);
+    rect(ctx, 0, 19, 24, 3, '#3a2a20');
+    rect(ctx, 9, 0, 6, 1, '#fff2cf');
+  },
+});
+def({ id: 'lift_door_l', w: 12, h: 21, foot: { w: 0, h: 0 }, wall: true, draw: (ctx) => liftDoor(ctx, 0, 0, 12, 21, false) });
+def({ id: 'lift_door_r', w: 12, h: 21, foot: { w: 0, h: 0 }, wall: true, draw: (ctx) => liftDoor(ctx, 0, 0, 12, 21, true) });
+
+/** The upper floor's windows: the harbour by day, the lit city by night. */
+function skyline(ctx: Ctx, night: boolean): void {
+  // frame
+  rect(ctx, 0, 0, 32, 30, NAVY_DARK);
+  const gx = 2;
+  const gy = 2;
+  const gw = 28;
+  const gh = 24;
+  for (let j = 0; j < gh; j++) {
+    const t = j / gh;
+    const c = night ? mix('#0b1026', '#2a2f5c', t) : mix('#6fa6dc', '#cfe5f4', t);
+    hline(ctx, gx, gy + j, gw, c);
+  }
+  if (night) {
+    for (let i = 0; i < 9; i++) px(ctx, gx + Math.floor(hash2(i, 3, 41) * gw), gy + Math.floor(hash2(3, i, 42) * 9), i % 3 === 0 ? '#ffffff' : '#9aa6d0');
+    circle(ctx, gx + 22, gy + 4, 2, '#f4ecd0');
+    px(ctx, gx + 23, gy + 3, '#0b1026');
+  } else {
+    ellipse(ctx, gx + 7, gy + 5, 4, 1, '#f4f8fc');
+    ellipse(ctx, gx + 19, gy + 8, 3, 1, '#eaf2f8');
+  }
+  // towers
+  const towers = [
+    [0, 11, 5],
+    [5, 7, 4],
+    [9, 13, 6],
+    [15, 5, 4],
+    [19, 10, 5],
+    [24, 8, 4],
+  ];
+  for (const [tx, ty, tw] of towers) {
+    const col = night ? '#141a30' : '#7d8ea4';
+    rect(ctx, gx + tx, gy + ty, tw, gh - ty - 4, col);
+    vline(ctx, gx + tx, gy + ty, gh - ty - 4, night ? '#1d2440' : '#93a3b8');
+    for (let wy = gy + ty + 2; wy < gy + gh - 5; wy += 2) {
+      for (let wx = gx + tx + 1; wx < gx + tx + tw - 1; wx += 2) {
+        const lit = hash2(wx, wy, night ? 51 : 52) < (night ? 0.45 : 0.25);
+        if (lit) px(ctx, wx, wy, night ? (hash2(wx, wy, 53) < 0.5 ? P.windowLit : P.windowLitWarm) : '#a8bcd2');
+      }
+    }
+  }
+  // the harbour
+  rect(ctx, gx, gy + gh - 4, gw, 4, night ? '#10182e' : '#4f84b0');
+  for (let i = 0; i < 5; i++) hline(ctx, gx + 2 + i * 6, gy + gh - 2 - (i % 2), 3, night ? '#3a4a80' : '#8fc0e0');
+  if (night) for (let i = 0; i < 4; i++) px(ctx, gx + 3 + i * 7, gy + gh - 3, i % 2 ? P.windowLitWarm : '#ff6a6a');
+  // mullions and sill
+  vline(ctx, gx + 14, gy, gh, NAVY_DARK);
+  hline(ctx, gx, gy + 10, gw, NAVY_DARK);
+  strokeRect(ctx, 1, 1, 30, 26, BRASS_DARK);
+  rect(ctx, 0, 27, 32, 3, BRASS);
+  hline(ctx, 0, 27, 32, BRASS_LIGHT);
+}
+def({ id: 'sky_window', w: 32, h: 30, foot: { w: 2, h: 0 }, wall: true, daylit: true, draw: (ctx) => skyline(ctx, false), night: (ctx) => skyline(ctx, true) });
+
+def({
+  id: 'concierge_desk',
+  w: 64,
+  h: 30,
+  foot: { w: 4, h: 1 },
+  light: { x: 9, y: 4, r: 30, color: '#ffe2a8', always: true },
+  draw: (ctx) => {
+    shadow(ctx, 32, 28, 30, 2);
+    box(ctx, 1, 10, 62, 6, 13, '#e6e0d4', '#3a2418');
+    speckle(ctx, 2, 11, 60, 4, '#cfc6b6', 0.12, 61);
+    hline(ctx, 1, 15, 62, BRASS);
+    hline(ctx, 1, 27, 62, BRASS_DARK);
+    for (let x = 6; x < 60; x += 8) {
+      vline(ctx, x, 18, 8, '#2a180e');
+      vline(ctx, x + 1, 18, 8, '#4a3020');
+    }
+    // lamp
+    rect(ctx, 8, 6, 2, 5, BRASS);
+    rect(ctx, 5, 2, 8, 4, '#2f6a4a');
+    hline(ctx, 5, 2, 8, '#4f9a6a');
+    // guest book and pen
+    rect(ctx, 24, 9, 9, 3, '#7a1626');
+    hline(ctx, 24, 9, 9, '#a8323e');
+    vline(ctx, 35, 8, 3, '#141218');
+    // orchid
+    rect(ctx, 44, 7, 4, 4, '#f4f1ea');
+    vline(ctx, 46, 2, 5, '#3f7a38');
+    px(ctx, 45, 2, '#e8c8f0');
+    px(ctx, 47, 3, '#e8c8f0');
+    px(ctx, 46, 1, '#f4e4ff');
+    // bell
+    ellipse(ctx, 56, 9, 3, 2, BRASS);
+    px(ctx, 56, 6, BRASS_LIGHT);
+    hline(ctx, 53, 11, 7, BRASS_DARK);
+  },
+});
+
+function buffetTable(ctx: Ctx, sweet: boolean): void {
+  shadow(ctx, 16, 24, 15, 2);
+  box(ctx, 0, 8, 32, 6, 11, '#f4f1ea', '#e2ddd0');
+  for (let x = 2; x < 32; x += 5) vline(ctx, x, 15, 9, '#cfc8b8');
+  hline(ctx, 0, 24, 32, '#bdb5a4');
+  if (!sweet) {
+    for (const cx of [6, 16, 26]) {
+      ellipse(ctx, cx, 10, 4, 2, '#8a8f98');
+      ellipse(ctx, cx, 8, 4, 3, STEEL_LIGHT);
+      hline(ctx, cx - 3, 7, 6, '#f4f6fa');
+      px(ctx, cx, 4, STEEL);
+    }
+  } else {
+    // cake stand, fruit, macarons
+    ellipse(ctx, 7, 11, 4, 1, '#d6dae2');
+    rect(ctx, 4, 6, 7, 5, '#f2d8c8');
+    hline(ctx, 4, 6, 7, '#fff4ec');
+    px(ctx, 7, 5, '#c2283a');
+    ellipse(ctx, 17, 10, 5, 2, '#c49a6a');
+    for (const [fx, fy, c] of [[14, 9, '#e04a5a'], [16, 8, '#f2c94c'], [18, 9, '#5fa24c'], [20, 8, '#b46bff']] as [number, number, string][]) px(ctx, fx, fy, c);
+    for (let i = 0; i < 4; i++) {
+      px(ctx, 24 + i * 2, 10, ['#f8b8c8', '#b8e0c8', '#f8e0a0', '#c8b8f0'][i]);
+      px(ctx, 24 + i * 2, 9, ['#f8b8c8', '#b8e0c8', '#f8e0a0', '#c8b8f0'][i]);
+    }
+  }
+}
+def({ id: 'buffet', w: 32, h: 26, foot: { w: 2, h: 1 }, draw: (ctx) => buffetTable(ctx, false) });
+def({ id: 'buffet_sweet', w: 32, h: 26, foot: { w: 2, h: 1 }, draw: (ctx) => buffetTable(ctx, true) });
+
+def({
+  id: 'champagne_tower',
+  w: 20,
+  h: 32,
+  foot: { w: 1, h: 1 },
+  light: { x: 10, y: 12, r: 18, color: '#fff0b8', always: true },
+  draw: (ctx) => {
+    shadow(ctx, 10, 30, 8, 2);
+    ellipse(ctx, 10, 24, 8, 2, BRASS);
+    rect(ctx, 9, 25, 2, 5, BRASS_DARK);
+    hline(ctx, 6, 29, 8, BRASS_DARK);
+    const glass = (x: number, y: number) => {
+      rect(ctx, x, y, 3, 2, rgba('#fff2b0', 0.85));
+      px(ctx, x + 1, y + 2, rgba('#f4f1ea', 0.9));
+      px(ctx, x, y, '#ffffff');
+    };
+    for (let row = 0; row < 4; row++) {
+      const n = 4 - row;
+      for (let i = 0; i < n; i++) glass(4 + row * 2 + i * 3, 20 - row * 4);
+    }
+    px(ctx, 10, 3, '#ffffff');
+    px(ctx, 6, 8, '#fff6d0');
+    px(ctx, 14, 6, '#fff6d0');
+  },
+});
+
+def({
+  id: 'telescope',
+  w: 16,
+  h: 28,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 8, 26, 6, 1);
+    for (const [x0, x1] of [[8, 3], [8, 13], [8, 8]] as [number, number][]) {
+      for (let j = 0; j < 12; j++) px(ctx, Math.round(x0 + ((x1 - x0) * j) / 11), 14 + j, BRASS_DARK);
+    }
+    // tube pointing at the window
+    for (let i = 0; i < 11; i++) {
+      rect(ctx, 3 + i, 12 - i, 3, 3, i < 2 ? BRASS_DARK : BRASS);
+      px(ctx, 3 + i, 12 - i, BRASS_LIGHT);
+    }
+    rect(ctx, 12, 1, 4, 4, BRASS_DARK);
+    px(ctx, 14, 2, '#9ab8d8');
+  },
+});
+
+def({
+  id: 'massage_bed',
+  w: 32,
+  h: 20,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 16, 18, 15, 2);
+    box(ctx, 1, 3, 30, 7, 5, '#c8b8a0', '#8a7058');
+    rect(ctx, 6, 3, 20, 7, '#f4f1ea');
+    hline(ctx, 6, 3, 20, '#ffffff');
+    for (let x = 8; x < 26; x += 4) vline(ctx, x, 4, 5, '#e2ddd0');
+    // rolled towel and face cradle
+    rect(ctx, 26, 4, 3, 5, '#e8e0d0');
+    ellipse(ctx, 3, 6, 2, 2, '#a8957a');
+    for (const x of [3, 28]) rect(ctx, x, 15, 2, 4, '#6a4428');
+  },
+});
+
+def({
+  id: 'spa_desk',
+  w: 32,
+  h: 28,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 16, 26, 15, 2);
+    box(ctx, 0, 10, 32, 5, 12, '#d8ccb4', '#a8845a');
+    for (let x = 2; x < 32; x += 3) vline(ctx, x, 16, 10, '#b8946a');
+    hline(ctx, 0, 15, 32, '#efe6d2');
+    // orchid
+    rect(ctx, 3, 7, 5, 4, '#f4f1ea');
+    vline(ctx, 5, 2, 5, '#3f7a38');
+    px(ctx, 4, 2, '#f0d0f8');
+    px(ctx, 6, 3, '#f0d0f8');
+    px(ctx, 5, 1, '#ffffff');
+    // stacked stones
+    ellipse(ctx, 25, 10, 4, 1, '#6a6460');
+    ellipse(ctx, 25, 8, 3, 1, '#8a847e');
+    ellipse(ctx, 25, 6, 2, 1, '#a8a29a');
+    // booking tablet
+    rect(ctx, 13, 9, 6, 3, '#2a2e38');
+    rect(ctx, 14, 9, 4, 2, '#7ab8a8');
+  },
+});
+
+def({
+  id: 'sauna',
+  w: 48,
+  h: 44,
+  foot: { w: 3, h: 2 },
+  light: { x: 24, y: 26, r: 26, color: '#ffb070', always: true },
+  draw: (ctx) => {
+    shadow(ctx, 24, 42, 23, 2);
+    box(ctx, 0, 2, 48, 8, 32, '#c8945a', '#a8743e');
+    for (let y = 12; y < 42; y += 3) hline(ctx, 1, y, 46, '#8a5a2e');
+    for (let y = 3; y < 10; y += 2) hline(ctx, 1, y, 46, '#d8a46a');
+    // glass door, glowing
+    rect(ctx, 17, 14, 14, 26, '#5a3418');
+    rect(ctx, 19, 16, 10, 22, '#ffb878');
+    rect(ctx, 20, 17, 8, 4, '#ffd8a8');
+    px(ctx, 27, 28, '#3a2410');
+    // sign
+    rect(ctx, 6, 14, 9, 6, '#3a2410');
+    drawText(ctx, 'SPA', 7, 15, '#f2d8a0', '3x5');
+    strokeRect(ctx, 0, 2, 48, 40, O);
+  },
+});
+
+def({
+  id: 'orchid',
+  w: 12,
+  h: 20,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 6, 18, 4, 1);
+    rect(ctx, 3, 12, 6, 6, '#f4f1ea');
+    hline(ctx, 3, 12, 6, '#ffffff');
+    rect(ctx, 2, 10, 3, 3, '#3f7a38');
+    rect(ctx, 7, 10, 3, 3, '#4f8a42');
+    vline(ctx, 6, 3, 8, '#5a7a3a');
+    for (const [x, y] of [[4, 3], [8, 4], [5, 6], [8, 7], [6, 1]] as [number, number][]) {
+      px(ctx, x, y, '#f0d0f8');
+      px(ctx, x + 1, y, '#d8a8e8');
+    }
+  },
+});
+
+def({
+  id: 'flower_vase',
+  w: 18,
+  h: 34,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 9, 32, 6, 1);
+    rect(ctx, 5, 18, 8, 14, BRASS);
+    vline(ctx, 6, 19, 12, BRASS_LIGHT);
+    vline(ctx, 12, 19, 12, BRASS_DARK);
+    hline(ctx, 4, 18, 10, BRASS_DARK);
+    for (let i = 0; i < 12; i++) {
+      const x = 2 + Math.floor(hash2(i, 7, 71) * 14);
+      const y = 2 + Math.floor(hash2(7, i, 72) * 14);
+      rect(ctx, x, y, 2, 2, i % 3 === 0 ? '#3f7a38' : '#f4f1ea');
+      if (i % 3 !== 0) px(ctx, x, y, '#ffe8a0');
+    }
+    vline(ctx, 9, 10, 8, '#3f7a38');
+  },
+});
+
+function velvetSofa(ctx: Ctx, w: number, base: string): void {
+  const dark = shade(base, -0.3);
+  const light = shade(base, 0.25);
+  shadow(ctx, w / 2, 24, w / 2 - 2, 2);
+  rect(ctx, 2, 2, w - 4, 10, dark);
+  rect(ctx, 2, 10, w - 4, 10, base);
+  rect(ctx, 0, 6, 6, 16, shade(base, -0.4));
+  rect(ctx, w - 6, 6, 6, 16, shade(base, -0.4));
+  for (let x = 8; x < w - 6; x += 7) px(ctx, x, 6, BRASS_LIGHT);
+  hline(ctx, 2, 10, w - 4, light);
+  for (let x = 6 + Math.floor((w - 12) / 3); x < w - 6; x += Math.floor((w - 12) / 3)) vline(ctx, x, 11, 9, dark);
+  strokeRect(ctx, 0, 2, w, 20, O);
+}
+def({ id: 'sofa_navy', w: 48, h: 26, foot: { w: 3, h: 1 }, draw: (ctx) => velvetSofa(ctx, 48, NAVY_LIGHT) });
+const COGNAC = '#9a5a32';
+def({ id: 'sofa_cognac', w: 48, h: 26, foot: { w: 3, h: 1 }, draw: (ctx) => velvetSofa(ctx, 48, COGNAC) });
+def({
+  id: 'armchair_cognac',
+  w: 20,
+  h: 22,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 10, 20, 9, 2);
+    rect(ctx, 2, 2, 16, 8, shade(COGNAC, -0.25));
+    rect(ctx, 2, 9, 16, 9, COGNAC);
+    rect(ctx, 0, 6, 4, 13, shade(COGNAC, -0.4));
+    rect(ctx, 16, 6, 4, 13, shade(COGNAC, -0.4));
+    for (let x = 5; x < 16; x += 4) px(ctx, x, 5, BRASS_LIGHT);
+    hline(ctx, 2, 9, 16, shade(COGNAC, 0.3));
+    hline(ctx, 3, 3, 14, shade(COGNAC, 0.05));
+    strokeRect(ctx, 0, 2, 20, 17, O);
+  },
+});
+def({
+  id: 'armchair_navy',
+  w: 20,
+  h: 22,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 10, 20, 9, 2);
+    rect(ctx, 2, 2, 16, 8, NAVY);
+    rect(ctx, 2, 9, 16, 9, NAVY_LIGHT);
+    rect(ctx, 0, 6, 4, 13, NAVY_DARK);
+    rect(ctx, 16, 6, 4, 13, NAVY_DARK);
+    for (let x = 5; x < 16; x += 4) px(ctx, x, 5, BRASS_LIGHT);
+    hline(ctx, 2, 9, 16, shade(NAVY_LIGHT, 0.25));
+    strokeRect(ctx, 0, 2, 20, 17, O);
+  },
+});
+def({
+  id: 'side_table',
+  w: 16,
+  h: 18,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 8, 16, 6, 1);
+    ellipse(ctx, 8, 6, 7, 3, '#e6e0d4');
+    ellipse(ctx, 8, 5, 6, 2, '#f4f0e8');
+    rect(ctx, 7, 8, 2, 7, BRASS);
+    hline(ctx, 4, 15, 8, BRASS_DARK);
+    // two cocktail glasses
+    for (const gx of [5, 10]) {
+      rect(ctx, gx, 2, 2, 2, gx === 5 ? '#ff8fb8' : '#ffd36a');
+      px(ctx, gx, 4, '#f4f1ea');
+    }
+  },
+});
+def({
+  id: 'high_table',
+  w: 16,
+  h: 26,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 8, 24, 6, 1);
+    ellipse(ctx, 8, 7, 7, 3, BRASS_DARK);
+    ellipse(ctx, 8, 6, 7, 2, '#ece6da');
+    hline(ctx, 3, 5, 10, '#fbf8f0');
+    rect(ctx, 7, 9, 2, 14, BRASS);
+    vline(ctx, 7, 9, 14, BRASS_LIGHT);
+    hline(ctx, 4, 23, 8, BRASS_DARK);
+    // candle
+    rect(ctx, 7, 2, 2, 3, '#f4f1ea');
+    px(ctx, 7, 1, '#ffd36a');
+  },
+  light: { x: 8, y: 2, r: 12, color: '#ffc870', always: true },
+});
+def({
+  id: 'rug_round',
+  w: 48,
+  h: 32,
+  foot: { w: 3, h: 2 },
+  ground: true,
+  draw: (ctx) => {
+    ellipse(ctx, 24, 16, 23, 15, BRASS_DARK);
+    ellipse(ctx, 24, 16, 21, 13, NAVY);
+    ellipse(ctx, 24, 16, 17, 10, NAVY_LIGHT);
+    ellipse(ctx, 24, 16, 12, 7, NAVY);
+    for (let a = 0; a < 16; a++) {
+      const x = Math.round(24 + Math.cos((a / 16) * Math.PI * 2) * 19);
+      const y = Math.round(16 + Math.sin((a / 16) * Math.PI * 2) * 11.5);
+      px(ctx, x, y, BRASS_LIGHT);
+    }
+    px(ctx, 24, 16, BRASS_LIGHT);
+  },
+});
+def({
+  id: 'bathtub_claw',
+  w: 34,
+  h: 24,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 17, 22, 15, 2);
+    ellipse(ctx, 17, 10, 16, 8, '#f4f4f0');
+    ellipse(ctx, 17, 9, 13, 5, '#a8d0e8');
+    ellipse(ctx, 17, 8, 10, 3, '#c8e8f8');
+    rect(ctx, 3, 10, 28, 6, '#e8e8e2');
+    hline(ctx, 3, 15, 28, '#cfcfc8');
+    for (const x of [5, 27]) rect(ctx, x, 16, 3, 4, BRASS);
+    // tap
+    rect(ctx, 29, 3, 2, 4, BRASS);
+    px(ctx, 28, 3, BRASS_LIGHT);
+  },
+});
+def({
+  id: 'suite_door',
+  w: 32,
+  h: 32,
+  foot: { w: 2, h: 0 },
+  wall: true,
+  draw: (ctx) => {
+    rect(ctx, 1, 0, 30, 32, BRASS_DARK);
+    rect(ctx, 3, 2, 26, 30, '#3a2014');
+    for (const x of [4, 17]) {
+      rect(ctx, x, 3, 11, 28, '#5a3220');
+      strokeRect(ctx, x + 2, 5, 7, 10, '#3a2014');
+      strokeRect(ctx, x + 2, 18, 7, 10, '#3a2014');
+      hline(ctx, x + 3, 6, 5, '#7a4830');
+    }
+    px(ctx, 14, 18, BRASS_LIGHT);
+    px(ctx, 17, 18, BRASS_LIGHT);
+    // key-card reader
+    rect(ctx, 28, 12, 3, 5, '#141218');
+    px(ctx, 29, 13, '#59ff8a');
+    drawText(ctx, '1201', 9, 0, BRASS_LIGHT, '3x5');
+    strokeRect(ctx, 1, 0, 30, 32, O);
+  },
+});
+
+/** Brass plaques on the walls of the upper floor. */
+for (const [id, text] of [
+  ['sign_skyline', 'SKYLINE'],
+  ['sign_spa', 'SPA'],
+  ['sign_boutique', 'BOUTIQUE'],
+  ['sign_lounge', 'LOUNGE'],
+  ['sign_skybar', 'SKY BAR'],
+] as const) {
+  const tw = measureText(text, '5x7');
+  def({
+    id,
+    w: tw + 12,
+    h: 13,
+    foot: { w: 0, h: 0 },
+    wall: true,
+    light: { x: Math.round((tw + 12) / 2), y: 6, r: 22, color: '#ffe2a0', always: true },
+    draw: (ctx) => {
+      rect(ctx, 0, 0, tw + 12, 13, NAVY_DARK);
+      strokeRect(ctx, 0, 0, tw + 12, 13, BRASS);
+      strokeRect(ctx, 1, 1, tw + 10, 11, BRASS_DARK);
+      drawText(ctx, text, 6, 3, BRASS_LIGHT, '5x7');
+    },
+  });
+}
+/** Overhead sign pointing the way to the members' lift on the ground floor. */
+def({
+  id: 'sign_lift',
+  w: 36,
+  h: 30,
+  foot: { w: 0, h: 0 },
+  overhead: true,
+  draw: (ctx) => {
+    vline(ctx, 8, 0, 8, BRASS_DARK);
+    vline(ctx, 27, 0, 8, BRASS_DARK);
+    rect(ctx, 0, 8, 36, 15, NAVY_DARK);
+    strokeRect(ctx, 0, 8, 36, 15, BRASS);
+    drawText(ctx, 'SKY', 3, 12, BRASS_LIGHT, '5x7');
+    // arrow up
+    for (let i = 0; i < 4; i++) hline(ctx, 28 - i, 12 + i, 1 + i * 2, BRASS_LIGHT);
+    rect(ctx, 27, 16, 3, 4, BRASS_LIGHT);
   },
 });
 

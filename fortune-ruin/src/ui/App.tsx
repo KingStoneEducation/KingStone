@@ -19,6 +19,7 @@ import { StatsPanel } from './panels/StatsPanel';
 import { HelpPanel, MenuPanel } from './panels/MenuPanel';
 import { BusinessPanel } from './panels/BusinessPanel';
 import { TableUI } from './table/TableUI';
+import { ConciergeModal } from './modals/ConciergeModal';
 
 function ModalHost(): JSX.Element | null {
   const m = store.modal;
@@ -70,7 +71,23 @@ function ModalHost(): JSX.Element | null {
       return <SettingsModal />;
     case 'saves':
       return <SavesModal mode={m.mode} />;
+    case 'concierge':
+      return <ConciergeModal tab={m.tab} lobby={!!m.lobby} />;
   }
+}
+
+/** The floor display inside the lift while the car moves. */
+function LiftDisplay(): JSX.Element | null {
+  const l = store.lift;
+  if (!l) return null;
+  return (
+    <div className="lift-display">
+      <div className="lift-panel">
+        <span className="lift-arrow">{l.up ? '▲' : '▼'}</span>
+        <span className="lift-floor">{l.floor}</span>
+      </div>
+    </div>
+  );
 }
 
 function PanelHost(): JSX.Element | null {
@@ -142,6 +159,7 @@ function GameUI(): JSX.Element {
       <PanelHost />
       <ModalHost />
       {store.fade && <div className="fade" style={{ opacity: 0 }} />}
+      <LiftDisplay />
     </>
   );
 }

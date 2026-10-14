@@ -26,7 +26,13 @@ export type InteractKind =
   | 'door'
   | 'piano'
   | 'slots'
-  | 'business';
+  | 'business'
+  | 'elevator'
+  | 'concierge'
+  | 'view';
+
+/** staff who are only there at certain times */
+export type StaffWhen = 'sky_night';
 
 export interface Interaction {
   kind: InteractKind;
@@ -92,9 +98,35 @@ export interface MapData {
   ambient: { day: number; night: number; color: number };
   outdoor: boolean;
   /** decorative staff positions (generic clerks, guards...) */
-  staff: { x: number; y: number; face: Face; look: number; label: string; role: string }[];
+  staff: { x: number; y: number; face: Face; look: number; label: string; role: string; when?: StaffWhen }[];
   /** walkable areas preferred by pedestrians */
   walkways?: Uint8Array;
+  /**
+   * Separate parts of one map that are not connected on foot (the floors of
+   * a building joined by a lift). The camera stays inside the part the player
+   * is in, and people arriving in a part come in through its entry.
+   */
+  regions?: MapRegion[];
+}
+
+export interface MapRegion {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** where people arrive in this part (its door or lift) */
+  entry: { x: number; y: number };
+  /** ambient light here, if it differs from the rest of the map */
+  ambient?: { day: number; night: number; color: number };
+}
+
+/** The part of a map a tile belongs to (null for maps without parts, or outside them). */
+export function regionAt(map: MapData, x: number, y: number): MapRegion | null {
+  if (!map.regions) return null;
+  for (const r of map.regions) if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return r;
+  return null;
 }
 
 /** Helper used by both the city and interior builders. */
@@ -187,8 +219,8 @@ export class MapBuilder {
     this.data.spawns[name] = { x, y, face };
   }
 
-  staff(x: number, y: number, face: Face, look: number, label: string, role: string): void {
-    this.data.staff.push({ x, y, face, look, label, role });
+  staff(x: number, y: number, face: Face, look: number, label: string, role: string, when?: StaffWhen): void {
+    this.data.staff.push({ x, y, face, look, label, role, when });
     this.block(x, y);
   }
 
