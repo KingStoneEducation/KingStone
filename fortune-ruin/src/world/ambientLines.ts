@@ -110,6 +110,12 @@ export function staffLine(role: string, core: GameCore): string {
       return pick(['有想听的曲子吗？', '这首是《港口的灯》。'], r);
     case 'jazz_singer':
       return pick(['谢谢，下一首慢一点。', '欢迎来到天穹之夜。'], r);
+    case 'auctioneer': {
+      const ph = core.auction.phase();
+      if (ph === 'sale') return pick(['请坐，拍卖正在进行。', '要竞投的话，先领号牌。'], r);
+      if (ph === 'preview') return pick(['预展的拍品都在画架上，可以走近看。', '图录在拍卖台上，估价都写着。'], r);
+      return pick(['拍卖会在周日下午三点。', '周六上午开始预展。', '有想委托的藏品，可以交给我们估价。'], r);
+    }
     case 'pawnbroker': {
       const open = core.pawn.openTickets();
       const due = open.find((t) => core.today() >= t.due - 5);

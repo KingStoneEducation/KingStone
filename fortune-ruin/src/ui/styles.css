@@ -2206,3 +2206,43 @@ kbd {
 .theme-office button.primary {
   color: #ffffff;
 }
+
+/* ------------------------------------------------------------ the auction house */
+
+img.art {
+  image-rendering: pixelated;
+  display: block;
+  flex: none;
+}
+.auction-block {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.auction-art {
+  padding: 6px;
+  border: 6px solid transparent;
+  border-image: var(--frame-inset) 3 fill / 6px stretch;
+}
+.auction-bid {
+  font-size: 24px;
+  color: var(--gold-light);
+}
+/* fixed heights, so the bid button does not move while the room is bidding */
+.auction-call {
+  font-size: 12px;
+  height: 36px;
+  overflow: hidden;
+}
+.auction-log {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 16px;
+  gap: 2px 12px;
+  font-size: 12px;
+  height: 34px;
+  overflow: hidden;
+}
+.item.focus {
+  outline: 2px solid var(--gold);
+}

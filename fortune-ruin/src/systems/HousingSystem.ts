@@ -44,7 +44,10 @@ export class HousingSystem {
   prestige(): number {
     let p = this.current().prestige;
     for (const f of this.furniture()) p += ITEMS[f]?.homePrestige ?? 0;
-    return Math.min(6, p);
+    // paintings from the auction house on the walls
+    let art = 0;
+    for (const a of this.core.state.auction?.collection ?? []) if (a.kind === 'painting' && a.consigned === undefined) art += Math.min(0.8, Math.max(0.1, Math.log10(a.value / G(1000)) * 0.3));
+    return Math.min(6, p + Math.min(1.5, art));
   }
 
   /** Real-estate value of a home, following the property index. */

@@ -22,6 +22,7 @@ import { TableUI } from './table/TableUI';
 import { ConciergeModal } from './modals/ConciergeModal';
 import { Desktop } from './computer/Desktop';
 import { CharityModal, FortuneModal, LaborModal, PawnModal } from './modals/OldTownModals';
+import { AuctionModal } from './modals/AuctionModal';
 import { venueTheme } from './theme';
 
 function ModalHost(): JSX.Element | null {
@@ -84,6 +85,8 @@ function ModalHost(): JSX.Element | null {
       return <LaborModal />;
     case 'fortune':
       return <FortuneModal />;
+    case 'auction':
+      return <AuctionModal tab={m.tab} lot={m.lot} />;
   }
 }
 

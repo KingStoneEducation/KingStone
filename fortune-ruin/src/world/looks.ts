@@ -59,6 +59,7 @@ const UNIFORMS: Record<string, Partial<CharacterLook>> = {
   spa: { style: 'shirt', top: '#e8e2d4', topShade: '#c8c0ae', bottom: '#8a9a88', shoes: '#e8e2d4', accent: '#8a9a88' },
   pianist: { style: 'suit', top: '#141218', topShade: '#0a090e', bottom: '#101016', shoes: '#050505', accent: '#f4f1ea' },
   jazz_singer: { style: 'gown', top: '#2a3a7a', topShade: '#1a2656', bottom: '#2a3a7a', shoes: '#111111', accent: '#d8dce8', body: 'f' },
+  auctioneer: { style: 'suit', top: '#141218', topShade: '#0a090e', bottom: '#101016', shoes: '#050505', accent: '#e0b13e', glasses: true },
   // the Old Town
   pawnbroker: { style: 'vest', top: '#e8e2d0', topShade: '#c8c0ae', bottom: '#2a2a30', shoes: '#1a1a1a', accent: '#3a2a1a', glasses: true },
   kitchen_lead: { style: 'apron', top: '#c8604a', topShade: '#a04a38', bottom: '#3a3a46', shoes: '#2a2a2e', accent: '#f2efe6', body: 'f' },

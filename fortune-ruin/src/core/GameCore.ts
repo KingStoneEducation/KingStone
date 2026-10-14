@@ -26,6 +26,7 @@ import { CompanionSystem } from '../systems/CompanionSystem';
 import { SkyFloorSystem, SUITE_COMFORT } from '../systems/SkyFloorSystem';
 import { PawnSystem } from '../systems/PawnSystem';
 import { OldTownSystem } from '../systems/OldTownSystem';
+import { AuctionSystem } from '../systems/AuctionSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -114,6 +115,7 @@ export class GameCore {
   sky: SkyFloorSystem;
   pawn: PawnSystem;
   oldtown: OldTownSystem;
+  auction: AuctionSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -142,6 +144,7 @@ export class GameCore {
     this.sky = new SkyFloorSystem(this);
     this.pawn = new PawnSystem(this);
     this.oldtown = new OldTownSystem(this);
+    this.auction = new AuctionSystem(this);
   }
 
   now(): number {
@@ -258,6 +261,7 @@ export class GameCore {
     if (OUTREACH_HOURS.includes(hour)) this.outreach.pass(hour);
     if (hour === 18) this.events.dailyPass('evening');
     this.sky.hourly(hour);
+    this.auction.hourly(hour);
     this.bus.emit('time:hour', { hour });
   }
 
@@ -281,7 +285,10 @@ export class GameCore {
       this.casino.monthlyReview();
       this.career.monthlyReset();
     }
-    if (toDate(day * MINUTES_PER_DAY).weekday === 0) this.business.weekly();
+    if (toDate(day * MINUTES_PER_DAY).weekday === 0) {
+      this.business.weekly();
+      this.auction.weekly();
+    }
     this.bus.emit('time:day', { day });
     this.bus.emit('autosave', { reason: 'day' });
   }

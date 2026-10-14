@@ -9,6 +9,7 @@ import type { GameCore } from '../core/GameCore';
 export function venueTheme(core: GameCore): string {
   const loc = core.state.world.location;
   if (loc === 'casino') return core.sky.upstairs() ? 'theme-sky' : 'theme-casino';
+  if (loc === 'hotel') return 'theme-casino';
   switch (loc) {
     case 'bank':
     case 'finance_office':

@@ -916,6 +916,93 @@ const communityKitchen: Builder = () => {
   return b.finish();
 };
 
+
+// ------------------------------------------------------------------ the Grand Hotel
+
+/** Where the lots stand in the ballroom during the preview (lot index → easel). */
+export const EASELS: [number, number][] = [[1, 3], [4, 3], [7, 3], [21, 3], [24, 3], [27, 3], [1, 6]];
+
+const grandHotel: Builder = () => {
+  const b = fromAscii(
+    'hotel',
+    [
+      '##############################',
+      '##############################',
+      '#pppppppppppppppppppppppppppp#',
+      '#pppppppppppppppppppppppppppp#',
+      '#pppppppppppppppppppppppppppp#',
+      '#pppppppppppppppppppppppppppp#',
+      '#pppppppppppppppppppppppppppp#',
+      '#pppppppppppppppppppppppppppp#',
+      '#pppppppppppppppppppppppppppp#',
+      '#pppppppppppppppppppppppppppp#',
+      '############pp##pp############',
+      '############pp##pp############',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#mmmmmmmmmmmmmmmmmmmmmmmmmmmm#',
+      '#############DDD##############',
+    ],
+    { p: 'parquet', m: 'marble' },
+    'red',
+  );
+  // ---- the ballroom: the rostrum, the lot on the block, the preview easels, rows of chairs
+  b.prop('auction_banner', 14, 1, undefined, { ox: 8, oy: -4 });
+  b.prop('chandelier', 8, 4, undefined, { noBlock: true });
+  b.prop('chandelier', 21, 4, undefined, { noBlock: true });
+  b.prop('rostrum', 14, 3, { kind: 'auction', label: '拍卖台', data: { tab: 'live' } });
+  b.staff(14, 2, 'down', 6101, '拍卖师', 'auctioneer');
+  b.prop('easel', 11, 3, { kind: 'auction', label: '正在拍卖的拍品', data: { tab: 'live', lot: 'live' } });
+  EASELS.forEach(([x, y], i) => b.prop('easel', x, y, { kind: 'auction', label: `拍品 ${i + 1}`, data: { tab: 'catalogue', lot: i } }));
+  for (const y of [6, 8]) {
+    for (let x = 3; x <= 9; x++) b.prop('banquet_chair', x, y);
+    for (let x = 20; x <= 26; x++) b.prop('banquet_chair', x, y);
+  }
+  b.spot('auc_seat1', 5, 6, 'up', true);
+  b.spot('auc_seat2', 8, 8, 'up', true);
+  b.spot('auc_seat3', 21, 6, 'up', true);
+  b.spot('auc_seat4', 24, 8, 'up', true);
+  // ---- the lobby: reception, the lounge, the piano
+  b.prop('painting', 3, 11, undefined, { oy: -2 });
+  b.prop('clock', 8, 11, undefined, { oy: -6 });
+  b.prop('painting', 24, 11, undefined, { oy: -2 });
+  b.prop('concierge_desk', 2, 15, { kind: 'sign', label: '酒店前台', data: { text: '前台的接待员微笑着说：「欢迎光临灰港大酒店。大堂吧下午供应下午茶；周日下午三点，楼上的宴会厅有灰港拍卖行的拍卖会，周六上午起就可以去看预展。」' } });
+  b.staff(3, 14, 'down', 6102, '前台', 'reception');
+  b.staff(4, 14, 'down', 6103, '前台', 'reception');
+  b.prop('poster_stand', 11, 13, { kind: 'auction', label: '拍卖会海报', data: { tab: 'catalogue' } });
+  for (const [x, y] of [[9, 13], [19, 13], [9, 20], [19, 20]] as [number, number][]) b.prop('pillar', x, y);
+  b.prop('rug_round', 13, 17, undefined, { noBlock: true });
+  b.prop('flower_vase', 14, 15);
+  b.prop('chandelier', 14, 20, undefined, { noBlock: true });
+  b.prop('chandelier', 5, 19, undefined, { noBlock: true });
+  for (let x = 22; x <= 25; x++) b.prop('bar_counter_lux', x, 13, x === 23 ? { kind: 'order', label: '大堂吧', data: { shop: 'hotel_lounge' } } : undefined);
+  b.staff(23, 12, 'down', 6104, '侍者', 'waiter');
+  b.prop('sofa_cognac', 22, 16);
+  b.prop('rug_round', 22, 19, undefined, { noBlock: true });
+  b.prop('side_table', 23, 18);
+  b.prop('armchair_cognac', 21, 18);
+  b.prop('armchair_cognac', 25, 18);
+  b.prop('piano', 25, 21, { kind: 'piano', label: '大堂钢琴' });
+  b.prop('orchid', 27, 15);
+  b.prop('orchid', 1, 19);
+  b.staff(12, 22, 'up', 6105, '门童', 'doorman');
+  b.staff(16, 22, 'up', 6106, '门童', 'doorman');
+  b.spot('tea_sofa', 22, 16, 'down', true);
+  b.spot('tea_chair1', 21, 18, 'right', true);
+  b.spot('tea_chair2', 25, 18, 'left', true);
+  b.spot('lobby_wait', 14, 19, 'up');
+  b.data.ambient = { day: 0.95, night: 0.75, color: 0x1a0c10 };
+  return b.finish();
+};
+
 const BUILDERS: Record<string, Builder> = {
   home_basic: homeBasic,
   home_shared: homeShared,
@@ -937,6 +1024,7 @@ const BUILDERS: Record<string, Builder> = {
   motors,
   pawn: pawnShop,
   community_kitchen: communityKitchen,
+  hotel: grandHotel,
   casino: buildCasinoMap,
 };
 

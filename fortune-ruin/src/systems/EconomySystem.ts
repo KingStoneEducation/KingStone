@@ -51,6 +51,7 @@ export const CATEGORY_NAMES: Record<TxnCategory, string> = {
   lodging: '酒店住宿',
   wellness: '水疗按摩',
   item_sale: '变卖物品',
+  collectibles: '艺术品与收藏',
   tax: '税费',
   other: '其他',
 };
@@ -260,7 +261,7 @@ export class EconomySystem {
   }
 
   totalAssets(): Money {
-    return this.liquid() + this.securitiesValue() + this.propertyValue() + this.vehicleValue() + this.valuablesValue() + this.receivablesValue() + this.stakesValue() + this.core.business.value() + this.core.pawn.equity();
+    return this.liquid() + this.securitiesValue() + this.propertyValue() + this.vehicleValue() + this.valuablesValue() + this.receivablesValue() + this.stakesValue() + this.core.business.value() + this.core.pawn.equity() + this.core.auction.value();
   }
 
   /** Real net worth: assets minus liabilities. */

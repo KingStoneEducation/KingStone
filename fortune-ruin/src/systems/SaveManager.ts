@@ -5,6 +5,7 @@ import { formatDateTime } from '../core/calendar';
 import { formatG } from '../core/money';
 import { LOCATIONS } from '../data/locations';
 import { emptyOldTown } from './OldTownSystem';
+import { emptyAuction } from './AuctionSystem';
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -69,6 +70,7 @@ export function migrate(state: GameState): GameState {
   s.stories ??= { active: [], done: [], ended: {} };
   s.economy.stakes ??= [];
   s.oldtown ??= emptyOldTown();
+  s.auction ??= emptyAuction();
   s.meta.version = SAVE_VERSION;
   return s;
 }

@@ -33,7 +33,8 @@ export type InteractKind =
   | 'pawn'
   | 'charity'
   | 'labor'
-  | 'fortune';
+  | 'fortune'
+  | 'auction';
 
 /** staff (and props) that are only there, or only open, at certain times */
 export type StaffWhen = 'sky_night' | 'night_market';

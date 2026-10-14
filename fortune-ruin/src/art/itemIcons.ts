@@ -438,6 +438,48 @@ const ICONS: Record<string, Draw> = {
     px(c, 14, 13, '#e0b13e');
     px(c, 13, 14, '#e0b13e');
   },
+  // the Grand Hotel's lounge
+  afternoon_tea: (c) => {
+    // a three-tier stand
+    vline(c, 8, 1, 13, O);
+    for (const [y, w] of [[4, 6], [8, 9], [12, 12]] as [number, number][]) {
+      hline(c, 8 - Math.floor(w / 2), y, w, O);
+      hline(c, 8 - Math.floor(w / 2) + 1, y - 1, w - 2, WHITE);
+    }
+    px(c, 6, 2, '#e87aa0');
+    px(c, 9, 2, '#f2c94c');
+    px(c, 5, 6, '#c8904a');
+    px(c, 10, 6, '#e8483a');
+    px(c, 4, 10, '#5fa24c');
+    px(c, 12, 10, '#e8c870');
+    px(c, 8, 0, '#e0b13e');
+  },
+  darjeeling: (c) => {
+    ellipse(c, 7, 10, 5, 4, O);
+    ellipse(c, 7, 10, 4, 3, WHITE);
+    hline(c, 4, 9, 7, '#c8a050');
+    rect(c, 6, 4, 3, 2, O);
+    rect(c, 12, 8, 3, 1, O);
+    px(c, 14, 7, O);
+    rect(c, 1, 8, 2, 3, O);
+    hline(c, 3, 14, 9, '#c8ccd4');
+  },
+  pour_over: (c) => {
+    for (let i = 0; i < 4; i++) hline(c, 3 + i, 2 + i, 10 - i * 2, i === 0 ? O : '#e8e4dc');
+    rect(c, 6, 6, 4, 1, '#8a5a36');
+    rect(c, 4, 8, 8, 6, O);
+    rect(c, 5, 9, 6, 4, GLASS);
+    rect(c, 5, 11, 6, 2, '#6a3a1a');
+    px(c, 8, 7, '#6a3a1a');
+  },
+  opera_cake: (c) => {
+    plate(c);
+    rect(c, 4, 5, 8, 6, O);
+    for (let i = 0; i < 5; i++) hline(c, 5, 6 + i, 6, i % 2 ? '#c8904a' : '#3a2416');
+    hline(c, 5, 5, 6, '#2a1a10');
+    px(c, 7, 5, '#e0b13e');
+    px(c, 9, 5, '#e0b13e');
+  },
   // the night market
   nm_noodles: (c) => {
     plate(c);

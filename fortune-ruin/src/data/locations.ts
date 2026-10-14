@@ -167,6 +167,16 @@ export const LOCATIONS: Record<string, LocationDef> = {
     light: 0.9,
     desc: '集市街的临街铺面。',
   },
+  hotel: {
+    id: 'hotel',
+    name: '灰港大酒店',
+    nameEn: 'Greyhaven Grand Hotel',
+    kind: 'interior',
+    ambience: 'club',
+    priceLevel: 3,
+    light: 0.8,
+    desc: '联合广场边的老牌酒店。大堂吧有下午茶，周日下午宴会厅里是灰港拍卖行的拍卖会。',
+  },
   pawn: {
     id: 'pawn',
     name: '福来当铺',

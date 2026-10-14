@@ -6,6 +6,7 @@ import { CasinoMemberView, FurnitureTab, HousingTab, JobsTab, LifeTab, PaydayTab
 import { MarketView } from '../modals/MarketView';
 import { BillsTab } from '../modals/MoneyModals';
 import { BusinessView } from '../panels/BusinessPanel';
+import { AuctionWeb } from '../modals/AuctionModal';
 import { formatClock, formatDate, toDate } from '../../core/calendar';
 
 interface App {
@@ -28,6 +29,7 @@ export const APPS: App[] = [
   { id: 'payday', name: '随借', title: '随借 App', View: PaydayTab },
   { id: 'business', name: '我的商铺', title: '商铺管理', View: BusinessView },
   { id: 'casino', name: '赌场会员', title: '灰港大赌场 · 会员中心', View: CasinoMemberView },
+  { id: 'auction', name: '拍卖行', title: '灰港拍卖行 · 网上图录', View: AuctionWeb },
 ];
 
 interface Win {

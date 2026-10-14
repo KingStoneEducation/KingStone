@@ -163,6 +163,13 @@ export const FACT_LINES: Record<string, Partial<Record<Attitude, string[]>>> = {
     disapprover: ['那些饭是给吃不上饭的人的。', '{src}你在食堂排队领饭。你不缺那一顿吧？'],
     neutral: ['{src}你在社区食堂领饭？'],
   },
+  outbid_me: {
+    snob: ['上次那件{item}，你举牌举得很果断。拍卖会上的你，倒有几分气度。'],
+    envious: ['那件{item}本来应该是我的。', '你上次在拍卖会上可真舍得。'],
+    opportunist: ['下次拍卖会我们商量着来嘛，别互相抬价~'],
+    prudent: ['你拍下的那件{item}，价格已经超过估价了。收藏要有耐心。'],
+    neutral: ['上次的{item}，你出价出得真狠。'],
+  },
   day_labor: {
     caring: ['{src}你在码头扛货？别把腰累坏了。'],
     snob: ['{src}你在码头做苦力……'],

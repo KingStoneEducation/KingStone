@@ -9,7 +9,7 @@ import type { SpotAmbience } from './soundscape';
  * sparse, quiet spot sounds — no continuous noise beds.
  */
 
-export type SfxName = 'card' | 'chip' | 'chips' | 'win' | 'bigwin' | 'lose' | 'click' | 'door' | 'shuffle' | 'cash' | 'phone' | 'ball' | 'deny' | 'blackjack' | 'ding' | 'slide' | 'lift';
+export type SfxName = 'card' | 'chip' | 'chips' | 'win' | 'bigwin' | 'lose' | 'click' | 'door' | 'shuffle' | 'cash' | 'phone' | 'ball' | 'deny' | 'blackjack' | 'ding' | 'slide' | 'lift' | 'gavel' | 'paddle';
 
 interface Volumes {
   music: number;
@@ -317,6 +317,18 @@ class AudioEngine {
         // doors rolling on their track: a low, soft tone rather than a hiss
         this.tone(110, t, 0.42, 'triangle', 0.035, b, 0.12);
         this.tone(165, t, 0.3, 'sine', 0.012, b, 0.1);
+        break;
+      case 'gavel':
+        // the hammer on its block: two dry wooden knocks
+        for (const k of [0, 0.13]) {
+          this.tone(170, t + k, 0.07, 'triangle', 0.22, b, 0.002);
+          this.tone(510, t + k, 0.035, 'sine', 0.07, b, 0.002);
+        }
+        break;
+      case 'paddle':
+        // a paddle raised in the room: a light tap
+        this.tone(880, t, 0.04, 'triangle', 0.05, b, 0.003);
+        this.tone(660, t + 0.02, 0.05, 'sine', 0.04, b, 0.003);
         break;
       case 'lift':
         // the car moving: a slow low swell

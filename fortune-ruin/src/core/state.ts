@@ -147,6 +147,7 @@ export type TxnCategory =
   | 'lodging'
   | 'wellness'
   | 'item_sale'
+  | 'collectibles'
   | 'tax'
   | 'other';
 
@@ -639,6 +640,85 @@ export interface GameState {
   business?: BusinessState | null;
   /** the pawn shop, the community kitchen and the docks; absent in old saves */
   oldtown?: OldTownState;
+  /** the Sunday art sale at the Grand Hotel and the player's collection; absent in old saves */
+  auction?: AuctionState;
+}
+
+/** A painting or a collectible: in a catalogue, or owned by the player. */
+export interface Piece {
+  id: number;
+  kind: import('../data/auction').PieceKind;
+  genre?: import('../data/auction').Genre;
+  tier: import('../data/auction').Tier;
+  title: string;
+  maker: string;
+  year: number;
+  /** seed of the picture */
+  seed: number;
+  /** what it would fetch now, before fees (the house's appraisal) */
+  value: Money;
+}
+
+export interface OwnedPiece extends Piece {
+  /** hammer price plus the buyer's premium */
+  paid: Money;
+  boughtDay: number;
+  /** week of the sale it is consigned to, if any */
+  consigned?: number;
+}
+
+export interface Lot {
+  no: number;
+  piece: Piece;
+  low: Money;
+  high: Money;
+  reserve: Money;
+  consignor: 'house' | 'player';
+  status: 'open' | 'sold' | 'passed';
+  hammer?: Money;
+  /** 'player', a named NPC's id, or a paddle label */
+  buyer?: string;
+  buyerName?: string;
+}
+
+export interface LiveBidder {
+  id: string;
+  name: string;
+  npc?: string;
+  /** the most they will go to (private) */
+  max: Money;
+}
+
+/** The lot on the block right now. */
+export interface LiveLot {
+  lot: number;
+  /** the standing bid (0 before the first) and the amount the next bid must be */
+  current: Money;
+  ask: Money;
+  leader: string | null;
+  bidders: LiveBidder[];
+  /** how many times the auctioneer has called the standing bid */
+  calls: number;
+  log: { who: string; name: string; amount: Money }[];
+}
+
+export interface AuctionState {
+  /** week of the catalogue */
+  week: number;
+  lots: Lot[];
+  seq: number;
+  /** the player's paddle number this week, once registered */
+  paddle: number | null;
+  live: LiveLot | null;
+  collection: OwnedPiece[];
+  /** pieces waiting for next week's catalogue */
+  queued: number[];
+  results: { week: number; lots: { no: number; title: string; status: 'sold' | 'passed'; hammer?: Money; buyerName?: string; consignor: 'house' | 'player' }[] }[];
+  /** week the collection was last revalued */
+  valuedWeek: number;
+  /** totals */
+  bought: number;
+  sold: number;
 }
 
 /** Something the player left at the pawn shop against a loan. */

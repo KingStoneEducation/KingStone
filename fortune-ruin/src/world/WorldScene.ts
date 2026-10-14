@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GameCore } from '../core/GameCore';
-import { store, type CharityTab, type PawnTab } from '../ui/store';
+import { store, type AuctionTab, type CharityTab, type PawnTab } from '../ui/store';
 import { buildCityMap, type CityMap } from './maps/city';
 import { interiorMap } from './maps/interiors';
 import { ownShopMap } from './maps/ownShop';
@@ -9,7 +9,7 @@ import { CASINO_TABLES, casinoArea, type CasinoArea } from './maps/casinoMap';
 import { regionAt, type Door, type Face, type Interactable, type InteractKind, type MapData, type MapRegion, type StaffWhen } from './maps/types';
 import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING } from './maps/cityLayout';
 import { PROPS, propFrameName, type PropDef } from '../art/props';
-import { displayTile, tileIndex } from '../art/tiles';
+import { TILE_INDEX, displayTile, tileIndex } from '../art/tiles';
 import { buildShading } from './shading';
 import type { CharDir } from '../art/characters';
 import { CharacterSprite, LABEL_DEPTH } from './CharacterSprite';
@@ -31,6 +31,7 @@ import { formatG } from '../core/money';
 import { patronLine, pedestrianLine, staffLine } from './ambientLines';
 import { sfx } from '../audio/Audio';
 import { nightMarketOpen } from '../systems/OldTownSystem';
+import { pieceCanvas } from '../art/artworks';
 
 const DIR_VEC: Record<CharDir, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
@@ -71,6 +72,7 @@ const VERBS: Record<InteractKind, string> = {
   charity: '领饭',
   labor: '应工',
   fortune: '看相（20 G）',
+  auction: '拍卖会',
 };
 
 const WALK_SPEED = 58;
@@ -176,6 +178,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private props: PropView[] = [];
   private nights: NightView[] = [];
   private staticLights: LightSource[] = [];
+  /** easels in the ballroom and the lot each one shows */
+  private easels: { img: Phaser.GameObjects.Image | null; lot: number | 'live'; x: number; y: number; depth: number; key: string | null }[] = [];
   /** lights of stalls that are only lit while they are open */
   private timedLights: { light: LightSource; when: StaffWhen }[] = [];
   private emissives: Emissive[] = [];
@@ -337,6 +341,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.nights = [];
     this.staticLights = [];
     this.timedLights = [];
+    this.easels = [];
     this.emissives = [];
     this.focus = null;
     this.arriveAction = null;
@@ -351,6 +356,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.buildTiles(map);
     this.buildShade(map);
     this.buildProps(map);
+    if (!this.attract && this.core.isAtHome()) this.hangCollection(map);
     if (map.outdoor) this.buildBuildings(map);
     this.buildStaff(map);
     if (!this.attract) {
@@ -469,6 +475,62 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         else this.staticLights.push(light);
       }
       this.props.push(view);
+      if (p.id === 'easel' && p.interact?.data?.lot !== undefined && !this.attract) {
+        const lot = p.interact.data.lot;
+        this.easels.push({ img: null, lot: lot === 'live' ? 'live' : Number(lot), x: x + 2, y: y + 3, depth: depth + 0.01, key: null });
+      }
+    }
+    this.refreshEasels();
+  }
+
+  /** The paintings the player owns hang on the walls at home, where there is room between the windows. */
+  private hangCollection(map: MapData): void {
+    const pieces = (this.core.state.auction?.collection ?? []).filter((p) => p.kind === 'painting' && p.consigned === undefined);
+    if (!pieces.length) return;
+    const walls = new Set(Object.entries(TILE_INDEX).filter(([n]) => n.startsWith('wall_')).map(([, i]) => i));
+    const wall = (x: number, y: number) => walls.has(map.ground[y * map.w + x]);
+    // wall pixels already taken by windows, clocks and other decals on the back wall
+    const busy: [number, number][] = [];
+    for (const p of map.props) {
+      const d = PROPS[p.id];
+      if (!d || p.y > 1) continue;
+      const x = Math.round(p.x * 16 + (Math.max(1, d.foot.w) * 16 - d.w) / 2 + (p.ox ?? 0));
+      busy.push([x - 4, x + d.w + 4]);
+    }
+    const spots: number[] = [];
+    for (let tx = 1; tx + 1 < map.w - 1 && spots.length < Math.min(6, pieces.length); tx++) {
+      // a frame spans two tiles of wall face with floor below both
+      if (!wall(tx, 1) || !wall(tx + 1, 1) || wall(tx, 2) || wall(tx + 1, 2)) continue;
+      const x0 = tx * 16 + 2;
+      if (busy.some(([a, b]) => x0 < b && x0 + 28 > a)) continue;
+      spots.push(tx);
+      busy.push([x0 - 10, x0 + 38]);
+    }
+    spots.forEach((tx, i) => {
+      const p = pieces[i];
+      const key = `art:${p.seed}:s`;
+      if (!this.textures.exists(key)) this.textures.addCanvas(key, pieceCanvas(p, true));
+      this.objects.push(this.add.image(tx * 16 + 2, 5, key).setOrigin(0, 0).setDepth(-799.5));
+    });
+  }
+
+  /** Put this week's lots on the ballroom easels (sold lots come down; the display shows the lot on the block). */
+  private refreshEasels(): void {
+    if (!this.easels.length || !this.core) return;
+    const lots = this.core.auction.catalogue();
+    const live = this.core.state.auction?.live;
+    for (const e of this.easels) {
+      const lot = e.lot === 'live' ? lots[live ? live.lot : lots.findIndex((l) => l.status === 'open')] : lots[e.lot];
+      const piece = lot && (e.lot === 'live' || lot.status === 'open') ? lot.piece : null;
+      const key = piece ? `art:${piece.seed}:s` : null;
+      if (key === e.key) continue;
+      e.img?.destroy();
+      e.img = null;
+      e.key = key;
+      if (!piece || !key) continue;
+      if (!this.textures.exists(key)) this.textures.addCanvas(key, pieceCanvas(piece, true));
+      e.img = this.add.image(e.x, e.y, key).setOrigin(0, 0).setDepth(e.depth);
+      this.objects.push(e.img);
     }
   }
 
@@ -570,6 +632,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     if (time > this.staffCheckAt) {
       this.staffCheckAt = time + 500;
       this.updateStaffVisibility();
+      this.refreshEasels();
     }
     if (!this.tableKey) this.updateFocus(time);
     this.updateLighting(time, core.nowFloat());
@@ -944,6 +1007,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     } else if (k === 'charity') {
       const tab = it.interact.data?.tab;
       verb = tab === 'volunteer' ? '报名做义工' : tab === 'donate' ? '捐款' : '领一份饭';
+    } else if (k === 'auction') {
+      const d = it.interact.data ?? {};
+      verb = typeof d.lot === 'number' ? '看拍品' : d.tab === 'live' ? '拍卖会' : '看图录';
     } else if (k === 'pawn') {
       verb = it.interact.data?.tab === 'shelf' ? '看二手货' : '典当 / 赎当';
     } else if (k === 'elevator') {
@@ -1200,6 +1266,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
           break;
         }
         store.openModal({ type: 'fortune' });
+        break;
+      case 'auction':
+        store.openModal({ type: 'auction', tab: String(d.tab ?? 'catalogue') as AuctionTab, lot: typeof d.lot === 'number' ? d.lot : undefined });
         break;
       case 'door':
         break;

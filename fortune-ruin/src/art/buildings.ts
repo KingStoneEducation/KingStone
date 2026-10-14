@@ -509,7 +509,7 @@ export function drawBuilding(b: BuildingDef): BuildingArt {
         rect(night, doorX + k + 1, dy, 6, dh, '#ffe2a0');
       }
     } else if (b.door) {
-      const glassDoor = ['shop', 'cafe', 'office', 'finance', 'tower', 'boutique', 'luxury', 'motors', 'river_tower', 'lofts', 'bank', 'finedining'].includes(b.style);
+      const glassDoor = ['shop', 'cafe', 'office', 'finance', 'tower', 'boutique', 'luxury', 'motors', 'river_tower', 'lofts', 'bank', 'finedining', 'hotel'].includes(b.style);
       rect(ctx, doorX + 1, dy - 2, doorW - 2, dh + 2, shade(s.trim, -0.4));
       if (glassDoor) {
         rect(ctx, doorX + 3, dy, doorW - 6, dh, P.glassDark);

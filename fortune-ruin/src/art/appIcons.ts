@@ -4,7 +4,7 @@ import { circle, ellipse, hash2, hline, makeCanvas, mix, px, rect, shade, stroke
  * Pictures for the home computer's desktop: 32 × 32 program icons and the
  * wallpaper (the harbour at night), drawn once and cached as data URLs.
  */
-export type AppId = 'housing' | 'jobs' | 'invest' | 'bank' | 'life' | 'furniture' | 'payday' | 'business' | 'casino' | 'power';
+export type AppId = 'housing' | 'jobs' | 'invest' | 'bank' | 'life' | 'furniture' | 'payday' | 'business' | 'casino' | 'auction' | 'power';
 
 const O = '#101018';
 const W = '#ffffff';
@@ -116,6 +116,18 @@ const ICONS: Record<AppId, (c: Ctx) => void> = {
     for (let i = 0; i < 6; i++) hline(c, 16 - i, 11 + i, i * 2 + 1, '#f3a6ff');
     for (let i = 0; i < 5; i++) hline(c, 12 + i, 17 + i, 9 - i * 2, '#c86ad8');
     px(c, 14, 13, W);
+  },
+  auction: (c) => {
+    // a gavel over its block
+    rect(c, 4, 24, 24, 5, O);
+    rect(c, 5, 24, 22, 3, '#8a5a36');
+    hline(c, 5, 24, 22, '#a8703f');
+    for (let i = 0; i < 12; i++) rect(c, 9 + i, 19 - i, 3, 3, i === 0 ? O : '#5a3a24');
+    rect(c, 15, 4, 12, 8, O);
+    rect(c, 16, 5, 10, 6, '#6a3a1a');
+    hline(c, 16, 5, 10, '#8a5a36');
+    rect(c, 19, 4, 2, 8, '#e0b13e');
+    rect(c, 23, 4, 2, 8, '#e0b13e');
   },
   power: (c) => {
     circle(c, 16, 16, 12, O);

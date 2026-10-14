@@ -124,6 +124,7 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   volunteered: () => '在社区食堂做义工',
   donated_kitchen: (m) => `给社区食堂捐了 ${formatG(Number(m.data.amount ?? 0))}`,
   day_labor: () => '在码头打零工卸货',
+  outbid_me: (m) => `在拍卖会上抢走了我想要的${m.data.item ?? '拍品'}`,
   casino_night: (m) => `和我一起去了赌场${Number(m.data.net ?? 0) ? `（我${Number(m.data.net) > 0 ? '赢' : '输'}了 ${formatG(Math.abs(Number(m.data.net)))}）` : ''}`,
 };
 

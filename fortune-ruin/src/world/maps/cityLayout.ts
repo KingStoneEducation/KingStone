@@ -83,7 +83,7 @@ export const BUILDINGS: BuildingDef[] = [
   // ---------------------------------------------------------------- Downtown south
   { id: 'bank', name: '灰港储蓄信托银行', sign: 'SAVINGS & TRUST', style: 'bank', x: 61, y: 35, w: 12, h: 10, door: { x: 66, y: 44, w: 2 }, target: 'bank' },
   { id: 'central_lofts', name: '中央阁楼公寓', sign: 'CENTRAL LOFTS', style: 'lofts', x: 75, y: 34, w: 11, h: 13, door: { x: 80, y: 46 }, target: 'home_downtown', extraHeight: 3 },
-  { id: 'grand_hotel', name: '灰港大酒店', sign: 'GRAND HOTEL', style: 'hotel', x: 88, y: 34, w: 15, h: 12, extraHeight: 4 },
+  { id: 'grand_hotel', name: '灰港大酒店', sign: 'GRAND HOTEL', style: 'hotel', x: 88, y: 34, w: 15, h: 12, door: { x: 94, y: 45, w: 3 }, target: 'hotel', extraHeight: 4 },
 
   // ---------------------------------------------------------------- Old Town
   { id: 'maple_court', name: '枫庭公寓', sign: 'MAPLE COURT', style: 'apartment', x: 2, y: 65, w: 12, h: 10, door: { x: 7, y: 74, w: 2 }, target: 'home_basic' },

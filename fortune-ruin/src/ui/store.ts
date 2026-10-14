@@ -45,11 +45,13 @@ export type Modal =
   | { type: 'pawn'; tab: PawnTab }
   | { type: 'charity'; tab: CharityTab }
   | { type: 'labor' }
-  | { type: 'fortune' };
+  | { type: 'fortune' }
+  | { type: 'auction'; tab: AuctionTab; lot?: number };
 
 export type ConciergeTab = 'suite' | 'spa' | 'car' | 'dining' | 'store' | 'perks';
 export type PawnTab = 'pawn' | 'tickets' | 'sell' | 'shelf';
 export type CharityTab = 'meal' | 'volunteer' | 'donate';
+export type AuctionTab = 'live' | 'catalogue' | 'collection' | 'results';
 
 export interface Toast {
   id: number;

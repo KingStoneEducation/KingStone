@@ -122,6 +122,11 @@ export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
       drink('sky_cocktail', '天穹特调', 38, '金酒、接骨木花和柠檬，杯口一圈金箔。', { mood: 9, stress: -8, drunk: 18 }, 15),
       drink('sky_whisky', '三十年单一麦芽', 120, '一杯就是一顿饭钱。', { mood: 10, stress: -12, drunk: 22 }, 20),
 
+      // the Grand Hotel's lobby lounge
+      food('afternoon_tea', '英式下午茶', 88, '三层点心架：司康、黄瓜三明治和小蛋糕，配一壶红茶。', { hunger: -35, mood: 12, stress: -8 }, 60, ['sweet']),
+      drink('darjeeling', '大吉岭红茶（壶）', 14, '骨瓷茶具，一壶可以续两次水。', { stress: -6, energy: 4 }, 20),
+      drink('pour_over', '手冲单品咖啡', 16, '侍者在桌边现冲。', { energy: 10, sleep: 4, mood: 3 }, 10, ['coffee']),
+      food('opera_cake', '歌剧院蛋糕', 18, '七层咖啡与巧克力，表面写着酒店的名字。', { hunger: -12, mood: 6 }, 8, ['sweet']),
       // the night market on the old pier (cash only)
       food('nm_noodles', '干炒牛河', 8, '大火炒出来的河粉，一大盘。', { hunger: -45, mood: 3 }, 15),
       food('nm_omelette', '蚵仔煎', 9, '鸡蛋、生蚝和番薯粉，边上煎得焦脆。', { hunger: -32, mood: 4 }, 12),
@@ -343,6 +348,13 @@ export const SHOPS: Record<string, ShopDef> = {
     items: ['bicycle', 'used_car', 'sedan', 'sports_car', 'luxury_car'],
     accepts: ['card'],
     greeting: '看车吗？今天有优惠。',
+  },
+  hotel_lounge: {
+    id: 'hotel_lounge',
+    name: '灰港大酒店 · 大堂吧',
+    items: ['afternoon_tea', 'darjeeling', 'pour_over', 'opera_cake', 'champagne'],
+    accepts: ['cash', 'card'],
+    greeting: '下午好。靠窗的位子还空着。',
   },
   // the night market's stalls take cash only
   nm_wok: {

@@ -2983,6 +2983,123 @@ def({
   },
 });
 
+
+// ------------------------------------------------------------------ the Grand Hotel: lobby and ballroom
+
+/** An easel; the lot on it is drawn over the blank canvas by the world (see WorldScene). */
+def({
+  id: 'easel',
+  w: 32,
+  h: 44,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 16, 42, 12, 2);
+    // legs
+    for (const [x0, x1] of [[6, 2], [26, 30]] as [number, number][]) {
+      for (let y = 6; y < 42; y++) px(ctx, Math.round(x0 + ((x1 - x0) * (y - 6)) / 36), y, P.woodDark);
+    }
+    vline(ctx, 16, 2, 40, P.wood);
+    hline(ctx, 3, 27, 26, P.woodDark);
+    // the blank canvas (covered by the lot's picture)
+    rect(ctx, 2, 3, 28, 22, '#e8e0cc');
+    strokeRect(ctx, 2, 3, 28, 22, '#a8801a');
+  },
+});
+
+def({
+  id: 'rostrum',
+  w: 32,
+  h: 34,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 16, 32, 14, 2);
+    box(ctx, 3, 8, 26, 5, 18, '#5a2a18', '#3a1a10');
+    rect(ctx, 11, 15, 10, 9, '#a8801a');
+    rect(ctx, 12, 16, 8, 7, '#e0b13e');
+    px(ctx, 16, 19, '#5a2a18');
+    // the gavel and its block
+    rect(ctx, 6, 6, 5, 2, '#2a1a10');
+    rect(ctx, 20, 4, 8, 3, '#6a3a1a');
+    vline(ctx, 23, 7, 3, '#4a2a10');
+  },
+});
+
+def({
+  id: 'banquet_chair',
+  w: 14,
+  h: 20,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 7, 18, 5, 1);
+    // seen from behind: gold frame, red cushion
+    for (const x of [2, 11]) vline(ctx, x, 2, 16, '#c9a24a');
+    for (const y of [3, 6, 9]) hline(ctx, 2, y, 10, '#e0b13e');
+    rect(ctx, 2, 11, 10, 3, '#9a1a2a');
+    hline(ctx, 2, 11, 10, '#c8283a');
+    for (const x of [3, 10]) vline(ctx, x, 14, 4, '#a8801a');
+  },
+});
+
+{
+  const text = 'GREYHAVEN AUCTIONS';
+  const tw = measureText(text, '5x7');
+  def({
+    id: 'auction_banner',
+    w: tw + 16,
+    h: 17,
+    foot: { w: 0, h: 0 },
+    wall: true,
+    light: { x: Math.round((tw + 16) / 2), y: 8, r: 30, color: '#ffe2a0', always: true },
+    draw: (ctx) => {
+      rect(ctx, 0, 0, tw + 16, 17, '#4a0e1a');
+      strokeRect(ctx, 0, 0, tw + 16, 17, P.gold);
+      strokeRect(ctx, 2, 2, tw + 12, 13, P.goldDark);
+      drawText(ctx, text, 8, 5, P.goldLight, '5x7');
+    },
+  });
+}
+
+def({
+  id: 'auction_desk',
+  w: 32,
+  h: 28,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 16, 26, 14, 2);
+    box(ctx, 1, 9, 30, 5, 12, '#f4ead2', '#4a0e1a');
+    hline(ctx, 2, 22, 28, P.gold);
+    // paddles in a holder, a ledger, a pen
+    for (let i = 0; i < 4; i++) {
+      vline(ctx, 5 + i * 3, 5, 5, P.woodDark);
+      rect(ctx, 4 + i * 3, 2, 3, 4, '#f4f1ea');
+      px(ctx, 5 + i * 3, 3, '#1a1a1e');
+    }
+    rect(ctx, 18, 10, 9, 3, '#2a4a3a');
+    hline(ctx, 18, 10, 9, '#3a6a4a');
+    vline(ctx, 28, 8, 4, '#1a1a1e');
+  },
+});
+
+/** A poster on a stand in the lobby: this Sunday's sale. */
+def({
+  id: 'poster_stand',
+  w: 20,
+  h: 38,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 10, 36, 7, 2);
+    vline(ctx, 10, 22, 14, '#a8801a');
+    hline(ctx, 6, 35, 9, '#a8801a');
+    rect(ctx, 1, 1, 18, 23, '#4a0e1a');
+    strokeRect(ctx, 1, 1, 18, 23, P.gold);
+    rect(ctx, 4, 4, 12, 9, '#e8e0cc');
+    // a little framed picture and lines of text
+    rect(ctx, 5, 5, 10, 7, '#3f6eb0');
+    rect(ctx, 5, 9, 10, 3, '#3f6a3a');
+    for (const y of [15, 17, 19]) hline(ctx, 4, y, 12, P.goldLight);
+  },
+});
+
 // ------------------------------------------------------------------ registry & build
 
 export const PROPS: Record<string, PropDef> = Object.fromEntries(defs.map((d) => [d.id, d]));

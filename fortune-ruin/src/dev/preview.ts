@@ -4,6 +4,8 @@ import { NPCS } from '../data/npcs';
 import { drawBuilding } from '../art/buildings';
 import { buildPropImages } from '../art/props';
 import { BUILDINGS } from '../world/maps/cityLayout';
+import { pieceCanvas } from '../art/artworks';
+import { startNewGame } from '../core/newGame';
 
 const out = document.getElementById('out')!;
 function show(c: HTMLCanvasElement, scale: number, label: string) {
@@ -255,5 +257,46 @@ if (mode === 'icons') {
     t.textContent = d.name;
     box.appendChild(t);
     wrap.appendChild(box);
+  }
+}
+
+if (mode === 'art') {
+  // a few weeks of catalogues from a throwaway game, framed, at 3× and the easel size
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.flexWrap = 'wrap';
+  wrap.style.background = '#2a1e16';
+  wrap.style.width = '1500px';
+  out.appendChild(wrap);
+  const core = startNewGame({ name: 'p', appearance: { skin: 1, hairStyle: 0, hairColor: 0, pronoun: 'they' }, personality: 'rational', background: 'local', seed: Number(new URLSearchParams(location.search).get('seed') ?? 7) });
+  for (let w = 0; w < 5; w++) {
+    for (const lot of core.auction.catalogue()) {
+      const box = document.createElement('div');
+      box.style.margin = '6px';
+      box.style.color = '#f4ead2';
+      box.style.fontSize = '10px';
+      box.style.width = '170px';
+      const big = pieceCanvas(lot.piece);
+      const s = document.createElement('canvas');
+      s.width = big.width * 3;
+      s.height = big.height * 3;
+      const x = s.getContext('2d')!;
+      x.imageSmoothingEnabled = false;
+      x.drawImage(big, 0, 0, s.width, s.height);
+      box.appendChild(s);
+      const small = pieceCanvas(lot.piece, true);
+      const s2 = document.createElement('canvas');
+      s2.width = small.width * 2;
+      s2.height = small.height * 2;
+      const x2 = s2.getContext('2d')!;
+      x2.imageSmoothingEnabled = false;
+      x2.drawImage(small, 0, 0, s2.width, s2.height);
+      box.appendChild(s2);
+      const t = document.createElement('div');
+      t.textContent = `${lot.piece.title} · ${lot.piece.maker} · ${lot.piece.genre ?? lot.piece.kind} · ${Math.round(lot.piece.value / 100)} G`;
+      box.appendChild(t);
+      wrap.appendChild(box);
+    }
+    core.state.time.minutes += 7 * 1440;
   }
 }

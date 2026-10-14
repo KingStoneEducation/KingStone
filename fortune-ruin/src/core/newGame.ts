@@ -10,6 +10,7 @@ import { emptyBelief, emptyRelationship, initialTies } from '../systems/SocialSy
 import { emptyFlow } from '../systems/EconomySystem';
 import { initialMarket } from '../systems/MarketSystem';
 import { emptyOldTown } from '../systems/OldTownSystem';
+import { emptyAuction } from '../systems/AuctionSystem';
 import { BASE_IMPULSIVITY } from '../systems/PlayerSystem';
 import { GameCore } from './GameCore';
 
@@ -208,6 +209,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
     market: initialMarket(rng.nextU32()),
     stories: { active: [], done: [], ended: {} },
     oldtown: emptyOldTown(),
+    auction: emptyAuction(),
   };
 
   // relationships
