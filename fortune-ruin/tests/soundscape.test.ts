@@ -54,6 +54,11 @@ describe('which music plays where', () => {
     expect(musicFor(at('store'))).toBe('shop');
     // among the stalls of the night market, while it is open, the market has its own tune
     expect(musicFor(at('city', { night: true, nightMarket: true }))).toBe('night_market');
+    // across the bay, Whitestone has its own day and night, and so does the diner on its quay
+    expect(musicFor(at('isle'))).toBe('isle_day');
+    expect(musicFor(at('isle', { night: true }))).toBe('isle_night');
+    expect(musicFor(at('isle_diner'))).toBe('isle_day');
+    expect(musicFor(at('isle_resort'))).toBe('upscale');
   });
 
   it('no place in the city is left in silence by accident', () => {

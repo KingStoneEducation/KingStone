@@ -58,8 +58,8 @@ export function musicFor(c: SoundContext): TrackId | null {
     }
   }
   if (loc === 'city') return c.nightMarket ? 'night_market' : c.night ? 'city_night' : 'city_day';
-  // the island across the bay keeps the city's light: the morning tune by day, the slow one at night
-  if (loc === 'isle') return c.night ? 'city_night' : 'city_day';
+  // the island across the bay has its own: steel pan by day, the lighthouse at night; the fishermen's diner too
+  if (loc === 'isle' || loc === 'isle_diner') return c.night ? 'isle_night' : 'isle_day';
   if (LUXURY_HOMES.has(loc)) return 'upscale';
   switch (c.ambience) {
     case 'home':

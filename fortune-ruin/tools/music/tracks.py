@@ -815,7 +815,111 @@ def night_market():
     return s
 
 
-TRACKS = {f.__name__: f for f in (menu, casino_day, casino_night, highlimit, poker, city_day, city_night, home, cafe, bar, upscale, shop, skyline, spa, night_market)}
+def isle_day():
+    """Whitestone Bay by day: a calypso in F for steel pan and flute over nylon-guitar offbeats, shaker and congas."""
+    s = Song('isle_day', bpm=96, seed=171)
+    s.part('pan', 114, 0, vol=96, pan=58, reverb=40)
+    s.part('flute', 73, 1, vol=80, pan=74, reverb=46)
+    s.part('guitar', 24, 2, vol=88, pan=40, reverb=32)
+    s.part('marimba', 12, 3, vol=70, pan=82, reverb=36)
+    s.part('bass', 32, 4, vol=104, pan=64, reverb=14, humanize=0.006)
+    s.part('perc', 0, 9, vol=76, pan=64, reverb=20, humanize=0.006, vel_jitter=5)
+    A = 'F | Bb | F | C7 | F | Bb | Gm7 C7 | F'
+    B = 'Bb | C | Am7 | Dm7 | Gm7 | C7 | F | C7'
+    mel_a = ('C5:.5 F5:.5 A5:1 G5:.5 F5:.5 D5:1 | F5:1.5 D5:.5 Bb4:2 | A4:.5 C5:.5 F5:1 A5:.5 G5:.5 F5:1 | E5:1.5 G5:.5 C5:2 | '
+             'C5:.5 F5:.5 A5:1 C6:1 A5:1 | Bb5:1.5 A5:.5 F5:1 D5:1 | G5:1 Bb5:1 E5:1 C5:1 | F5:3 r:1')
+    mel_a2 = ('r:.5 C5:.5 F5:.5 G5:.5 A5:1 C6:1 | D6:1 C6:.5 Bb5:.5 F5:2 | A5:1 G5:.5 F5:.5 C5:1 F5:1 | G5:1.5 E5:.5 Bb4:1 C5:1 | '
+              'A5:.5 G5:.5 F5:.5 A5:.5 C6:2 | D6:1 Bb5:1 F5:1 D5:1 | Bb5:1 A5:.5 G5:.5 G5:.5 E5:.5 C5:1 | F5:2 r:2')
+    mel_b = ('D5:1.5 F5:.5 Bb5:2 | C6:1.5 G5:.5 E5:2 | E5:1 A5:1 C6:1.5 A5:.5 | F5:2 D5:1 A4:1 | '
+             'Bb4:1 D5:1 G5:1.5 F5:.5 | E5:1 G5:1 Bb5:1.5 G5:.5 | A5:3 F5:1 | G5:1 E5:1 C5:1 r:1')
+    form = [(A, 'pan', mel_a), (A, 'pan', mel_a2), (B, 'flute', mel_b), (A, 'both', mel_a)]
+    for sec, (line, who, mel) in enumerate(form):
+        b0 = sec * 8
+        s.harmony_line(line, b0)
+        if who in ('pan', 'both'):
+            s.melody('pan', b0 * 4, mel, vel=76 if sec != 3 else 80)
+        if who == 'flute':
+            s.melody('flute', b0 * 4, mel, vel=66)
+        if who == 'both':
+            s.melody('flute', b0 * 4, mel, vel=50, octave=-1)
+        t = b0 * 4
+        prev = None
+        for sym, beats in bars(line):
+            c = Chord(sym)
+            v = voice(c, prev, P('A3'), P('F5'), 'close', 3)
+            prev = v
+            # the guitar on the offbeats, the island lilt
+            k = 0.5
+            while k < beats:
+                s.chord_notes('guitar', t + k, 0.3, v, 52 if k % 2 == 0.5 else 44)
+                k += 1
+            # a calypso bass: the root, a push before beat 3, the fifth
+            br = bass_root(c, 'E1', 'D2') + 12
+            fifth = br + 7 if br + 7 <= P('D3') else br - 5
+            if beats >= 4:
+                s.note('bass', t, 1.4, br, 82)
+                s.note('bass', t + 1.5, 0.45, br, 62)
+                s.note('bass', t + 2, 1.2, fifth, 74)
+                s.note('bass', t + 3.5, 0.45, fifth, 58)
+            else:
+                s.note('bass', t, beats * 0.7, br, 80)
+                s.note('bass', t + beats * 0.75, beats * 0.2, fifth, 60)
+            t += beats
+        # the marimba's broken chords from the second time round
+        if sec >= 1:
+            arp_lh(s, 'marimba', line, b0, vel=40 if sec != 2 else 46, pattern=(12, 16, 19, 24, 19, 16, 12, 7), low='F2')
+        grid = {36: 'x.......x.......', 82: 'o-o-o-o-o-o-o-o-', 63: '......o.......o.', 64: '...o.......o....'}
+        if sec >= 2:
+            grid[75] = 'x..x..x.........'
+        s.drums('perc', b0, 8, grid, vel={'x': 70, 'o': 48, '-': 28})
+        # a little roll on the timbales into the next section
+        for i, at in enumerate((3, 3.25, 3.5, 3.75)):
+            s.note('perc', (b0 + 7) * 4 + at, 0.12, 65 if i < 2 else 66, 50 + i * 6, swing=False)
+    s.finish(32)
+    return s
+
+
+def isle_night():
+    """Whitestone Bay at night: the lighthouse on the point. Fingerpicked guitar, an ocarina, a slow bell."""
+    s = Song('isle_night', bpm=80, seed=181)
+    s.part('ocarina', 79, 0, vol=86, pan=58, reverb=56)
+    s.part('guitar', 24, 1, vol=94, pan=46, reverb=42)
+    s.part('pad', 89, 2, vol=58, pan=64, reverb=62, chorus=30)
+    s.part('harp', 46, 3, vol=72, pan=80, reverb=56)
+    s.part('bass', 32, 4, vol=96, pan=64, reverb=18, humanize=0.006)
+    s.part('bell', 14, 5, vol=52, pan=36, reverb=70)
+    A = 'Dmaj7 | Bm7 | Gmaj7 | A7sus A7 | Dmaj7 | F#m7 | Em7 | A7'
+    B = 'Gmaj7 | F#m7 | Em7 | A7 | Bm7 | G | Em7 A7 | D'
+    mel_a = ('F#5:2 A5:1 C#6:1 | B5:2 F#5:1 D5:1 | D5:1.5 E5:.5 F#5:2 | E5:1 D5:1 C#5:2 | '
+             'A5:2 F#5:1 A5:1 | C#6:2 A5:1 E5:1 | G5:1.5 F#5:.5 E5:1 B4:1 | C#5:3 r:1')
+    mel_b = ('B5:2 D6:1 B5:1 | A5:2 C#6:1 A5:1 | G5:2 E5:1 G5:1 | E5:2 C#5:1 E5:1 | '
+             'F#5:2 D5:1 B4:1 | D5:2 G5:1 B5:1 | G5:1 E5:1 C#5:1 E5:1 | D5:3 r:1')
+    form = [(A, None), (A, mel_a), (B, mel_b), (A, mel_a)]
+    for sec, (line, mel) in enumerate(form):
+        b0 = sec * 8
+        s.harmony_line(line, b0)
+        if mel:
+            s.melody('ocarina', b0 * 4, mel, vel=66 if sec != 2 else 70)
+        if sec == 3:
+            s.melody('harp', b0 * 4, mel, vel=34, octave=1)
+        # fingerpicking: bass note, then the chord's upper notes in a slow roll
+        arp_lh(s, 'guitar', line, b0, vel=50, pattern=(0, 12, 16, 19, 7, 16, 12, 19), low='D2')
+        comp_hold(s, 'pad', line, b0, vel=34, low=P('F#3'), high=P('D5'), kind='close')
+        t = b0 * 4
+        for sym, beats in bars(line):
+            c = Chord(sym)
+            br = bass_root(c, 'E1', 'D2') + 12
+            s.note('bass', t, beats * 0.9, br, 66)
+            t += beats
+    # the lighthouse: a slow bell every four bars, its beam coming round
+    for bar in range(2, 32, 4):
+        s.note('bell', bar * 4, 3.5, P('A5'), 40)
+        s.note('bell', bar * 4 + 2, 3.5, P('D6'), 34)
+    s.finish(32)
+    return s
+
+
+TRACKS = {f.__name__: f for f in (menu, casino_day, casino_night, highlimit, poker, city_day, city_night, home, cafe, bar, upscale, shop, skyline, spa, night_market, isle_day, isle_night)}
 
 ROLES = {
     'menu': {'piano': 'lead', 'lh': 'comp', 'tpt': 'lead', 'strings': 'pad', 'bass': 'bass', 'drums': 'brush', 'strmel': 'lead'},
@@ -833,13 +937,15 @@ ROLES = {
     'skyline': {'sax': 'lead', 'vibes': 'lead', 'rhodes': 'comp', 'bass': 'bass', 'drums': 'brush', 'strings': 'pad'},
     'spa': {'harp': 'arp', 'strings': 'pad', 'flute': 'lead', 'celesta': 'accent', 'bass': 'bass'},
     'night_market': {'flute': 'lead', 'zither': 'lead2', 'koto': 'arp', 'pizz': 'comp', 'bass': 'bass', 'kalimba': 'accent', 'perc': 'perc'},
+    'isle_day': {'pan': 'lead', 'flute': 'lead2', 'guitar': 'comp', 'marimba': 'arp', 'bass': 'bass', 'perc': 'perc'},
+    'isle_night': {'ocarina': 'lead', 'guitar': 'arp', 'pad': 'pad', 'harp': 'accent', 'bass': 'bass', 'bell': 'accent'},
 }
 
 ROOMS = {  # rt60 (s), wet level
     'menu': (2.2, 0.45), 'casino_day': (1.4, 0.36), 'casino_night': (1.8, 0.42), 'highlimit': (2.4, 0.5),
     'poker': (1.5, 0.38), 'city_day': (1.2, 0.3), 'city_night': (1.6, 0.4), 'home': (1.6, 0.36), 'cafe': (1.2, 0.32),
     'bar': (1.4, 0.36), 'upscale': (2.2, 0.46), 'shop': (1.2, 0.3), 'skyline': (2.0, 0.44), 'spa': (2.8, 0.52),
-    'night_market': (1.1, 0.28),
+    'night_market': (1.1, 0.28), 'isle_day': (1.1, 0.28), 'isle_night': (2.2, 0.46),
 }
 
 if __name__ == '__main__':
