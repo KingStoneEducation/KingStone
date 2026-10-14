@@ -36,7 +36,7 @@ import { nightMarketOpen } from '../systems/OldTownSystem';
 import { pieceCanvas } from '../art/artworks';
 import type { TripKind } from '../systems/MarinaSystem';
 import { FISHING, boatsIn, type FareClass } from '../systems/IsleSystem';
-import { Actions, type ActionHost, type PropBox } from './actions';
+import { Actions, type ActionHost, type Pose, type PoseName, type PropBox } from './actions';
 
 const DIR_VEC: Record<CharDir, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
@@ -194,8 +194,8 @@ export interface WorldApi {
   ferry(cls: FareClass, method?: 'cash' | 'card'): Promise<void>;
   /** go to sleep for this many hours (in the bed you just used, if you are by it) */
   sleep(hours: number): Promise<void>;
-  /** let a stepped stretch of time (a shift) run on the clock, then hand over its result */
-  timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void): Promise<void>;
+  /** let a stepped stretch of time (a shift, a swim) run on the clock, then hand over its result */
+  timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void, pose?: PoseName): Promise<void>;
 }
 
 export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
@@ -1846,8 +1846,33 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     await this.actions.sleep(near ? bed : null, hours);
   }
 
-  timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void): Promise<void> {
-    return this.actions.timelapse(steps, done);
+  timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void, pose?: PoseName): Promise<void> {
+    return this.actions.timelapse(steps, done, this.resolvePose(pose));
+  }
+
+  /** Where that pose happens: the lounger nearest you, the sea off the beach below you, the pool. */
+  private resolvePose(pose?: PoseName): Pose {
+    const p = this.player;
+    if (!pose || !p) return null;
+    if (pose === 'away') return { kind: 'away' };
+    if (pose === 'lie') {
+      let best: PropBox | null = null;
+      let bd = 140;
+      for (const v of this.props) {
+        if (v.placed.id !== 'lounger' && v.placed.id !== 'lounger_teak') continue;
+        const d = Math.hypot(v.img.x + v.def.w / 2 - p.x, v.img.y + v.def.h / 2 - p.y);
+        if (d < bd) {
+          bd = d;
+          best = { x: v.img.x, y: v.img.y, w: v.def.w, h: v.def.h, id: v.placed.id, depth: v.img.depth };
+        }
+      }
+      return best ? { kind: 'lie', at: best } : null;
+    }
+    const water = this.map.interactables.find((i) => i.id === (pose === 'sea' ? 'isle_swim' : 'isle_pool'));
+    if (!water) return null;
+    const x = Math.max(water.x + 1, Math.min(water.x + water.w - 2, p.x / 16)) * 16;
+    // a little way out from the shore below you, or across the middle of the pool
+    return pose === 'sea' ? { kind: 'swim', x, y: (water.y + 2) * 16 + 8, lane: 28 } : { kind: 'swim', x, y: (water.y + 2) * 16 + 10, lane: 40 };
   }
 
   private actionHost(): ActionHost {

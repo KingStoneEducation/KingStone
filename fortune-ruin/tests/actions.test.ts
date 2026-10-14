@@ -73,6 +73,41 @@ describe('what the animations are told', () => {
     expect(same(b)).toBe(same(a));
   });
 
+  it('a lounger, a swim and a day at sea in steps end exactly as they would in one go', () => {
+    const run = (g: Generator<number, unknown, void>) => {
+      let n = 0;
+      for (let r = g.next(); !r.done; r = g.next()) n++;
+      return n;
+    };
+    const same = (c: ReturnType<typeof newCore>) => JSON.stringify({ ...c.state, meta: { ...c.state.meta, createdReal: 0 } });
+    const pair = (h: number, m: number) => {
+      const a = newCore(31);
+      const b = newCore(31);
+      for (const c of [a, b]) {
+        c.state.world.location = 'isle';
+        c.state.time.minutes = MINUTES_PER_DAY + hm(h, m);
+        c.state.player.stats.energy = 90;
+        c.state.player.stats.sleep = 90;
+      }
+      return [a, b] as const;
+    };
+    {
+      const [a, b] = pair(11, 0);
+      expect(a.isle.rentLounger().ok).toBe(true);
+      expect(run(b.isle.loungerSteps(12))).toBe(11);
+      expect(same(b)).toBe(same(a));
+      expect(a.isle.swim().ok).toBe(true);
+      run(b.isle.swimSteps(12));
+      expect(same(b)).toBe(same(a));
+    }
+    {
+      const [a, b] = pair(5, 0);
+      expect(a.isle.goFishing().ok).toBe(true);
+      expect(run(b.isle.fishingSteps(12))).toBe(11);
+      expect(same(b)).toBe(same(a));
+    }
+  });
+
   it('a shift that cannot start refuses before any time passes', () => {
     const c = newCore(9);
     const t0 = c.now();

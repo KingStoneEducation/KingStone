@@ -818,6 +818,17 @@ export function drawSleepingHead(look: CharacterLook): HTMLCanvasElement {
   return canvas;
 }
 
+/** In the water: the head and shoulders from the front view, cut where the water comes up to. */
+export const SWIMMER_H = 18;
+export function drawSwimmer(look: CharacterLook): HTMLCanvasElement {
+  const tmp = makeCanvas(CHAR_W, CHAR_H);
+  drawCharacterFrame(tmp.ctx, 0, 0, look, 'down', 'stand');
+  outline(tmp.ctx, 0, 0, CHAR_W, CHAR_H);
+  const { canvas, ctx } = makeCanvas(CHAR_W, SWIMMER_H);
+  ctx.drawImage(tmp.canvas, 0, 2, CHAR_W, SWIMMER_H, 0, 0, CHAR_W, SWIMMER_H);
+  return canvas;
+}
+
 /** Deterministic random look for anonymous people (patrons, pedestrians). */
 export function randomLook(seed: number, opts: { fancy?: number } = {}): CharacterLook {
   let s = (seed * 2654435761) >>> 0;

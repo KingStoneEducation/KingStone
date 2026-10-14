@@ -5,6 +5,7 @@ import type { IsleState } from '../core/state';
 import type { ActionResult } from './InventorySystem';
 import { timeOfDay, type TimeOfDay } from './MarinaSystem';
 import { ITEMS } from '../data/items';
+import { runSteps } from '../core/steps';
 
 import { ISLE, onIsle } from '../world/maps/isleLayout';
 
@@ -271,10 +272,15 @@ export class IsleSystem {
 
   /** A lounger and an umbrella on the public beach for two hours. */
   rentLounger(): ActionResult {
+    return runSteps(this.loungerSteps());
+  }
+
+  /** The same, in steps (so the clock on screen can run through the two hours; see GameCore.advanceSteps). */
+  *loungerSteps(steps = 1): Generator<number, ActionResult, void> {
     if (!this.lifeguardOn()) return { ok: false, error: `躺椅 ${formatClock(LIFEGUARD.from)}–${formatClock(LIFEGUARD.to)} 出租` };
     const r = this.core.economy.spend('cash', LOUNGER.price, 'entertainment', '白石湾海滩：躺椅和遮阳伞（2 小时）', 'isle_beach');
     if (!r.ok) return { ok: false, error: `躺椅和遮阳伞 ${formatG(LOUNGER.price)}，只收现金` };
-    this.core.advance(LOUNGER.minutes, 'idle');
+    yield* this.core.advanceSteps(LOUNGER.minutes, 'idle', steps);
     const pl = this.core.player;
     pl.change('stress', -10);
     pl.change('mood', 6);
@@ -284,12 +290,16 @@ export class IsleSystem {
 
   /** In the sea from the public beach, while the lifeguard is on. */
   swim(): ActionResult {
+    return runSteps(this.swimSteps());
+  }
+
+  *swimSteps(steps = 1): Generator<number, ActionResult, void> {
     const s = this.core.state.player.stats;
     if (!this.lifeguardOn()) return { ok: false, error: `救生员 ${formatClock(LIFEGUARD.to)} 下班了，现在不能下水。` };
     if (s.drunk >= 30) return { ok: false, error: '救生员吹了哨子：「喝了酒的不能下水！」' };
     if (s.energy < 20) return { ok: false, error: '你太累了，游不动。' };
     this.s.swimDay = this.core.today();
-    this.core.advance(SWIM_MINUTES, 'exercising');
+    yield* this.core.advanceSteps(SWIM_MINUTES, 'exercising', steps);
     const pl = this.core.player;
     pl.change('energy', -10);
     pl.change('hunger', 8);
@@ -302,19 +312,23 @@ export class IsleSystem {
 
   /** The resort's own beach and pool: for guests only, the loungers come with towels. */
   guestBeach(what: 'beach' | 'pool'): ActionResult {
+    return runSteps(this.guestBeachSteps(what));
+  }
+
+  *guestBeachSteps(what: 'beach' | 'pool', steps = 1): Generator<number, ActionResult, void> {
     const r = this.room();
     if (!r || ROOMS[r.kind].where !== 'isle_resort') return { ok: false, error: '住客专享。服务生客气地拦住了你。' };
     const m = this.minute();
     if (m < hm(7) || m >= hm(22)) return { ok: false, error: '泳池和海滩 7:00–22:00 开放' };
     const pl = this.core.player;
     if (what === 'pool') {
-      this.core.advance(45, 'exercising');
+      yield* this.core.advanceSteps(45, 'exercising', steps);
       pl.change('mood', 7);
       pl.change('stress', -7);
       pl.change('energy', -4);
       return { ok: true, message: '无边泳池的水和海连成一片。你游了几个来回，服务生在池边放了一杯冰水。' };
     }
-    this.core.advance(LOUNGER.minutes, 'idle');
+    yield* this.core.advanceSteps(LOUNGER.minutes, 'idle', steps);
     pl.change('stress', -14);
     pl.change('mood', 8);
     pl.change('energy', 5);
@@ -341,13 +355,17 @@ export class IsleSystem {
 
   /** A day at sea on a co-op boat: hauling nets for nine hours, paid in cash, a fish to take home. */
   goFishing(): ActionResult {
+    return runSteps(this.fishingSteps());
+  }
+
+  *fishingSteps(steps = 1): Generator<number, ActionResult, void> {
     const o = this.fishingOffer();
     if (!o.ok) return { ok: false, error: o.reason ?? '' };
     const core = this.core;
     this.s.fishingDay = core.today();
     core.social.witness({ kind: 'fishing_labor', facets: { diligence: 0.5, crisis: 0.15 }, importance: 10 });
     // on board until she sails, then nine hours at sea
-    core.advance(FISHING.back - this.minute(), 'working');
+    yield* core.advanceSteps(FISHING.back - this.minute(), 'working', steps);
     const pl = core.player;
     const first = this.s.fishingTrips === 0;
     pl.change('energy', -30);

@@ -7,6 +7,9 @@ import { formatG } from '../../core/money';
 import { formatClock, toDate } from '../../core/calendar';
 import { cardUrl } from '../../art/postcards';
 import { NPC_BY_ID } from '../../data/npcs';
+import { runSteps } from '../../core/steps';
+import type { ActionResult } from '../../systems/InventorySystem';
+import type { PoseName } from '../../world/actions';
 import {
   CHECKOUT,
   FARES,
@@ -146,11 +149,21 @@ export function BeachModal(props: { tab: BeachTab }): JSX.Element {
   const [fb, say] = useFeedback();
   const guest = !core.isle.resortAccess();
   const resortSide = tab === 'pool' || tab === 'private';
-  const done = (r: { ok: true; message: string } | { ok: false; error: string }) => {
+  const title = resortSide ? '白石湾度假酒店' : '白石湾海滩';
+  const done = (r: ActionResult) => {
     if (r.ok) {
       store.closeModal();
-      store.openModal({ type: 'eventResult', title: resortSide ? '白石湾度假酒店' : '白石湾海滩', text: r.message });
+      store.openModal({ type: 'eventResult', title, text: r.message });
     } else say(false, r.error);
+  };
+  // the time goes by out there: on the lounger, in the water
+  const run = (g: Generator<number, ActionResult, void>, pose: PoseName) => {
+    const first = g.next();
+    if (first.done) return done(first.value);
+    store.closeModal();
+    const show = (r: ActionResult) => (r.ok ? store.openModal({ type: 'eventResult', title, text: r.message }) : store.toast(r.error, 'warn'));
+    if (store.world) void store.world.timelapse(g, show, pose);
+    else show(runSteps(g));
   };
   return (
     <Modal title={resortSide ? '白石湾度假酒店 · 住客区' : '白石湾公共海滩'} sub={resortSide ? '泳池与住客海滩 7:00–22:00' : `救生员值班 ${formatClock(LIFEGUARD.from)}–${formatClock(LIFEGUARD.to)}`}>
@@ -173,7 +186,7 @@ export function BeachModal(props: { tab: BeachTab }): JSX.Element {
         {tab === 'lounger' && (
           <>
             <div>救生员亭边上摞着一排躺椅。「两个钟头 {formatG(LOUNGER.price)}，伞一起，只收现金。」</div>
-            <button className="primary" disabled={!core.isle.lifeguardOn()} onClick={() => done(core.isle.rentLounger())}>
+            <button className="primary" disabled={!core.isle.lifeguardOn()} onClick={() => run(core.isle.loungerSteps(12), 'lie')}>
               租两个小时（现金 {formatG(LOUNGER.price)}，手上 <GV v={core.economy.balance('cash')} />）
             </button>
           </>
@@ -181,7 +194,7 @@ export function BeachModal(props: { tab: BeachTab }): JSX.Element {
         {tab === 'swim' && (
           <>
             <div>浮标拉出了一片游泳区，救生员坐在高高的椅子上。喝了酒、太累，或者救生员下班了，就不能下水。</div>
-            <button className="primary" onClick={() => done(core.isle.swim())}>
+            <button className="primary" onClick={() => run(core.isle.swimSteps(12), 'sea')}>
               游 {SWIM_MINUTES} 分钟
             </button>
           </>
@@ -189,7 +202,7 @@ export function BeachModal(props: { tab: BeachTab }): JSX.Element {
         {tab === 'private' && (
           <>
             <div>住客海滩只有几张柚木躺椅，伞下备着热毛巾和饮料单。{guest ? '' : '侍应生看见你，客气地拦了一下。'}</div>
-            <button className="primary" disabled={!guest} onClick={() => done(core.isle.guestBeach('beach'))}>
+            <button className="primary" disabled={!guest} onClick={() => run(core.isle.guestBeachSteps('beach', 12), 'lie')}>
               躺两个小时
             </button>
           </>
@@ -197,7 +210,7 @@ export function BeachModal(props: { tab: BeachTab }): JSX.Element {
         {tab === 'pool' && (
           <>
             <div>无边泳池的水面和海连在一起，池边有人在看书。</div>
-            <button className="primary" disabled={!guest} onClick={() => done(core.isle.guestBeach('pool'))}>
+            <button className="primary" disabled={!guest} onClick={() => run(core.isle.guestBeachSteps('pool', 12), 'pool')}>
               下水游一会儿
             </button>
           </>
@@ -245,11 +258,18 @@ export function FishingModal(): JSX.Element {
           className="primary"
           disabled={!o.ok}
           onClick={() => {
-            const r = core.isle.goFishing();
-            if (r.ok) {
-              store.closeModal();
-              store.openModal({ type: 'eventResult', title: '回港了', text: r.message });
-            } else say(false, r.error);
+            // out on the boat: the day at sea goes by on the clock, and you are back on the quay
+            const g = core.isle.fishingSteps(12);
+            const first = g.next();
+            if (first.done && !first.value.ok) {
+              say(false, first.value.error);
+              return;
+            }
+            store.closeModal();
+            const show = (r: ActionResult) => (r.ok ? store.openModal({ type: 'eventResult', title: '回港了', text: r.message }) : store.toast(r.error, 'warn'));
+            if (first.done) show(first.value);
+            else if (store.world) void store.world.timelapse(g, show, 'away');
+            else show(runSteps(g));
           }}
         >
           上船（{formatClock(FISHING.back)} 回港）

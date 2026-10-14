@@ -114,6 +114,20 @@ export const FX: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void
       px(c, 2, 2, '#ffffff');
     },
   },
+  ripple: {
+    w: 18,
+    h: 5,
+    draw: (c) => {
+      hline(c, 3, 0, 12, 'rgba(244,241,234,0.85)');
+      hline(c, 1, 1, 3, 'rgba(244,241,234,0.85)');
+      hline(c, 14, 1, 3, 'rgba(244,241,234,0.85)');
+      hline(c, 0, 2, 2, 'rgba(244,241,234,0.7)');
+      hline(c, 16, 2, 2, 'rgba(244,241,234,0.7)');
+      hline(c, 1, 3, 3, 'rgba(244,241,234,0.55)');
+      hline(c, 14, 3, 3, 'rgba(244,241,234,0.55)');
+      hline(c, 3, 4, 12, 'rgba(244,241,234,0.45)');
+    },
+  },
   zz: {
     w: 5,
     h: 5,

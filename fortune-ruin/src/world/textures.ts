@@ -4,7 +4,7 @@ import { buildTileset } from '../art/tiles';
 import { buildPropImages, CAR_COLORS, carImage } from '../art/props';
 import { drawBuilding } from '../art/buildings';
 import { ALL_BUILDINGS } from './maps/cityLayout';
-import { buildCharacterSheet, CHAR_H, CHAR_W, DIRS, drawSleepingHead, randomLook } from '../art/characters';
+import { buildCharacterSheet, CHAR_H, CHAR_W, DIRS, drawSleepingHead, drawSwimmer, randomLook } from '../art/characters';
 import { itemIconCanvas } from '../art/itemIcons';
 import { circle, ellipse, hline, makeCanvas, px, rect, strokeRect, vline } from '../art/canvas';
 import { P } from '../art/palette';
@@ -221,6 +221,13 @@ export function ensureCharacter(scene: Phaser.Scene, look: CharacterLook): strin
 export function ensureSleeper(scene: Phaser.Scene, look: CharacterLook): string {
   const key = `sleeper:${lookKey(look)}`;
   if (!scene.textures.exists(key)) scene.textures.addCanvas(key, drawSleepingHead(look))!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  return key;
+}
+
+/** Head and shoulders above the water for this look (see drawSwimmer). */
+export function ensureSwimmer(scene: Phaser.Scene, look: CharacterLook): string {
+  const key = `swimmer:${lookKey(look)}`;
+  if (!scene.textures.exists(key)) scene.textures.addCanvas(key, drawSwimmer(look))!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }
 

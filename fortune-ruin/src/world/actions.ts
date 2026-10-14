@@ -9,7 +9,7 @@ import { sfx } from '../audio/Audio';
 import type { CharDir } from '../art/characters';
 import type { CharacterSprite } from './CharacterSprite';
 import type { Interactable } from './maps/types';
-import { ensureItemIcon, ensureSleeper, frameRef } from './textures';
+import { ensureItemIcon, ensureSleeper, ensureSwimmer, frameRef } from './textures';
 
 /** Where a prop's picture sits in the world (pixels), and what it is. */
 export interface PropBox {
@@ -20,6 +20,12 @@ export interface PropBox {
   id: string | null;
   depth: number;
 }
+
+/** How the interface asks for a pose: on the nearest lounger, in the sea, in the pool, or away. */
+export type PoseName = 'lie' | 'sea' | 'pool' | 'away';
+
+/** What you are seen doing while a stretch of time runs: lying on a lounger, swimming, or away (at sea). */
+export type Pose = { kind: 'lie'; at: PropBox } | { kind: 'swim'; x: number; y: number; lane: number } | { kind: 'away' } | null;
 
 /** What the scene lends the actions while they play. */
 export interface ActionHost {
@@ -492,22 +498,71 @@ export class Actions {
 
   // ------------------------------------------------------------ a shift
 
-  /** A long stretch (a shift at work): the clock runs through it while you get on with it, then what came of it. */
-  async timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void): Promise<void> {
+  /**
+   * A long stretch (a shift at work, two hours on a lounger, a swim, a day at sea): the clock
+   * runs through it while you are seen doing it, then what came of it.
+   */
+  async timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void, pose: Pose = null): Promise<void> {
     const p = this.h.player();
     if (!p || !this.h.hold(true)) return done(runSteps(steps));
+    const x0 = p.x;
+    const y0 = p.y;
+    const dir = p.dir;
+    const cam = this.s.cameras.main;
+    let swimmer: Phaser.GameObjects.Image | null = null;
+    let ripple: Phaser.GameObjects.Image | null = null;
     let r: IteratorResult<number, T>;
     try {
+      if (pose?.kind === 'lie') {
+        // on the lounger, under the umbrella
+        p.setPos(pose.at.x + pose.at.w / 2, pose.at.y + pose.at.h - 3);
+        p.setSitting(true, 'down');
+        p.fixedDepth = pose.at.depth + 0.5;
+      } else if (pose?.kind === 'swim') {
+        // in the water: head and shoulders, a ripple round them, swimming up and down a lane
+        await this.tw(p, { alpha: 0 }, 200);
+        swimmer = this.keep(this.s.add.image(pose.x, pose.y, ensureSwimmer(this.s, this.h.playerLook())).setOrigin(0.5, 1).setDepth(pose.y + 1));
+        ripple = this.fx('ripple', pose.x, pose.y, pose.y + 1.5);
+        this.s.tweens.add({ targets: [swimmer, ripple], x: pose.x + pose.lane, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        this.s.tweens.add({ targets: swimmer, y: pose.y + 1, duration: 300, yoyo: true, repeat: -1 });
+      } else if (pose?.kind === 'away') {
+        cam.fadeOut(600, 6, 8, 22);
+        await this.wait(650);
+      }
       let i = 0;
       for (r = steps.next(); !r.done; r = steps.next()) {
         this.h.core.touch();
-        if (i++ % 3 === 0) p.showEmote('…', 700, this.s.time.now);
+        if (!pose && i % 3 === 0) p.showEmote('…', 700, this.s.time.now);
+        if (pose?.kind === 'lie' && i % 4 === 0) p.showEmote('♪', 800, this.s.time.now);
+        i++;
         await this.wait(150);
       }
+      this.h.core.touch();
     } finally {
+      if (swimmer) {
+        this.s.tweens.killTweensOf(swimmer);
+        this.drop(swimmer);
+      }
+      if (ripple) {
+        this.s.tweens.killTweensOf(ripple);
+        this.drop(ripple);
+      }
+      if (pose?.kind === 'lie') {
+        p.setSitting(false);
+        p.fixedDepth = null;
+      }
+      if (pose) {
+        p.setPos(x0, y0);
+        p.face(dir);
+        p.alpha = 1;
+        p.sync();
+      }
+      if (pose?.kind === 'away') {
+        cam.fadeIn(600, 6, 8, 22);
+        await this.wait(600);
+      }
       this.h.hold(false);
     }
-    this.h.core.touch();
     done(r.value);
   }
 
