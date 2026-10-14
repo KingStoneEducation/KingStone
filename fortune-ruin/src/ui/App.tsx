@@ -17,6 +17,7 @@ import { JournalPanel } from './panels/JournalPanel';
 import { InventoryPanel } from './panels/InventoryPanel';
 import { StatsPanel } from './panels/StatsPanel';
 import { HelpPanel, MenuPanel } from './panels/MenuPanel';
+import { BusinessPanel } from './panels/BusinessPanel';
 import { TableUI } from './table/TableUI';
 
 function ModalHost(): JSX.Element | null {
@@ -90,6 +91,8 @@ function PanelHost(): JSX.Element | null {
       return <StatsPanel />;
     case 'help':
       return <HelpPanel />;
+    case 'business':
+      return <BusinessPanel />;
     case 'menu':
       return <MenuPanel />;
     default:
@@ -106,6 +109,7 @@ const PANEL_KEYS: Record<string, Exclude<Panel, null>> = {
   KeyI: 'inventory',
   KeyT: 'stats',
   KeyH: 'help',
+  KeyB: 'business',
 };
 
 function GameUI(): JSX.Element {

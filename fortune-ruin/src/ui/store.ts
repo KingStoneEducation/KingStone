@@ -15,7 +15,7 @@ export interface TableUiState {
   result: { net: Money; text: string; t: number } | null;
 }
 
-export type Panel = 'phone' | 'finance' | 'social' | 'map' | 'journal' | 'menu' | 'inventory' | 'stats' | 'help' | null;
+export type Panel = 'phone' | 'finance' | 'social' | 'map' | 'journal' | 'menu' | 'inventory' | 'stats' | 'help' | 'business' | null;
 
 export type Modal =
   | { type: 'dialogue'; view: DialogueView }

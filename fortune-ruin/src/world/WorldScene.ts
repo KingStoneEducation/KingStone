@@ -3,6 +3,8 @@ import type { GameCore } from '../core/GameCore';
 import { store } from '../ui/store';
 import { buildCityMap, type CityMap } from './maps/city';
 import { interiorMap } from './maps/interiors';
+import { ownShopMap } from './maps/ownShop';
+import { BIZ_TYPES } from '../data/business';
 import { CASINO_TABLES, casinoArea, type CasinoArea } from './maps/casinoMap';
 import type { Door, Face, Interactable, InteractKind, MapData } from './maps/types';
 import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING } from './maps/cityLayout';
@@ -59,6 +61,7 @@ const VERBS: Record<InteractKind, string> = {
   door: '进入',
   piano: '弹钢琴',
   slots: '查看',
+  business: '打理生意',
 };
 
 const WALK_SPEED = 58;
@@ -308,7 +311,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   private loadMap(id: string, spawn: string | null, tile?: Pt, face?: Face): void {
     this.clearMap();
-    const map = id === 'city' ? (this.cityCache ??= buildCityMap()) : interiorMap(id);
+    const map = id === 'city' ? (this.cityCache ??= buildCityMap()) : id === 'own_shop' ? ownShopMap(this.core?.state.business ?? null) : interiorMap(id);
     this.map = map;
     this.buildTiles(map);
     this.buildShade(map);
@@ -828,7 +831,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       this.updateDistrict();
       store.banner(this.district || '灰港', from ? `离开${LOCATIONS[from]?.name ?? ''}` : '灰港 · Greyhaven');
     } else if (loc) {
-      const sub = loc.hours ? `营业时间 ${hoursText(loc)}` : loc.desc.slice(0, 26);
+      const biz = to === 'own_shop' ? this.core?.state.business : null;
+      const sub = biz ? (biz.phase === 'open' ? `你的${BIZ_TYPES[biz.type].name}` : '装修中') : loc.hours ? `营业时间 ${hoursText(loc)}` : loc.desc.slice(0, 26);
       store.banner(loc.name, sub);
     }
     // people already here notice you walk in
@@ -1097,6 +1101,12 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
           title: '老虎机',
           text: '一排闪烁的老虎机。机台旁贴着告示：「本区机台正在进行合规检测与回报率公示，暂停对外开放。」\n\n（开发说明：老虎机不在第一阶段范围内，尚未实现。可以去 21 点、百家乐和轮盘桌游戏。）',
         });
+        break;
+      case 'business':
+        if (d.action === 'work') {
+          const r = core.business.workShift();
+          store.toast(r.ok ? r.message : r.error, r.ok ? 'good' : 'warn');
+        } else store.openPanel('business');
         break;
       case 'door':
         break;

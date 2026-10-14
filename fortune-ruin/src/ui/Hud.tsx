@@ -206,9 +206,11 @@ function QuickBar(): JSX.Element {
   const core = useCore();
   const unread = core.phone.unread();
   const overdue = core.economy.overdueBills().length;
+  // the shop gets a button once you have one
+  const items = core.state.business ? [...QUICK.slice(0, -1), { panel: 'business' as const, label: '生意', key: 'B' }, QUICK[QUICK.length - 1]] : QUICK;
   return (
     <div className="hud-br">
-      {QUICK.map((q) => (
+      {items.map((q) => (
         <button key={q.panel} className="qbtn" onClick={() => store.openPanel(q.panel)}>
           {q.label}
           <span className="key">{q.key}</span>

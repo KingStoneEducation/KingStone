@@ -76,7 +76,7 @@ export const BUILDINGS: BuildingDef[] = [
   { id: 'harbor_logistics', name: '灰港物流', sign: 'HARBOR LOGISTICS', style: 'office', x: 1, y: 48, w: 13, h: 8, door: { x: 7, y: 55, w: 2 }, target: 'office' },
   { id: 'motors', name: '灰港汽车行', sign: 'GREYHAVEN MOTORS', style: 'motors', x: 16, y: 48, w: 15, h: 8, door: { x: 23, y: 55, w: 2 }, target: 'motors' },
   { id: 'pharmacy', name: '老城药房', sign: 'PHARMACY', style: 'pharmacy', x: 33, y: 49, w: 7, h: 7 },
-  { id: 'bakery', name: '晨光面包房', sign: 'BAKERY', style: 'bakery', x: 42, y: 49, w: 8, h: 7, door: { x: 46, y: 55 }, closedText: '「晨光面包房」门上贴着告示：店铺转让，感谢街坊三十年的照顾。' },
+  { id: 'bakery', name: '晨光面包房', sign: 'BAKERY', style: 'bakery', x: 42, y: 49, w: 8, h: 7, door: { x: 46, y: 55 }, target: 'own_shop', closedText: '「晨光面包房」门上贴着告示：店铺转让，感谢街坊三十年的照顾。（家里的电脑上可以查看招租信息）' },
 
   // ---------------------------------------------------------------- Downtown south
   { id: 'bank', name: '灰港储蓄信托银行', sign: 'SAVINGS & TRUST', style: 'bank', x: 61, y: 35, w: 12, h: 10, door: { x: 66, y: 44, w: 2 }, target: 'bank' },

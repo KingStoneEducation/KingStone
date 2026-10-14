@@ -52,6 +52,7 @@ function Overview(): JSX.Element {
     ['贵重物品', eco.valuablesValue()],
     ['别人欠你的钱', eco.receivablesValue()],
     ['私人投资（股份）', eco.stakesValue()],
+    ...(core.state.business ? ([['自己的生意（估值）', core.business.value()]] as [string, number][]) : []),
   ];
   return (
     <div className="stack">

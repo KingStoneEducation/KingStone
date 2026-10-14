@@ -25,7 +25,8 @@ export type InteractKind =
   | 'mirror'
   | 'door'
   | 'piano'
-  | 'slots';
+  | 'slots'
+  | 'business';
 
 export interface Interaction {
   kind: InteractKind;

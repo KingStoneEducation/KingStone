@@ -7,13 +7,14 @@ import { JOBS } from '../../data/jobs';
 import { formatClock, WEEKDAY_SHORT } from '../../core/calendar';
 import { G, formatG, mulRatio } from '../../core/money';
 import { MarketView } from './MarketView';
+import { BusinessView } from '../panels/BusinessPanel';
 import { BillsTab } from './MoneyModals';
 import { TIERS, TIER_INDEX } from '../../casino/tables';
 import { CLUB_ANNUAL_FEE, LUMIERE_BOOKING_FEE } from '../../systems/ServicesSystem';
 import { SHOPS, ITEMS } from '../../data/items';
 import { effectText } from './ShopModal';
 
-type Tab = 'housing' | 'jobs' | 'invest' | 'bills' | 'life' | 'payday';
+type Tab = 'housing' | 'jobs' | 'invest' | 'bills' | 'life' | 'payday' | 'shop';
 
 export function ComputerModal(props: { tab?: Tab }): JSX.Element {
   const [tab, setTab] = useState<Tab>(props.tab ?? 'housing');
@@ -27,6 +28,7 @@ export function ComputerModal(props: { tab?: Tab }): JSX.Element {
           { id: 'bills', label: '网上银行' },
           { id: 'life', label: '生活服务' },
           { id: 'payday', label: '随借 App' },
+          { id: 'shop', label: '商铺' },
         ]}
         value={tab}
         onChange={setTab}
@@ -38,6 +40,7 @@ export function ComputerModal(props: { tab?: Tab }): JSX.Element {
         {tab === 'bills' && <BillsTab />}
         {tab === 'life' && <LifeTab />}
         {tab === 'payday' && <PaydayTab />}
+        {tab === 'shop' && <BusinessView />}
       </div>
     </Modal>
   );

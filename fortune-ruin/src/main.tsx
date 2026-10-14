@@ -12,6 +12,7 @@ import { setGame } from './game/session';
 import { audio, sfx } from './audio/Audio';
 import { ambienceFor, musicFor, type SoundContext } from './audio/soundscape';
 import { LOCATIONS } from './data/locations';
+import { BIZ_TYPES } from './data/business';
 import { TABLE_BY_ID } from './casino/tables';
 import { daylight, toDate } from './core/calendar';
 import './ui/styles.css';
@@ -64,7 +65,7 @@ function updateSoundscape(): void {
   const ctx: SoundContext = {
     screen: inGame ? 'game' : store.screen === 'game' ? 'menu' : store.screen,
     location: loc,
-    ambience: loc ? (LOCATIONS[loc]?.ambience ?? null) : null,
+    ambience: loc === 'own_shop' && core!.state.business?.phase === 'open' ? BIZ_TYPES[core!.state.business.type].ambience : loc ? (LOCATIONS[loc]?.ambience ?? null) : null,
     hour: inGame ? toDate(core!.now()).hour : 21,
     night: inGame ? daylight(core!.now()) < 0.35 : true,
     casinoArea: inGame ? (store.world?.casinoArea() ?? null) : null,

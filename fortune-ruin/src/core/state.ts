@@ -616,6 +616,34 @@ export interface GameState {
   stats: StatsState;
   market: MarketState;
   stories: StoriesState;
+  /** the player's own shop; absent in old saves */
+  business?: BusinessState | null;
+}
+
+/** A shop the player leases and runs. */
+export interface BusinessState {
+  premise: string;
+  type: import('../data/business').BizType;
+  phase: 'renovating' | 'open';
+  signedDay: number;
+  openDay: number;
+  price: import('../data/business').PriceLevel;
+  supplies: import('../data/business').Supplies;
+  staff: number;
+  /** index into MARKETING */
+  marketing: number;
+  /** share of nearby people who know the place, 0..1 */
+  awareness: number;
+  reputation: number;
+  fitout: Money;
+  deposit: Money;
+  days: { day: number; customers: number; revenue: Money; cogs: Money; net: Money }[];
+  /** day the player last worked a shift there */
+  shiftDay: number;
+  /** someone quit; their replacement starts on this day */
+  vacancyUntil?: number;
+  competitorUntil: number;
+  totals: { revenue: Money; cogs: Money; fixed: Money; invested: Money };
 }
 
 /** A storyline in progress: which stage it is at and what has happened so far. */

@@ -21,6 +21,7 @@ import { EncounterSystem } from '../systems/EncounterSystem';
 import { StorySystem } from '../systems/StorySystem';
 import { OUTREACH_HOURS, OutreachSystem } from '../systems/OutreachSystem';
 import { RomanceSystem } from '../systems/RomanceSystem';
+import { BusinessSystem } from '../systems/BusinessSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -104,6 +105,7 @@ export class GameCore {
   stories: StorySystem;
   outreach: OutreachSystem;
   romance: RomanceSystem;
+  business: BusinessSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -127,6 +129,7 @@ export class GameCore {
     this.stories = new StorySystem(this);
     this.outreach = new OutreachSystem(this);
     this.romance = new RomanceSystem(this);
+    this.business = new BusinessSystem(this);
   }
 
   now(): number {
@@ -246,6 +249,8 @@ export class GameCore {
   }
 
   private onDay(day: number): void {
+    // the shop's takings for the day that just ended come in before the snapshot
+    this.business.endOfDay(day - 1);
     this.wealth.dailySnapshot(day - 1);
     this.economy.rolloverDay(day);
     this.economy.processLoans();
@@ -257,10 +262,12 @@ export class GameCore {
     const d = toDate(day * MINUTES_PER_DAY);
     if (d.day === 1) {
       this.housing.issueMonthlyBills();
+      this.business.monthlyBills();
       this.economy.payMonthlyInterest();
       this.casino.monthlyReview();
       this.career.monthlyReset();
     }
+    if (toDate(day * MINUTES_PER_DAY).weekday === 0) this.business.weekly();
     this.bus.emit('time:day', { day });
     this.bus.emit('autosave', { reason: 'day' });
   }

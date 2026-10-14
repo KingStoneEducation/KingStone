@@ -156,6 +156,17 @@ export const LOCATIONS: Record<string, LocationDef> = {
     light: 1,
     desc: '高级成衣与腕表。',
   },
+  own_shop: {
+    id: 'own_shop',
+    name: '集市街 12 号',
+    nameEn: '12 Market Street',
+    kind: 'interior',
+    // once open, the music follows whatever the shop is (see main.tsx)
+    ambience: 'store',
+    priceLevel: 1,
+    light: 0.9,
+    desc: '集市街的临街铺面。',
+  },
   motors: {
     id: 'motors',
     name: '灰港汽车行',
