@@ -1,8 +1,13 @@
 import { startNewGame, type NewGameOptions } from '../src/core/newGame';
 import type { GameCore } from '../src/core/GameCore';
 
+/**
+ * A new game for a test. The weather is pinned to clear days so that a rule under test
+ * (a ferry, a beach, a schedule) is not called off by a storm the seed happens to bring;
+ * the weather's own tests set `core.weather.force` back to null, or to the sky they need.
+ */
 export function newCore(seed = 12345, overrides: Partial<NewGameOptions> = {}): GameCore {
-  return startNewGame({
+  const core = startNewGame({
     name: '测试者',
     appearance: { skin: 1, hairStyle: 0, hairColor: 0, pronoun: 'they' },
     personality: 'rational',
@@ -10,6 +15,8 @@ export function newCore(seed = 12345, overrides: Partial<NewGameOptions> = {}): 
     seed,
     ...overrides,
   });
+  core.weather.force = 'clear';
+  return core;
 }
 
 /** Plays one blackjack round at a table with basic-ish choices (stand on 17+). */

@@ -17,9 +17,10 @@ export const NIGHT_MARKET_HOURS: OpenHours[] = [
   { days: [4, 5], from: hm(18), to: hm(26) },
 ];
 
-export function nightMarketOpen(minutes: number): boolean {
+/** Whether the stalls are out (on a storm day nobody sets up: pass `storm`). */
+export function nightMarketOpen(minutes: number, storm = false): boolean {
   const d = toDate(minutes);
-  return isOpen({ hours: NIGHT_MARKET_HOURS }, d.weekday, d.minuteOfDay);
+  return !storm && isOpen({ hours: NIGHT_MARKET_HOURS }, d.weekday, d.minuteOfDay);
 }
 
 /** Day labour at Pier 7: the foreman takes people on at dawn; a shift is eight hours, paid in cash. */
@@ -156,6 +157,7 @@ export class OldTownSystem {
     const ends = now + LABOR.hours * 60;
     const no = (reason: string) => ({ ok: false, pay, ends, reason });
     if (d.weekday === 6) return no('周日码头不开工。');
+    if (this.core.weather.stormDay()) return no('风暴天，吊车都停了，码头不开工。');
     if (this.s.laborDay === this.core.today()) return no('今天的活你已经干过了。');
     if (d.minuteOfDay < LABOR.from) return no(`工头还没来，${formatClock(LABOR.from)} 开始招人。`);
     if (d.minuteOfDay > LABOR.until) return no(`今天的人已经招满了。明天 ${formatClock(LABOR.from)}–${formatClock(LABOR.until)} 再来。`);
@@ -193,7 +195,7 @@ export class OldTownSystem {
    * what the market has been saying. He cannot change your luck.
    */
   fortune(): ActionResult {
-    if (!nightMarketOpen(this.core.now())) return { ok: false, error: '看相的摊子还没摆出来' };
+    if (!nightMarketOpen(this.core.now(), this.core.weather.stormDay())) return { ok: false, error: '看相的摊子还没摆出来' };
     if (this.s.fortuneDay === this.core.today()) return { ok: false, error: '「一天只看一次。看多了，就不灵了。」' };
     const r = this.core.economy.spend('cash', FORTUNE_PRICE, 'entertainment', '夜市看相', 'fortune');
     if (!r.ok) return { ok: false, error: '看相只收现金（20 G）' };

@@ -1,12 +1,14 @@
 import { LOOP_PAD, STINGERS, TRACKS, type StingerId, type TrackId } from './tracks';
-import type { SpotAmbience } from './soundscape';
+import type { SpotAmbience, WeatherSound } from './soundscape';
 
 /**
  * Music: original looping tracks (see tracks.ts), streamed on demand,
  * looped natively between exact sample positions and crossfaded when the
  * player changes place. Feedback sounds: short instrument stingers for wins
  * and the phone, synthesized clicks for cards and chips. Ambience: only a few
- * sparse, quiet spot sounds — no continuous noise beds.
+ * sparse, quiet spot sounds — no continuous noise beds. The weather is pitched
+ * too: rain is a patter of tiny droplet tones, thunder a roll of low tones,
+ * and the foghorn two reed notes.
  */
 
 export type SfxName = 'card' | 'chip' | 'chips' | 'win' | 'bigwin' | 'lose' | 'click' | 'door' | 'shuffle' | 'cash' | 'phone' | 'ball' | 'deny' | 'blackjack' | 'ding' | 'slide' | 'lift' | 'gavel' | 'paddle' | 'horn' | 'piano' | 'bounce' | 'page' | 'cook';
@@ -48,6 +50,8 @@ class AudioEngine {
   private resumeAt = new Map<TrackId, { pos: number; at: number }>();
   private stingers = new Map<StingerId, AudioBuffer>();
   private amb: { kind: SpotAmbience; timer: number } | null = null;
+  private wantWeather: WeatherSound | null = null;
+  private weather: { rain: number; muffled: boolean; foghorn: boolean; timer: number; out: AudioNode; nextHorn: number } | null = null;
   /** the roulette wheel turning: two low tones that slow down, and the ball ticking over the frets */
   private whirr: { oscs: OscillatorNode[]; gain: GainNode; timer: number } | null = null;
 
@@ -88,6 +92,9 @@ class AudioEngine {
     const amb = this.wantAmb;
     this.wantAmb = null;
     this.setAmbience(amb);
+    const wx = this.wantWeather;
+    this.wantWeather = null;
+    this.setWeather(wx);
   }
 
   applyVolumes(v: Volumes): void {
@@ -461,6 +468,138 @@ class AudioEngine {
       }
     }, 1000);
     this.amb = { kind, timer };
+  }
+
+  // ------------------------------------------------------------------ weather
+
+  /**
+   * Rain on the street (or on the roof and the windows, muffled, indoors): a patter of tiny
+   * droplet tones at random pitches, thicker the harder it rains; the foghorn on a foggy
+   * morning by the water. No noise: every sound here has a pitch.
+   */
+  setWeather(w: WeatherSound | null): void {
+    this.wantWeather = w;
+    const c = this.ctx;
+    if (!c) return;
+    const on = !!w && (w.rain > 0 || w.foghorn);
+    if (this.weather && (!on || this.weather.muffled !== w!.muffled)) {
+      clearInterval(this.weather.timer);
+      this.weather = null;
+    }
+    if (!w || !on) return;
+    if (this.weather) {
+      this.weather.rain = w.rain;
+      this.weather.foghorn = w.foghorn;
+      return;
+    }
+    // under a roof the rain is lower and softer, as through glass and tiles
+    let out: AudioNode = this.ambBus;
+    if (w.muffled) {
+      const f = c.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 900;
+      f.Q.value = 0.5;
+      const g = c.createGain();
+      g.gain.value = 0.55;
+      f.connect(g).connect(this.ambBus);
+      out = f;
+    }
+    const state = { rain: w.rain, muffled: w.muffled, foghorn: w.foghorn, timer: 0, out, nextHorn: c.currentTime + 4 };
+    state.timer = window.setInterval(() => {
+      const cx = this.ctx;
+      if (!cx || cx.state !== 'running') return;
+      const now = cx.currentTime;
+      if (state.rain > 0) {
+        // drops per 60 ms tick
+        const n = state.rain * 16 + Math.random();
+        for (let i = 0; i < Math.floor(n); i++) this.droplet(now + Math.random() * 0.06, state.muffled, state.out);
+      }
+      if (state.foghorn && now >= state.nextHorn) {
+        state.nextHorn = now + 38 + Math.random() * 30;
+        this.foghornAt(now + 0.1, state.out);
+      }
+    }, 60);
+    this.weather = state;
+  }
+
+  private droplet(t: number, muffled: boolean, out: AudioNode): void {
+    const c = this.ctx!;
+    const r = Math.random();
+    let bus = out;
+    if (c.createStereoPanner) {
+      const p = c.createStereoPanner();
+      p.pan.value = Math.random() * 1.6 - 0.8;
+      p.connect(out);
+      bus = p;
+    }
+    if (r < 0.12) {
+      // a drop into a puddle: a lower note that drops in pitch
+      this.chirp(muffled ? 520 : 900 + Math.random() * 500, muffled ? 300 : 420 + Math.random() * 200, t, 0.05, 'sine', 0.09, bus);
+    } else {
+      // very short grains over a wide spread of pitches: together they patter rather than ring
+      const f = muffled ? 600 + Math.random() * 1600 : 1300 + Math.random() * 5500;
+      this.tone(f, t, 0.005 + Math.random() * 0.01, 'sine', 0.12 + Math.random() * 0.16, bus, 0.001);
+    }
+  }
+
+  /** Two low reed notes a fifth apart, held: the harbour's foghorn somewhere out in the bay. */
+  private foghornAt(t: number, out: AudioNode): void {
+    this.held(98, t, 2.6, 0.035, out);
+    this.held(146.8, t, 2.6, 0.022, out);
+  }
+
+  /**
+   * Thunder after a flash of lightning: a roll of low tones that swell and rumble (each one's
+   * loudness wobbling) and die away; close strikes start with a sharper crack of higher tones.
+   * Muffled indoors.
+   */
+  thunder(strength: number, delayMs = 0, muffled = false): void {
+    const c = this.ctx;
+    if (!c || c.state !== 'running') return;
+    const t = c.currentTime + delayMs / 1000;
+    let out: AudioNode = this.ambBus;
+    if (muffled) {
+      const f = c.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 220;
+      f.connect(this.ambBus);
+      out = f;
+    }
+    const level = (muffled ? 0.5 : 1) * (0.35 + 0.65 * strength);
+    const dur = 3 + strength * 3;
+    for (const [f0, type, g] of [
+      [34, 'sine', 0.2],
+      [47, 'triangle', 0.12],
+      [63, 'sine', 0.09],
+      [81, 'triangle', 0.05],
+    ] as [number, OscillatorType, number][]) {
+      const o = c.createOscillator();
+      const gain = c.createGain();
+      const wob = c.createOscillator();
+      const wobGain = c.createGain();
+      o.type = type;
+      const f = f0 * (0.92 + Math.random() * 0.16);
+      o.frequency.setValueAtTime(f * 1.15, t);
+      o.frequency.exponentialRampToValueAtTime(f * 0.82, t + dur);
+      // the roll: the loudness wobbles a few times a second
+      wob.frequency.value = 3 + Math.random() * 5;
+      wobGain.gain.value = g * level * 0.5;
+      wob.connect(wobGain).connect(gain.gain);
+      const attack = 0.08 + (1 - strength) * 0.5 + Math.random() * 0.15;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(g * level, t + attack);
+      gain.gain.setTargetAtTime(g * level * 0.55, t + attack, 0.6);
+      gain.gain.setTargetAtTime(0, t + dur * 0.55, dur * 0.18);
+      o.connect(gain).connect(out);
+      o.start(t);
+      wob.start(t);
+      o.stop(t + dur + 1.5);
+      wob.stop(t + dur + 1.5);
+    }
+    if (strength > 0.7 && !muffled) {
+      // the crack of a strike nearby
+      for (let i = 0; i < 6; i++) this.chirp(420 + Math.random() * 380, 90 + Math.random() * 40, t + i * 0.025, 0.25, 'triangle', 0.035 * strength, out);
+    }
   }
 }
 

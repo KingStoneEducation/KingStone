@@ -135,24 +135,33 @@ export class MarinaSystem {
 
   // ------------------------------------------------------------ the harbour cruise
 
+  /** Whether a storm keeps every boat in on the day of absolute minute t. */
+  stormy(t = this.core.now()): boolean {
+    return this.core.weather.stormAt(t);
+  }
+
   /** The departure you can board now, if any. */
   boardingCruise(): (typeof CRUISES)[number] | null {
+    if (this.stormy()) return null;
     const m = toDate(this.core.now()).minuteOfDay;
     return CRUISES.find((c) => m >= c.at - BOARD_BEFORE && m <= c.at + BOARD_AFTER) ?? null;
   }
 
   nextCruise(): (typeof CRUISES)[number] | null {
+    if (this.stormy()) return null;
     const m = toDate(this.core.now()).minuteOfDay;
     return CRUISES.find((c) => c.at - BOARD_BEFORE > m) ?? null;
   }
 
   /** The tour boat is away from the pier between a departure and its return. */
   tourBoatOut(t = this.core.now()): boolean {
+    if (this.stormy(t)) return false;
     const m = toDate(t).minuteOfDay;
     return CRUISES.some((c) => m > c.at + BOARD_AFTER && m < c.at + CRUISE_MINUTES);
   }
 
   private cruiseError(method: 'cash' | 'card'): string | null {
+    if (this.stormy()) return '风暴天，港湾游船全天停航。';
     const c = this.boardingCruise();
     if (!c) {
       const n = this.nextCruise();
@@ -188,13 +197,15 @@ export class MarinaSystem {
     const now = this.core.now();
     const day = this.core.today();
     const out: number[] = [];
-    for (let d = day; d <= day + 1; d++) for (const s of SLOTS) if (d * MINUTES_PER_DAY + s >= now + 60) out.push(d * MINUTES_PER_DAY + s);
+    // the club does not send a boat out on a day the weather service has a storm for
+    for (let d = day; d <= day + 1; d++) if (!this.core.weather.stormDay(d)) for (const s of SLOTS) if (d * MINUTES_PER_DAY + s >= now + 60) out.push(d * MINUTES_PER_DAY + s);
     return out.slice(0, 4);
   }
 
   /** Book the club's yacht (or take your own out) at a slot and ask friends along. */
   book(kind: 'charter' | 'own', at: number, guests: string[], method: 'cash' | 'card' = 'card'): { ok: true; answers: { id: string; name: string; yes: boolean; line: string }[]; message: string } | { ok: false; error: string } {
     if (this.s.booking) return { ok: false, error: '你已经约了一次出海' };
+    if (this.stormy(at)) return { ok: false, error: '那天有风暴，游艇会不出船。' };
     if (!this.slots().includes(at)) return { ok: false, error: '这个时间不能出发' };
     const own = this.ownedDef();
     if (kind === 'own' && !own) return { ok: false, error: '你还没有自己的船' };
@@ -243,6 +254,24 @@ export class MarinaSystem {
     return { ok: true, message: refund > 0 ? `出海取消了，退回 ${formatG(refund)}。${told}` : `出海取消了。离出发不到三个小时，费用不退。${told}` };
   }
 
+  /**
+   * A storm on the day of a booked trip: the club calls it off and gives all the money
+   * back, and the guests are told not to come (nobody is let down by you).
+   */
+  private stormCancel(): void {
+    const b = this.s.booking;
+    if (!b) return;
+    for (const id of b.guests) {
+      const rt = this.core.state.npcs[id];
+      if (rt) rt.overrides = rt.overrides.filter((o) => o.reason !== WAITING);
+    }
+    this.core.economy.receive('bank', b.paid, 'other', b.kind === 'own' ? '风暴取消出海：燃油退回' : `风暴取消${CLUB_BOAT}包船：全额退款`, 'marina');
+    this.s.booking = null;
+    const told = b.guests.length ? `已经通知了${b.guests.map((g) => NPC_BY_ID[g]?.name ?? g).join('、')}。` : '';
+    this.core.phone.send('marina', '灰港游艇会', `气象台发了风暴预警，${formatClock(toDate(b.at).minuteOfDay)} 的出海取消了，${formatG(b.paid)} 已全额退回您的账户。${told}`);
+    this.core.touch();
+  }
+
   /** Whether the booked party can sail now (from half an hour before the slot until the guests give up). */
   canSail(): string | null {
     const b = this.s.booking;
@@ -270,6 +299,7 @@ export class MarinaSystem {
   canGoAlone(): string | null {
     const own = this.ownedDef();
     if (!own) return '你还没有自己的船';
+    if (this.stormy()) return '风暴天，船员不出海。';
     const m = toDate(this.core.now()).minuteOfDay;
     if (m < hm(8) || m > hm(20)) return '船员只在 8:00–20:00 出海';
     if (this.s.booking) return '你已经约了一次出海';
@@ -415,6 +445,10 @@ export class MarinaSystem {
   tickMinute(now: number): void {
     const b = this.s.booking;
     if (!b) return;
+    if (this.stormy(b.at)) {
+      this.stormCancel();
+      return;
+    }
     if (!b.reminded && now >= b.at - 60 && now < b.at) {
       b.reminded = true;
       const who = b.guests.length ? `${b.guests.map((g) => NPC_BY_ID[g]?.name ?? g).join('、')}快到码头了。` : '';

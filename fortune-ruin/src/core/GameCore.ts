@@ -30,6 +30,7 @@ import { OldTownSystem } from '../systems/OldTownSystem';
 import { AuctionSystem } from '../systems/AuctionSystem';
 import { MarinaSystem } from '../systems/MarinaSystem';
 import { IsleSystem, onIsle } from '../systems/IsleSystem';
+import { WeatherSystem } from '../systems/WeatherSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -123,6 +124,7 @@ export class GameCore {
   auction: AuctionSystem;
   marina: MarinaSystem;
   isle: IsleSystem;
+  weather: WeatherSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -154,6 +156,7 @@ export class GameCore {
     this.auction = new AuctionSystem(this);
     this.marina = new MarinaSystem(this);
     this.isle = new IsleSystem(this);
+    this.weather = new WeatherSystem(this);
   }
 
   now(): number {
@@ -258,6 +261,7 @@ export class GameCore {
     this.events.tickMinute(t);
     this.marina.tickMinute(t);
     this.isle.tickMinute(t);
+    this.weather.tickMinute(t, !this.advancing);
     this.casino.tickBackground(1);
     if (d.hour !== before.hour) this.onHour(d.hour);
     if (d.dayIndex !== before.dayIndex) this.onDay(d.dayIndex);

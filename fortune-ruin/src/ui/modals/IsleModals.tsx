@@ -40,9 +40,15 @@ export function FerryModal(): JSX.Element {
   const err = core.isle.boardCheck(cls, pay);
   const here = core.isle.ferryAt(side);
   const next = core.isle.nextFerry();
+  const off = core.isle.suspended();
   return (
     <Modal title="灰港—白石湾渡轮" sub={side === 'city' ? '灰港渡轮码头 → 白石湾 · 单程 40 分钟' : '白石湾码头 → 灰港 · 单程 40 分钟'} wide className="theme-marina">
       <div className="stack">
+        {off && (
+          <div className="note">
+            <b>风暴天，今天的渡轮全部停航。</b>下一班 {core.isle.departureLabel(next)} 开。{side === 'isle' && '岛上的民宿和度假酒店都还有空房。'}
+          </div>
+        )}
         <div className="note">
           {side === 'city'
             ? '去海湾对面的白石湾：渔港、海滩、灯塔，岬角上有度假酒店。末班船 20:00 从白石湾开回来，错过了就只能在岛上过夜。'
@@ -61,7 +67,8 @@ export function FerryModal(): JSX.Element {
                   <div className="item" key={d}>
                     <div className="grow">
                       <div className="title">
-                        {formatClock(d)} {now ? <span className="tag good">检票中</span> : gone ? <span className="tag">已开</span> : <span className="tag">{formatClock(d - FERRY_BOARD)} 检票</span>}
+                        {formatClock(d)}{' '}
+                        {off ? <span className="tag bad">停航</span> : now ? <span className="tag good">检票中</span> : gone ? <span className="tag">已开</span> : <span className="tag">{formatClock(d - FERRY_BOARD)} 检票</span>}
                       </div>
                       <div className="desc">约 {formatClock(d + FERRY_MINUTES)} 到{side === 'city' ? '白石湾' : '灰港'}</div>
                     </div>
@@ -86,7 +93,7 @@ export function FerryModal(): JSX.Element {
           </div>
         </div>
         <div className="muted" style={{ fontSize: 12 }}>
-          {here ? '渡轮靠在码头上。' : `渡轮不在这边，下一班 ${next >= (core.today() + 1) * 1440 ? '明天 ' : ''}${formatClock(toDate(next).minuteOfDay)} 开。`}
+          {here ? (off ? '渡轮用缆绳拴在码头上，随着浪一起一伏。' : '渡轮靠在码头上。') : `渡轮不在这边，下一班 ${core.isle.departureLabel(next)} 开。`}
           {core.state.isle!.crossings > 0 && ` 你坐过 ${core.state.isle!.crossings} 次渡轮。`}
         </div>
         <div className="card stack">
@@ -150,6 +157,8 @@ export function BeachModal(props: { tab: BeachTab }): JSX.Element {
   const guest = !core.isle.resortAccess();
   const resortSide = tab === 'pool' || tab === 'private';
   const title = resortSide ? '白石湾度假酒店' : '白石湾海滩';
+  const shut = core.isle.beachShut();
+  const wx = core.weather.now();
   const done = (r: ActionResult) => {
     if (r.ok) {
       store.closeModal();
@@ -216,6 +225,8 @@ export function BeachModal(props: { tab: BeachTab }): JSX.Element {
           </>
         )}
         {resortSide && !guest && <div className="muted" style={{ fontSize: 12 }}>只对住客开放。入住手续在大堂前台办理。</div>}
+        {!resortSide && shut && <div className="note">{shut}</div>}
+        {resortSide && (wx.storm || (wx.raining && tab === 'private')) && <div className="note">{wx.storm ? '风暴天，泳池和住客海滩都关了。' : '下雨了，住客海滩的躺椅收起来了。泳池还开着。'}</div>}
         {fb}
       </div>
     </Modal>

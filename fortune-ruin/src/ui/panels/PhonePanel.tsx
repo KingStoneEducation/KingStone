@@ -8,6 +8,8 @@ import { formatAgo, formatClock, formatDate, MINUTES_PER_DAY, toDate } from '../
 import { NPC_BY_ID, NPCS } from '../../data/npcs';
 import { LOCATIONS } from '../../data/locations';
 import { formatG } from '../../core/money';
+import { Icon } from '../Icon';
+import { forecastLine } from '../../systems/WeatherSystem';
 
 type Tab = 'messages' | 'calendar' | 'contacts';
 
@@ -134,6 +136,20 @@ function Calendar(): JSX.Element {
   const today = core.today();
   return (
     <div className="stack">
+      <div>
+        <h4 style={{ margin: '0 0 4px', color: 'var(--gold-light)' }}>天气预报 · 灰港气象台</h4>
+        {core.weather.forecast(3).map((w, i) => {
+          const f = forecastLine(w);
+          return (
+            <div key={w.day} className="msg">
+              <Icon name={f.icon} /> {i === 0 ? '今天' : i === 1 ? '明天' : '后天'} · {f.name} · {w.low}–{w.high}°C
+              <div className="dim" style={{ fontSize: 12 }}>
+                {f.note}
+              </div>
+            </div>
+          );
+        })}
+      </div>
       <div>
         <h4 style={{ margin: '0 0 4px', color: 'var(--gold-light)' }}>工作</h4>
         {shifts.length === 0 ? (

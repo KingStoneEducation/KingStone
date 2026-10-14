@@ -1,11 +1,12 @@
-import { circle, ellipse, hline, makeCanvas, px, rect, strokeRect, vline, type Ctx } from './canvas';
+import { circle, ellipse, hline, makeCanvas, px, rect, shade, strokeRect, vline, type Ctx } from './canvas';
 
 /**
  * The little things that appear for a moment when you do something in the
  * world: the bank card going into the ATM and the notes coming out, a stack
  * of chips across the cage, a paper bag from a shop, steam off the stove, a
- * book in your hands, a basketball, the notes off a piano, a sparkle, and
- * the Z's over a sleeper.
+ * book in your hands, a basketball, the notes off a piano, a sparkle, the
+ * Z's over a sleeper, and the rain: its streaks (straight down, slanting in
+ * a breeze, driven by a storm) and the little crown where a drop lands.
  */
 export const FX: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void }> = {
   card: {
@@ -128,6 +129,40 @@ export const FX: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void
       hline(c, 3, 4, 12, 'rgba(244,241,234,0.45)');
     },
   },
+  rain: {
+    w: 1,
+    h: 7,
+    draw: (c) => {
+      vline(c, 0, 0, 2, 'rgba(200,214,240,0.35)');
+      vline(c, 0, 2, 5, 'rgba(214,226,250,0.7)');
+    },
+  },
+  rain_slant: {
+    w: 2,
+    h: 8,
+    draw: (c) => {
+      vline(c, 1, 0, 3, 'rgba(200,214,240,0.4)');
+      vline(c, 0, 3, 5, 'rgba(214,226,250,0.72)');
+    },
+  },
+  rain_storm: {
+    w: 4,
+    h: 9,
+    draw: (c) => {
+      for (let i = 0; i < 4; i++) vline(c, 3 - i, i * 2, i === 3 ? 3 : 2, i === 0 ? 'rgba(200,214,240,0.4)' : 'rgba(220,230,252,0.78)');
+    },
+  },
+  splash: {
+    w: 5,
+    h: 3,
+    draw: (c) => {
+      px(c, 1, 0, 'rgba(220,230,252,0.8)');
+      px(c, 3, 0, 'rgba(220,230,252,0.8)');
+      px(c, 0, 1, 'rgba(220,230,252,0.6)');
+      px(c, 4, 1, 'rgba(220,230,252,0.6)');
+      hline(c, 1, 2, 3, 'rgba(200,214,240,0.55)');
+    },
+  },
   zz: {
     w: 5,
     h: 5,
@@ -145,5 +180,43 @@ export function fxCanvas(name: string): HTMLCanvasElement {
   const d = FX[name];
   const { canvas, ctx } = makeCanvas(d.w, d.h);
   d.draw(ctx);
+  return canvas;
+}
+
+/** The colours of the umbrellas people put up in the rain (the player's is the first). */
+export const UMBRELLA_COLORS = ['#2f4f86', '#c8483a', '#e8b44c', '#3a7a5a', '#6a4a86', '#2a2a32', '#d8d0c0', '#d86a8a'];
+export const UMBRELLA_W = 23;
+export const UMBRELLA_H = 12;
+
+/** An open umbrella held over the head: the canopy, and the top of the shaft down to the hair (the hand is behind the head). */
+export function drawUmbrella(c: Ctx, color: string): void {
+  const hi = shade(color, 0.25);
+  const lo = shade(color, -0.22);
+  const rim = shade(color, -0.45);
+  // the dome, row by row: [from, to]
+  const rows: [number, number][] = [[11, 11], [8, 14], [5, 17], [3, 19], [2, 20], [1, 21], [0, 22], [0, 22]];
+  rows.forEach(([a, b], y) => {
+    for (let x = a; x <= b; x++) {
+      const left = x < 11;
+      const col = y === 0 ? rim : y >= 7 ? lo : y <= 3 ? (left ? hi : color) : left ? color : lo;
+      px(c, x, y, col);
+    }
+    px(c, a, y, rim);
+    px(c, b, y, rim);
+  });
+  // the ribs: down the middle, and out to the points of the hem
+  for (let y = 1; y <= 7; y++) {
+    px(c, 11, y, rim);
+    px(c, Math.round(11 - (y * 6) / 8), y, rim);
+    px(c, Math.round(11 + (y * 6) / 8), y, rim);
+  }
+  // the hem: a point at each rib's tip
+  for (const x of [0, 1, 4, 5, 6, 11, 16, 17, 18, 21, 22]) px(c, x, 8, rim);
+  vline(c, 11, 9, 3, '#3a3a42');
+}
+
+export function umbrellaCanvas(i: number): HTMLCanvasElement {
+  const { canvas, ctx } = makeCanvas(UMBRELLA_W, UMBRELLA_H);
+  drawUmbrella(ctx, UMBRELLA_COLORS[i % UMBRELLA_COLORS.length]);
   return canvas;
 }

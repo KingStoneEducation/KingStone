@@ -18,6 +18,7 @@ import { CharacterSprite, LABEL_DEPTH } from './CharacterSprite';
 import { Lighting, hexColor, type Emissive, type LightSource } from './Lighting';
 import { NpcDirector, type WorldHost } from './NpcDirector';
 import { CityLife } from './CityLife';
+import { WeatherFx, type Exposure } from './WeatherFx';
 import { CasinoFloor, seatPosition } from './CasinoFloor';
 import { findPath, type Pt } from './pathfinding';
 import { entryRefusal } from './access';
@@ -32,11 +33,11 @@ import { NPC_BY_ID } from '../data/npcs';
 import { TABLE_BY_ID, type TableConfig } from '../casino/tables';
 import { formatG } from '../core/money';
 import { patronLine, pedestrianLine, staffLine } from './ambientLines';
-import { sfx } from '../audio/Audio';
+import { audio, sfx } from '../audio/Audio';
 import { nightMarketOpen } from '../systems/OldTownSystem';
 import { pieceCanvas } from '../art/artworks';
 import type { TripKind } from '../systems/MarinaSystem';
-import { FISHING, boatsIn, type FareClass } from '../systems/IsleSystem';
+import { FISHING, type FareClass } from '../systems/IsleSystem';
 import { Actions, type ActionHost, type Pose, type PoseName, type PropBox } from './actions';
 
 const DIR_VEC: Record<CharDir, { x: number; y: number }> = {
@@ -120,6 +121,12 @@ function districtAt(x: number, y: number, map = 'city'): string {
 function inputFocused(): boolean {
   const el = document.activeElement as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+}
+
+/** A colour between two 0xRRGGBB colours. */
+function mixColor(a: number, b: number, t: number): number {
+  const ch = (shift: number) => Math.round(((a >> shift) & 255) + (((b >> shift) & 255) - ((a >> shift) & 255)) * t);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
 }
 
 function clamp01(v: number): number {
@@ -223,6 +230,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private emissives: Emissive[] = [];
   private staff: StaffView[] = [];
   private lighting!: Lighting;
+  /** rain, fog and lightning over the map (none on the title screen) */
+  private wx: WeatherFx | null = null;
   private npcDir: NpcDirector | null = null;
   private city: CityLife | null = null;
   private floor: CasinoFloor | null = null;
@@ -363,6 +372,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.npcDir = null;
     this.city?.destroy();
     this.city = null;
+    this.wx?.destroy();
+    this.wx = null;
     this.floor?.destroy();
     this.floor = null;
     for (const s of this.staff) s.sprite.destroy();
@@ -424,6 +435,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       }
       this.npcDir = new NpcDirector(this);
       this.npcDir.build();
+      this.wx = new WeatherFx(this, () => this.exposure(), (strength, delay, muffled) => audio.thunder(strength, delay, muffled));
     }
     this.layoutCamera();
     this.district = '';
@@ -679,7 +691,11 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     if (this.map.regions && !this.transitioning && (this.region()?.id ?? null) !== this.regionId) this.layoutCamera();
     if (this.player.path.length > 0) this.checkDoor(this.player.dir);
     this.npcDir?.update(dt, time, core.nowFloat());
-    this.city?.update(dt, time, toDate(core.now()).hour);
+    const sky = core.weather.now();
+    const wet = this.map.outdoor && sky.raining;
+    this.npcDir?.shelter(wet);
+    this.player.setUmbrella(wet && core.weather.hasUmbrella() && !this.player.sitting ? 0 : null);
+    this.city?.update(dt, time, toDate(core.now()).hour, { raining: wet, storm: sky.storm });
     this.floor?.update(dt, time);
     this.animate(time);
     if (time > this.staffCheckAt) {
@@ -689,6 +705,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     }
     if (!this.tableKey) this.updateFocus(time);
     this.updateLighting(time, core.nowFloat());
+    this.wx?.update(dt, time, sky, this.pendingLight?.darkness ?? 0);
     this.syncState();
     if (time > this.spotCheckAt) {
       this.spotCheckAt = time + 1000;
@@ -814,6 +831,13 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     }
   }
 
+  /** Under the open sky, under a roof with windows, or on the windowless casino floor. */
+  exposure(): Exposure {
+    if (this.map.outdoor) return 'out';
+    if (this.map.id === 'casino') return this.core.sky.upstairs() ? 'in' : 'sealed';
+    return 'in';
+  }
+
   private nightFactor(t: number): number {
     if (!this.map.outdoor) return 1;
     return clamp01((0.72 - daylight(t)) / 0.45);
@@ -824,9 +848,14 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const dl = daylight(t);
     const ambient = this.region()?.ambient ?? m.ambient;
     const amb = ambient.night + (ambient.day - ambient.night) * dl;
-    const darkness = 1 - amb;
+    // a grey sky: the day dims to a cold grey under the clouds (a little, through the windows)
+    const ex = this.exposure();
+    const sky = this.core.weather.now(t);
+    const grey = ex === 'sealed' ? 0 : sky.overcast * (ex === 'out' ? 1 : 0.3);
+    const darkness = 1 - amb + (0.92 - (1 - amb)) * grey * (0.36 * dl + 0.1 * (1 - dl));
+    const color = grey > 0 ? mixColor(ambient.color, 0x3e4656, clamp01(grey * dl)) : ambient.color;
     const night = this.nightFactor(t);
-    this.sunShade?.setAlpha(m.outdoor ? 1 - night : clamp01((dl - 0.3) / 0.45));
+    this.sunShade?.setAlpha((m.outdoor ? 1 - night : clamp01((dl - 0.3) / 0.45)) * (1 - 0.85 * grey));
     const hour = toDate(Math.floor(t)).hour;
     const late = m.outdoor && hour >= 1 && hour < 6;
     const dark = clamp01((0.72 - dl) / 0.45);
@@ -836,16 +865,19 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       if (n.em) n.em.alpha = a;
     }
     for (const v of this.props) if (v.em && v.night) v.em.alpha = v.night.visible ? v.night.alpha : 0;
-    const lights = this.staticLights.slice();
-    for (const t of this.timedLights) if (this.whenActive(t.when)) lights.push(t.light);
-    if (this.city) lights.push(...this.city.lights(night > 0.3));
-    if (this.player && darkness > 0.25) {
+    // a grey day outdoors is still day: the lamps stay off (unless a storm makes it dark), only what is always lit shines
+    const lampsOn = !m.outdoor || night > 0.3 || sky.storm;
+    const lights = lampsOn ? this.staticLights.slice() : this.staticLights.filter((l) => l.always);
+    for (const t of this.timedLights) if (this.whenActive(t.when) && (lampsOn || t.light.always)) lights.push(t.light);
+    // the street lamps and headlights come on early under a storm's sky
+    if (this.city) lights.push(...this.city.lights(night > 0.3 || (sky.storm && m.outdoor)));
+    if (this.player && 1 - amb > 0.25) {
       this.playerLight.x = this.player.x;
       this.playerLight.y = this.player.y - 10;
       this.playerLight.r = 26;
       lights.push(this.playerLight);
     }
-    this.pendingLight = { darkness, color: ambient.color, lights, glow: m.outdoor ? night : 1, time };
+    this.pendingLight = { darkness, color, lights, glow: m.outdoor ? Math.max(night, grey * 0.5) : 1, time };
     // rendered from the camera's FOLLOW_UPDATE so it uses this frame's view
   }
 
@@ -896,7 +928,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       case 'sky_night':
         return this.core.sky.isSkyNight();
       case 'night_market':
-        return nightMarketOpen(this.core.now());
+        return nightMarketOpen(this.core.now(), this.core.weather.stormDay());
       case 'tour_in':
         return !this.core.marina.tourBoatOut();
       case 'tour_boarding':
@@ -912,10 +944,10 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       case 'ferry_isle':
         return this.core.isle.ferryAt('isle');
       case 'boats_in':
-        return boatsIn(this.core.now());
+        return this.core.isle.boatsIn();
       case 'fishing_hire': {
         const d = toDate(this.core.now());
-        return d.weekday !== 6 && d.minuteOfDay >= FISHING.from && d.minuteOfDay <= FISHING.until;
+        return d.weekday !== 6 && !this.core.weather.stormDay() && d.minuteOfDay >= FISHING.from && d.minuteOfDay <= FISHING.until;
       }
       case 'fish_market':
         return this.core.isle.marketOpen();
@@ -1372,7 +1404,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         // stalls and counters that keep hours (the night market, the fish market, the beach shack)
         const when = d.when as StaffWhen | undefined;
         if (when && !this.whenActive(when)) {
-          store.openModal({ type: 'text', title: it.interact.label, text: String(d.closed ?? '摊子用油布盖着，还没摆出来。夜市每天 18:00 开张，周五、周六开到凌晨两点。') });
+          const storm = when === 'night_market' && this.core.weather.stormDay();
+          store.openModal({ type: 'text', title: it.interact.label, text: storm ? '风暴天，夜市不出摊。摊子用油布盖着，拿绳子捆得紧紧的。' : String(d.closed ?? '摊子用油布盖着，还没摆出来。夜市每天 18:00 开张，周五、周六开到凌晨两点。') });
           break;
         }
         const consume = it.interact.kind === 'order';
@@ -1457,7 +1490,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         store.openModal({ type: 'labor' });
         break;
       case 'fortune':
-        if (!nightMarketOpen(core.now())) {
+        if (!nightMarketOpen(core.now(), core.weather.stormDay())) {
           store.openModal({ type: 'text', title: it.interact.label, text: '桌子收起来了，布幡卷在杆子上。看相先生只在夜市开张的时候来。' });
           break;
         }
@@ -1492,6 +1525,10 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   }
 
   private sitOnBench(it: Interactable): void {
+    if (this.map.outdoor && this.core.weather.raining()) {
+      store.toast('长椅被雨淋得湿透了，坐不了。', 'warn');
+      return;
+    }
     const p = this.player!;
     p.setPos(it.x * 16 + it.w * 8, it.y * 16 + 14);
     p.setSitting(true, 'down');

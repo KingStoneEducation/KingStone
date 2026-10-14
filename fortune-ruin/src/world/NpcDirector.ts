@@ -9,6 +9,7 @@ import { FERRY_PIER, locationAnchor } from './maps/cityLayout';
 import { ISLE, ISLE_PIER, isleAnchor, onIsle } from './maps/isleLayout';
 import { FERRY_LATE } from '../systems/IsleSystem';
 import type { CharDir } from '../art/characters';
+import { UMBRELLA_COLORS } from '../art/fx';
 import type { Encounter, NpcRuntime } from '../core/state';
 
 type Trip = NonNullable<NpcRuntime['travel']>;
@@ -206,6 +207,13 @@ export class NpcDirector {
     if (!loc || this.host.map.id === 'city') return null;
     const d = this.host.map.doors.find((x) => x.target === loc);
     return d ? { x: d.x + Math.floor((d.w - 1) / 2), y: d.y + (this.host.map.outdoor ? 1 : -1) } : null;
+  }
+
+  /** Up go the umbrellas when it rains (not for those sitting down: the night market's stools are under its awnings). */
+  shelter(rain: boolean): void {
+    const put = (id: string, s: CharacterSprite) => s.setUmbrella(rain && !s.sitting ? 1 + (hashString(id) % (UMBRELLA_COLORS.length - 1)) : null);
+    for (const [id, s] of this.sprites) put(id, s);
+    for (const [id, t] of this.travellers) put(id, t.sprite);
   }
 
   /** Reconcile sprites with simulation state; animate arrivals, departures and spot changes. */

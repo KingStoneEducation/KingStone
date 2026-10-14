@@ -70,21 +70,28 @@ export const SWIM_MINUTES = 40;
  */
 export const FISHING = { from: hm(4, 30), until: hm(5, 30), back: hm(14, 30), hours: 9, pay: G(240), minEnergy: 50, minSleep: 50, maxDrunk: 20 };
 
-/** Are the co-op's boats in the harbour: at night, in the afternoon, and all of Sunday. */
-export function boatsIn(t: number): boolean {
+/** Are the co-op's boats in the harbour: at night, in the afternoon, all of Sunday, and all through a storm. */
+export function boatsIn(t: number, storm = false): boolean {
   const d = toDate(t);
-  return d.weekday === 6 || d.minuteOfDay < FISHING.until || d.minuteOfDay >= FISHING.back;
+  return storm || d.weekday === 6 || d.minuteOfDay < FISHING.until || d.minuteOfDay >= FISHING.back;
 }
 /** The fish market on the quay opens when the boats are back, and there is none on Sunday. */
 export const FISH_MARKET_HOURS = { from: FISHING.back, to: hm(18) };
 export const SHACK_HOURS = { from: hm(10), to: hm(23) };
 
-/** The next departure from this side that someone at the pier at time t can still board (absolute minutes). */
-export function nextDeparture(side: 'city' | 'isle', t: number): number {
-  const day = Math.floor(t / MINUTES_PER_DAY);
-  const m = t - day * MINUTES_PER_DAY;
-  const d = FERRY[side].find((x) => x + FERRY_LATE >= m);
-  return d !== undefined ? day * MINUTES_PER_DAY + d : (day + 1) * MINUTES_PER_DAY + FERRY[side][0];
+/**
+ * The next departure from this side that someone at the pier at time t can still board
+ * (absolute minutes), passing over the days the ferry does not sail (`off`: storm days).
+ */
+export function nextDeparture(side: 'city' | 'isle', t: number, off: (day: number) => boolean = () => false): number {
+  const first = Math.floor(t / MINUTES_PER_DAY);
+  for (let day = first; day < first + 60; day++) {
+    if (off(day)) continue;
+    const m = day === first ? t - day * MINUTES_PER_DAY : -1;
+    const d = FERRY[side].find((x) => x + FERRY_LATE >= m);
+    if (d !== undefined) return day * MINUTES_PER_DAY + d;
+  }
+  return (first + 1) * MINUTES_PER_DAY + FERRY[side][0];
 }
 
 /** Where the one ferry is at a minute of the day (see FERRY). */
@@ -120,20 +127,35 @@ export class IsleSystem {
 
   // ------------------------------------------------------------ the ferry
 
+  /** Is the ferry off for the day (a storm)? */
+  suspended(day = this.core.today()): boolean {
+    return this.core.weather.stormDay(day);
+  }
+
   /** The departure boarding now from this side, if any (minute of the day). */
   boarding(side = this.side()): number | null {
+    if (this.suspended()) return null;
     const m = this.minute();
     return FERRY[side].find((d) => m >= d - FERRY_BOARD && m <= d + FERRY_LATE) ?? null;
   }
 
-  /** The next departure from this side, today or tomorrow (absolute minutes). */
+  /** The next departure from this side that will sail, today or later (absolute minutes). */
   nextFerry(side = this.side()): number {
-    return nextDeparture(side, this.core.now());
+    return nextDeparture(side, this.core.now(), (d) => this.suspended(d));
   }
 
-  /** Is the ferry at the pier on this side now: from her arrival there until she leaves? */
+  /** Is the ferry at the pier on this side now: from her arrival there until she leaves? Through a storm she stays tied up at Greyhaven. */
   ferryAt(side: 'city' | 'isle', t = this.core.now()): boolean {
+    if (this.core.weather.stormAt(t)) return side === 'city';
     return ferryAt(side, toDate(t).minuteOfDay);
+  }
+
+  /** When a departure is, said the way the timetable board says it. */
+  departureLabel(n: number): string {
+    const days = Math.floor(n / MINUTES_PER_DAY) - this.core.today();
+    const d = toDate(n);
+    const day = days === 0 ? '' : days === 1 ? '明天 ' : days === 2 ? '后天 ' : `${d.month + 1}月${d.day}日 `;
+    return `${day}${formatClock(d.minuteOfDay)}`;
   }
 
   boardCheck(cls: FareClass, method: 'cash' | 'card'): string | null {
@@ -141,8 +163,8 @@ export class IsleSystem {
     const d = this.boarding(side);
     if (d === null) {
       const n = this.nextFerry(side);
-      const tomorrow = n >= (this.core.today() + 1) * MINUTES_PER_DAY;
-      return `下一班 ${tomorrow ? '明天 ' : ''}${formatClock(toDate(n).minuteOfDay)} 开，开船前 ${FERRY_BOARD} 分钟开始检票。`;
+      if (this.suspended()) return `风暴天，渡轮全天停航。下一班 ${this.departureLabel(n)} 开。`;
+      return `下一班 ${this.departureLabel(n)} 开，开船前 ${FERRY_BOARD} 分钟开始检票。`;
     }
     const have = this.core.economy.balance(method === 'cash' ? 'cash' : 'bank');
     if (have < FARES[cls]) return `${cls === 'lounge' ? '头等舱' : '普通舱'}船票 ${formatG(FARES[cls])}，${method === 'cash' ? '现金' : '卡里的钱'}不够`;
@@ -183,7 +205,7 @@ export class IsleSystem {
     }
     const tod = timeOfDay(start + waited + FERRY_MINUTES / 2);
     const lounge = cls === 'lounge';
-    const boatsOut = !boatsIn(start + waited + FERRY_MINUTES);
+    const boatsOut = !boatsIn(start + waited + FERRY_MINUTES, this.core.weather.stormAt(start + waited + FERRY_MINUTES));
     const caption = toIsle
       ? lounge
         ? '头等舱的窗边，侍应端来一杯咖啡。白石湾的灯塔从雾里慢慢露出来，岬角上是度假酒店白色的房子。'
@@ -265,9 +287,18 @@ export class IsleSystem {
 
   // ------------------------------------------------------------ the beach
 
+  /** The lifeguard is in the tower in his hours, except in the rain (he takes the flag in and goes). */
   lifeguardOn(): boolean {
     const m = this.minute();
-    return m >= LIFEGUARD.from && m < LIFEGUARD.to;
+    return m >= LIFEGUARD.from && m < LIFEGUARD.to && !this.core.weather.raining();
+  }
+
+  /** Why nobody may use the public beach now, if so. */
+  beachShut(): string | null {
+    const w = this.core.weather.now();
+    if (w.storm) return '风暴天，海滩封了，浪头打上了栈道。';
+    if (w.raining) return '下雨了，救生员收起旗子走了。海滩暂时不开放，等雨停吧。';
+    return null;
   }
 
   /** A lounger and an umbrella on the public beach for two hours. */
@@ -277,6 +308,8 @@ export class IsleSystem {
 
   /** The same, in steps (so the clock on screen can run through the two hours; see GameCore.advanceSteps). */
   *loungerSteps(steps = 1): Generator<number, ActionResult, void> {
+    const shut = this.beachShut();
+    if (shut) return { ok: false, error: shut };
     if (!this.lifeguardOn()) return { ok: false, error: `躺椅 ${formatClock(LIFEGUARD.from)}–${formatClock(LIFEGUARD.to)} 出租` };
     const r = this.core.economy.spend('cash', LOUNGER.price, 'entertainment', '白石湾海滩：躺椅和遮阳伞（2 小时）', 'isle_beach');
     if (!r.ok) return { ok: false, error: `躺椅和遮阳伞 ${formatG(LOUNGER.price)}，只收现金` };
@@ -295,7 +328,9 @@ export class IsleSystem {
 
   *swimSteps(steps = 1): Generator<number, ActionResult, void> {
     const s = this.core.state.player.stats;
-    if (!this.lifeguardOn()) return { ok: false, error: `救生员 ${formatClock(LIFEGUARD.to)} 下班了，现在不能下水。` };
+    const shut = this.beachShut();
+    if (shut) return { ok: false, error: shut };
+    if (!this.lifeguardOn()) return { ok: false, error: this.minute() < LIFEGUARD.from ? `救生员 ${formatClock(LIFEGUARD.from)} 才上班，现在不能下水。` : `救生员 ${formatClock(LIFEGUARD.to)} 下班了，现在不能下水。` };
     if (s.drunk >= 30) return { ok: false, error: '救生员吹了哨子：「喝了酒的不能下水！」' };
     if (s.energy < 20) return { ok: false, error: '你太累了，游不动。' };
     this.s.swimDay = this.core.today();
@@ -320,6 +355,9 @@ export class IsleSystem {
     if (!r || ROOMS[r.kind].where !== 'isle_resort') return { ok: false, error: '住客专享。服务生客气地拦住了你。' };
     const m = this.minute();
     if (m < hm(7) || m >= hm(22)) return { ok: false, error: '泳池和海滩 7:00–22:00 开放' };
+    const w = this.core.weather.now();
+    if (w.storm) return { ok: false, error: '风暴天，泳池和住客海滩都关了。服务生在收遮阳伞。' };
+    if (what === 'beach' && w.raining) return { ok: false, error: '下雨了，住客海滩的躺椅都收起来了。泳池还开着。' };
     const pl = this.core.player;
     if (what === 'pool') {
       yield* this.core.advanceSteps(45, 'exercising', steps);
@@ -343,6 +381,7 @@ export class IsleSystem {
     const ends = this.core.today() * MINUTES_PER_DAY + FISHING.back;
     const no = (reason: string) => ({ ok: false, ends, reason });
     if (d.weekday === 6) return no('礼拜天渔船不出海。');
+    if (this.core.weather.stormDay()) return no('风暴天，渔船都用缆绳拴在港里，今天谁也不出海。');
     if (this.s.fishingDay === this.core.today()) return no('今天已经跟船出过海了。');
     if (d.minuteOfDay < FISHING.from) return no(`船老大还没来，${formatClock(FISHING.from)} 开始招人。`);
     if (d.minuteOfDay > FISHING.until) return no(`船都开走了。明天 ${formatClock(FISHING.from)}–${formatClock(FISHING.until)} 再来。`);
@@ -404,7 +443,14 @@ export class IsleSystem {
   /** Is the fish market on: from when the boats are back until six, Monday to Saturday? */
   marketOpen(): boolean {
     const d = toDate(this.core.now());
+    // no boats out, no catch
+    if (this.core.weather.stormDay()) return false;
     return d.weekday !== 6 && d.minuteOfDay >= FISH_MARKET_HOURS.from && d.minuteOfDay < FISH_MARKET_HOURS.to;
+  }
+
+  /** Are the co-op's boats in the harbour now? */
+  boatsIn(t = this.core.now()): boolean {
+    return boatsIn(t, this.core.weather.stormAt(t));
   }
 
   shackOpen(): boolean {

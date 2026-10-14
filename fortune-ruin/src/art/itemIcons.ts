@@ -379,6 +379,29 @@ const ICONS: Record<string, Draw> = {
     rect(c, 7, 6, 2, 5, '#e8483a');
     rect(c, 5, 8, 6, 1, '#e8483a');
   },
+  umbrella: (c) => {
+    // furled, its strap done up, the wooden crook at the bottom
+    const pal: Record<string, string> = { O, g: '#9a9aa0', b: '#3a64a8', L: '#5f8ed6', D: '#1f3a66', y: '#e8b44c', h: '#7a5232' };
+    const art = [
+      '........O.......',
+      '.......OgO......',
+      '.......ObO......',
+      '......ObLbO.....',
+      '......ODLbO.....',
+      '.....ODbLbbO....',
+      '.....ODbLbbO....',
+      '.....OyyyyyO....',
+      '.....ODbLbbO....',
+      '.....ODbLbbO....',
+      '.....OOOOOOO....',
+      '.......OhO......',
+      '....O..OhO......',
+      '...OhO.OhO......',
+      '...OhhhhhO......',
+      '....OOOOO.......',
+    ];
+    art.forEach((row, y) => [...row].forEach((ch, x) => pal[ch] && px(c, x, y, pal[ch])));
+  },
   strategy_card: (c) => {
     rect(c, 3, 1, 10, 14, O);
     rect(c, 4, 2, 8, 12, '#1f6e46');

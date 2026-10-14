@@ -1,7 +1,7 @@
 import type { GameCore } from '../core/GameCore';
 import type { Patron } from '../core/state';
 import { formatClock, toDate } from '../core/calendar';
-import { FISHING, boatsIn } from '../systems/IsleSystem';
+import { FISHING } from '../systems/IsleSystem';
 
 function pick<T>(arr: T[], seed: number): T {
   return arr[((seed % arr.length) + arr.length) % arr.length];
@@ -19,10 +19,19 @@ export function pedestrianLine(core: GameCore, seed: number): string {
   const lines: string[] = [];
   if (h < 6) lines.push('……这么晚了还不回家？', '夜班刚下，累死了。', '别看我，我只是睡不着。', '这个点的灰港最安静。');
   else if (h < 10) lines.push('早！公交又晚点了。', '得赶紧去上班了。', '海港咖啡排队的人好多。', '早上的风有点凉。');
-  else if (h < 17) lines.push('今天天气不错。', '集市街的面包店出了新款可颂。', '听说河畔那边的房价又涨了。', '午休时间太短了。', '银行门口的队排得好长。');
+  else if (h < 17) lines.push('集市街的面包店出了新款可颂。', '听说河畔那边的房价又涨了。', '午休时间太短了。', '银行门口的队排得好长。');
   else if (h < 22) lines.push('下班啦，去喝一杯？', '赌场门口今晚停满了豪车。', '晚饭吃什么好呢……', '锈锚酒吧今晚有乐队演出。');
   else lines.push('赌场那边的霓虹真晃眼。', '末班车快没了。', '今晚风好大。', '又一个不眠夜。');
   if (d.weekday >= 5) lines.push('周末终于来了！', '周末的河滨公园人真多。');
+  // they can see the sky too
+  const w = core.weather.now();
+  if (w.storm) lines.splice(0, lines.length, '这么大的风你还出门？', '渡轮今天停了，我的货过不去。', '快回家吧，风越来越大了。', '伞都被吹翻了，算了不打了。');
+  else if (w.raining) {
+    lines.push('这雨下得真烦。', '出门的时候还没下呢……', '鞋都湿透了。', '下雨天，赌场的人反而更多。');
+    if (!core.weather.hasUmbrella()) lines.push('你没带伞啊？前面便利店有卖。', '淋成这样，快找个地方躲躲雨吧。');
+  } else if (w.fog > 0.3) lines.push('这雾大得连对面的楼都看不见。', '雾笛响了一早上。');
+  else if (w.overcast >= 0.5) lines.push('看这云，晚点怕是要下雨。', '天阴沉沉的。');
+  else if (h >= 10 && h < 17) lines.push('今天天气不错。', '难得的好天气，去河边走走吧。');
   const s = core.state.player.stats;
   if (core.inventory.appearancePrestige() >= 4) lines.push('（对方打量了一下你的穿着）这身衣服不便宜吧？', '您是住山丘区的吧？');
   if (s.drunk > 50) lines.push('你还好吗？走路都在晃。');
@@ -153,19 +162,22 @@ export function staffLine(role: string, core: GameCore): string {
       return pick(['游船在 A 泊位，开船前半小时登船。', '想包船的话，到办公室窗口来登记。', 'C 泊位空着呢。那两条船都在卖，有兴趣可以看看。', '南边那条深蓝色的是惠特莫尔家的。'], r);
     }
     case 'deckhand':
-      return pick(['上船请扶好栏杆。', '船票在这边买，现金、刷卡都行。', '今天风小，坐上层看得最远。'], r);
+      if (core.marina.stormy()) return pick(['风暴天，游船停航了。', '缆绳加了两道，今天哪儿也不去。'], r);
+      return pick(['上船请扶好栏杆。', '船票在这边买，现金、刷卡都行。', core.weather.raining() ? '下雨也开船，上层有顶棚。' : '今天风小，坐上层看得最远。'], r);
     // Whitestone Bay
     case 'ferry_crew': {
       const next = core.isle.nextFerry();
-      return pick([`下一班 ${formatClock(toDate(next).minuteOfDay)} 开，开船前二十分钟检票。`, '头等舱在上层，有咖啡。', '末班船八点从白石湾开回来，别错过了。'], r);
+      if (core.isle.suspended()) return pick([`风浪太大，今天全天停航。下一班 ${core.isle.departureLabel(next)} 开。`, '这种天开船，船长要被吊销执照的。'], r);
+      return pick([`下一班 ${core.isle.departureLabel(next)} 开，开船前二十分钟检票。`, '头等舱在上层，有咖啡。', '末班船八点从白石湾开回来，别错过了。'], r);
     }
     case 'keeper':
       return pick(['这灯塔一百二十年了，我是第四个守塔的。', '晚上的光能照到对岸的灰港。', '起雾的时候，渔船全靠它回家。'], r);
     case 'skipper': {
       const d = toDate(core.now());
+      if (core.weather.stormDay()) return pick(['这天气谁出海谁是傻子。', '缆绳都加了一道，等风过去吧。', '风暴天鱼也躲起来了。'], r);
       if (d.weekday === 6) return pick(['礼拜天不出海，船也要歇歇。', '明天四点半来，五点半开船。'], r);
-      if (d.minuteOfDay >= FISHING.from && d.minuteOfDay <= FISHING.until) return pick(['要跟船的过来，五点半开船。', '今天风浪不大，上船吧。'], r);
-      return boatsIn(core.now()) ? pick(['船都靠岸了，想跟船明早四点半来。', '今天的鱼都卖到鱼市去了。'], r) : pick(['船都出去了，下午两点半才回来。', '明天四点半再来。'], r);
+      if (d.minuteOfDay >= FISHING.from && d.minuteOfDay <= FISHING.until) return pick(['要跟船的过来，五点半开船。', core.weather.now().fog > 0.3 ? '雾大，跟紧了，别掉下去。' : '今天风浪不大，上船吧。'], r);
+      return core.isle.boatsIn() ? pick(['船都靠岸了，想跟船明早四点半来。', '今天的鱼都卖到鱼市去了。'], r) : pick(['船都出去了，下午两点半才回来。', '明天四点半再来。'], r);
     }
     case 'fishmonger':
       return pick(['刚上岸的，还在蹦！', '带两条回去？清蒸最好吃。', '六点以前来，晚了就只剩小鱼了。'], r);
@@ -174,7 +186,9 @@ export function staffLine(role: string, core: GameCore): string {
     case 'lifeguard':
       return core.isle.lifeguardOn()
         ? pick(['别游出浮标。', '喝了酒的不能下水。', '今天的浪不大，可以游。'], r)
-        : pick(['下班了，现在不能下水。', '明天九点再来游吧。'], r);
+        : core.weather.raining()
+          ? pick(['下雨了，旗子收了，今天先不下水。', '雨停了再说。'], r)
+          : pick(['下班了，现在不能下水。', '明天九点再来游吧。'], r);
     case 'beach_waiter':
       return pick(['需要毛巾吗？', '饮料单夹在伞柄上。', '下午的日落从这里看最好。'], r);
     case 'captain':

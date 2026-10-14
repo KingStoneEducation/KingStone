@@ -12,22 +12,26 @@ type Trip = NonNullable<NpcRuntime['travel']>;
 
 type Pt = { x: number; y: number };
 
+/** Days the ferry does not sail (storms). */
+type FerryOff = (day: number) => boolean;
+const ALWAYS_SAILS: FerryOff = () => false;
+
 /**
  * A trip from one place to another setting out at t (a and b are where they are in
  * Greyhaven, ia and ib where they are on the island). Across the bay it is the walk to the
  * ferry pier, the wait there for the next boat on the timetable, the forty minutes on the
  * water and the walk from the pier on the other side.
  */
-export function planTrip(from: string | null, to: string | null, a: Pt, b: Pt, t: number, ia: Pt = ISLE_PIER.board, ib: Pt = ISLE_PIER.board): Trip {
+export function planTrip(from: string | null, to: string | null, a: Pt, b: Pt, t: number, ia: Pt = ISLE_PIER.board, ib: Pt = ISLE_PIER.board, off: FerryOff = ALWAYS_SAILS): Trip {
   if (onIsle(from) === onIsle(to)) return { from, to, depart: t, arrive: t + travelMinutes(a, b) };
   const toIsle = onIsle(to);
   const pier = t + (toIsle ? travelMinutes(a, FERRY_PIER.board) : travelMinutes(ia, ISLE_PIER.board));
-  return boardAt({ from, to, depart: t, arrive: 0 }, pier, toIsle ? travelMinutes(ISLE_PIER.board, ib) : travelMinutes(FERRY_PIER.board, b));
+  return boardAt({ from, to, depart: t, arrive: 0 }, pier, toIsle ? travelMinutes(ISLE_PIER.board, ib) : travelMinutes(FERRY_PIER.board, b), off);
 }
 
 /** Catch the first boat that leaves after reaching the pier at `pier`; on landing, walk `walk` minutes. */
-function boardAt(trip: Trip, pier: number, walk: number): Trip {
-  const boat = nextDeparture(onIsle(trip.to) ? 'city' : 'isle', pier);
+function boardAt(trip: Trip, pier: number, walk: number, off: FerryOff): Trip {
+  const boat = nextDeparture(onIsle(trip.to) ? 'city' : 'isle', pier, off);
   const land = boat + FERRY_MINUTES;
   return { ...trip, pier, boat, land, arrive: land + walk };
 }
@@ -36,7 +40,7 @@ function boardAt(trip: Trip, pier: number, walk: number): Trip {
  * Someone held up on the way (talking with the player) sets off a minute later: on foot the
  * whole walk shifts, at the pier they still wait for the same boat unless they have missed it.
  */
-function holdUp(trip: Trip, t: number): void {
+function holdUp(trip: Trip, t: number, off: FerryOff): void {
   if (trip.boat === undefined || trip.pier === undefined || trip.land === undefined) {
     trip.depart += 1;
     trip.arrive += 1;
@@ -45,10 +49,13 @@ function holdUp(trip: Trip, t: number): void {
   if (t < trip.pier) {
     trip.depart += 1;
     const walk = trip.arrive - trip.land;
-    if (trip.pier + 1 > trip.boat + FERRY_LATE) Object.assign(trip, boardAt(trip, trip.pier + 1, walk));
+    if (trip.pier + 1 > trip.boat + FERRY_LATE) Object.assign(trip, boardAt(trip, trip.pier + 1, walk, off));
     else trip.pier += 1;
   } else if (t >= trip.land) trip.arrive += 1;
 }
+
+/** What people do out of doors that they would not do in the rain. */
+const FAIR_WEATHER = new Set(['leisure', 'exercise', 'busk']);
 
 export interface Whereabouts {
   loc: string | null;
@@ -121,10 +128,27 @@ export class NPCManager {
       if (b.to > MINUTES_PER_DAY && b.days.includes(yesterday) && d.minuteOfDay < b.to - MINUTES_PER_DAY) startDay = d.dayIndex - 1;
       if (startDay === null) return;
       if (b.chance !== undefined && dayRoll(def.id, startDay, i) >= b.chance) return;
+      if (this.keptIn(b, startDay, t)) return;
       result = { loc: b.loc, spot: b.spot ?? null, act: b.act };
     });
     return result;
   }
+
+  /**
+   * The weather calls a plan off: nobody crosses the bay on a storm day (the ferry is off),
+   * nobody is out of doors in a storm, and in the rain people stay off the benches, the courts
+   * and the beach (the night market's stools are under its awnings).
+   */
+  private keptIn(b: ScheduleBlock, day: number, t: number): boolean {
+    const w = this.core.weather;
+    if (onIsle(b.loc) && w.stormDay(day)) return true;
+    if (b.loc !== 'city' && b.loc !== 'isle') return false;
+    if (w.stormAt(t)) return true;
+    return FAIR_WEATHER.has(b.act) && w.raining(t);
+  }
+
+  /** The days the ferry does not sail. */
+  private ferryOff: FerryOff = (day) => this.core.weather.stormDay(day);
 
   /** Effective target, considering temporary overrides and personal circumstances. */
   target(id: string, t: number): Whereabouts {
@@ -162,7 +186,7 @@ export class NPCManager {
       const rt = this.rt(def.id);
       // someone talking with the player stays put (a traveller's walk is paused, not skipped)
       if (rt.flags.talkHold === true || Number(rt.flags.talkHoldUntil ?? -1) > t) {
-        if (rt.travel) holdUp(rt.travel, t);
+        if (rt.travel) holdUp(rt.travel, t, this.ferryOff);
         continue;
       }
       if (rt.travel) {
@@ -181,7 +205,7 @@ export class NPCManager {
         const from = locationAnchor(rt.location, rt.spot, def.district);
         const to = locationAnchor(w.loc, w.spot, def.district);
         const prev = rt.location;
-        rt.travel = planTrip(prev, w.loc, from, to, t, isleAnchor(prev, rt.spot), isleAnchor(w.loc, w.spot));
+        rt.travel = planTrip(prev, w.loc, from, to, t, isleAnchor(prev, rt.spot), isleAnchor(w.loc, w.spot), this.ferryOff);
         rt.location = null;
         rt.activity = 'travel';
         this.core.bus.emit('npc:departed', { id: def.id, from: prev, to: w.loc });

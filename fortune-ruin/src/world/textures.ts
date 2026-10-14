@@ -9,7 +9,7 @@ import { itemIconCanvas } from '../art/itemIcons';
 import { circle, ellipse, hline, makeCanvas, px, rect, strokeRect, vline } from '../art/canvas';
 import { P } from '../art/palette';
 import { drawText } from '../art/font';
-import { FX, fxCanvas } from '../art/fx';
+import { FX, fxCanvas, UMBRELLA_COLORS, umbrellaCanvas } from '../art/fx';
 import type { CharacterLook } from '../data/npcs';
 
 export const atlas = new AtlasBuilder('atlas');
@@ -171,7 +171,7 @@ export function registerTextures(scene: Phaser.Scene): void {
     circle(ctx, 3, 3, 3, '#c2283a');
     px(ctx, 3, 3, '#f4f1ea');
   });
-  atlas.draw('rain', 2, 6, (ctx) => rect(ctx, 0, 0, 1, 6, 'rgba(180,200,255,0.55)'));
+  UMBRELLA_COLORS.forEach((_, i) => atlas.add(`umbrella:${i}`, umbrellaCanvas(i)));
   atlas.register(scene);
 
   for (const [key, size, inner] of [

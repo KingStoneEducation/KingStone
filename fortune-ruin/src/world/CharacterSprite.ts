@@ -17,6 +17,8 @@ export class CharacterSprite {
   private emoteUntil = 0;
   private bubble: Phaser.GameObjects.Text | null = null;
   private bubbleUntil = 0;
+  private umbrella: Phaser.GameObjects.Image | null = null;
+  private umbrellaColor = -1;
   private texKey: string;
   x: number;
   y: number;
@@ -143,6 +145,24 @@ export class CharacterSprite {
     this.sync();
   }
 
+  /** Put up an umbrella (one of UMBRELLA_COLORS), or take it down (null). */
+  setUmbrella(color: number | null): void {
+    if (color === null) {
+      if (!this.umbrella) return;
+      this.umbrella.destroy();
+      this.umbrella = null;
+      this.umbrellaColor = -1;
+      this.sync();
+      return;
+    }
+    if (this.umbrella && this.umbrellaColor === color) return;
+    const ref = frameRef(`umbrella:${color}`);
+    if (!this.umbrella) this.umbrella = this.scene.add.image(this.x, this.y, ref.key, ref.frame).setOrigin(0.5, 1);
+    else this.umbrella.setTexture(ref.key, ref.frame);
+    this.umbrellaColor = color;
+    this.sync();
+  }
+
   sync(): void {
     const yy = Math.round(this.y + this.bob);
     this.sprite.setPosition(Math.round(this.x), yy + (this.sitting ? 2 : 0));
@@ -153,10 +173,16 @@ export class CharacterSprite {
     this.shadow.setVisible(!this.sitting && !this.noShadow);
     this.sprite.setAlpha(this.alpha);
     this.shadow.setAlpha(this.alpha);
-    if (this.label) this.label.setPosition(Math.round(this.x), Math.round(this.y) - 34);
+    // held up over the head (and the name and bubbles above it)
+    const lift = this.umbrella ? 8 : 0;
+    if (this.umbrella) {
+      const dx = this.dir === 'left' ? -1 : this.dir === 'right' ? 1 : 0;
+      this.umbrella.setPosition(Math.round(this.x) + dx, yy - 27 + (this.sitting ? 4 : 0)).setDepth(d + 0.3).setAlpha(this.alpha);
+    }
+    if (this.label) this.label.setPosition(Math.round(this.x), Math.round(this.y) - 34 - lift);
     const bx = Math.round(this.x + this.bubbleDx);
-    if (this.emote) this.emote.setPosition(bx, Math.round(this.y) - 34 - (this.label ? 6 : 0));
-    if (this.bubble) this.bubble.setPosition(bx, Math.round(this.y) - 35 - (this.label ? 7 : 0) - (this.emote ? 14 : 0));
+    if (this.emote) this.emote.setPosition(bx, Math.round(this.y) - 34 - lift - (this.label ? 6 : 0));
+    if (this.bubble) this.bubble.setPosition(bx, Math.round(this.y) - 35 - lift - (this.label ? 7 : 0) - (this.emote ? 14 : 0));
   }
 
   /** Short speech bubble above the head. */
@@ -224,6 +250,7 @@ export class CharacterSprite {
     this.label?.destroy();
     this.emote?.destroy();
     this.bubble?.destroy();
+    this.umbrella?.destroy();
   }
 }
 

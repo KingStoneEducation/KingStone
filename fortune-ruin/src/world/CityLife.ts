@@ -5,11 +5,19 @@ import { findPath, randomWalkable, type Pt } from './pathfinding';
 import type { CityMap, Lane } from './maps/city';
 import type { LightSource } from './Lighting';
 import { CAR_COLORS } from '../art/props';
+import { UMBRELLA_COLORS } from '../art/fx';
 
 interface Ped {
   sprite: CharacterSprite;
   waitUntil: number;
   leaving: boolean;
+  seed: number;
+}
+
+/** What the sky is doing, as far as people in the street are concerned. */
+export interface StreetWeather {
+  raining: boolean;
+  storm: boolean;
 }
 
 interface Car {
@@ -46,9 +54,9 @@ export class CityLife {
     return 11;
   }
 
-  update(dt: number, now: number, hour: number): void {
-    // pedestrians
-    const target = this.targetPeds(hour);
+  update(dt: number, now: number, hour: number, wx: StreetWeather = { raining: false, storm: false }): void {
+    // pedestrians: fewer in the rain, hardly anyone in a storm; most of those out put an umbrella up
+    const target = Math.round(this.targetPeds(hour) * (wx.storm ? 0.15 : wx.raining ? 0.5 : 1));
     if (this.peds.filter((p) => !p.leaving).length < target && this.rnd() < 0.05) this.spawnPed(now);
     if (this.peds.filter((p) => !p.leaving).length > target + 2) {
       const p = this.peds.find((x) => !x.leaving);
@@ -63,10 +71,13 @@ export class CityLife {
           const from = { x: Math.floor(p.sprite.x / 16), y: Math.floor(p.sprite.y / 16) };
           const to = randomWalkable(this.map, this.rnd, true);
           const path = findPath(this.map, from.x, from.y, to.x, to.y, true, 6000);
-          if (path && path.length > 0) p.sprite.walkPath(path.slice(0, 60), 30 + this.rnd() * 14, () => (p.waitUntil = now + 1500 + this.rnd() * 6000));
+          // in the rain nobody stands about, and those without an umbrella hurry
+          const pace = wx.raining ? (p.seed % 7 === 0 ? 1.45 : 1.15) : 1;
+          if (path && path.length > 0) p.sprite.walkPath(path.slice(0, 60), (30 + this.rnd() * 14) * pace, () => (p.waitUntil = now + (wx.raining ? 400 + this.rnd() * 1200 : 1500 + this.rnd() * 6000)));
           else p.waitUntil = now + 2000;
         }
       }
+      p.sprite.setUmbrella(wx.raining && p.seed % 7 !== 0 ? 1 + (p.seed % (UMBRELLA_COLORS.length - 1)) : null);
       p.sprite.update(dt, now);
     }
     this.peds = this.peds.filter((p) => {
@@ -131,7 +142,7 @@ export class CityLife {
     if (!pt) return;
     const seed = Math.floor(this.rnd() * 100000);
     const s = new CharacterSprite(this.scene, anonLook(seed), pt.x * 16 + 8, pt.y * 16 + 14, 'down');
-    this.peds.push({ sprite: s, waitUntil: now, leaving: false });
+    this.peds.push({ sprite: s, waitUntil: now, leaving: false, seed });
   }
 
   private spawnCar(lane: Lane): void {
@@ -140,6 +151,11 @@ export class CityLife {
     const img = this.scene.add.image(0, 0, ref.key, ref.frame).setOrigin(0.5, lane.dir === 'left' || lane.dir === 'right' ? 0.85 : 0.5);
     const c: Car = { img, lane, pos: lane.from * 16, speed: 62 + this.rnd() * 26, color };
     this.cars.push(c);
+  }
+
+  /** How many people are out in the street now (for the play-tests). */
+  pedCount(): number {
+    return this.peds.filter((p) => !p.leaving).length;
   }
 
   lights(night: boolean): LightSource[] {

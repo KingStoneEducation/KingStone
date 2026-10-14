@@ -254,6 +254,8 @@ export class PlayerSystem {
         return { ok: true, text: `你坐在钢琴前弹了半小时。${gain > 0 ? '指法渐渐熟练了些。' : ''}` };
       }
       case 'exercise': {
+        // the court is out in the open
+        if (core.weather.raining()) return { ok: false, text: '下着雨，球场上全是积水，篮球一拍就溅一身。等雨停了再来吧。' };
         if (s.energy < 20) return { ok: false, text: '你太累了，现在练不动。' };
         if (s.hunger > 80) return { ok: false, text: '饿着肚子运动容易头晕，先吃点东西吧。' };
         core.advance(45, 'exercising');

@@ -73,6 +73,7 @@ export const ITEMS: Record<string, ItemDef> = Object.fromEntries(
       { id: 'groceries_fresh', name: '新鲜食材', kind: 'grocery', price: G(32), desc: '新鲜蔬菜和肉，可做 3 餐，更健康。', meals: 3, effects: { hunger: -50, mood: 5, health: 2 }, useMinutes: 45 },
       { id: 'painkillers', name: '止痛药', kind: 'misc', price: G(8), desc: '缓解头痛和宿醉。', effects: { health: 4, stress: -3, drunk: -10 }, useMinutes: 2 },
       { id: 'strategy_card', name: '21点基本策略卡', kind: 'misc', price: G(5), desc: '赌场允许使用的策略卡。持有后可在21点桌查看基本策略建议。它不改变赔率，只帮你少犯错。' },
+      { id: 'umbrella', name: '折叠伞', kind: 'misc', price: G(15), desc: '带在身上，下雨天走在街上就不会被淋湿。风暴天也只能挡一点。', resale: 0.3 },
       { id: 'wine_bottle', name: '红酒（瓶装）', kind: 'gift', price: G(22), desc: '适合作为礼物。', giftTags: ['wine'] },
       { id: 'flowers', name: '花束', kind: 'gift', price: G(25), desc: '一束新鲜的花。', giftTags: ['flowers'] },
       { id: 'book_finance', name: '《个人理财入门》', kind: 'book', price: G(28), desc: '在家阅读可提升理财能力。', skill: { id: 'finance', amount: 8, cap: 40 }, useMinutes: 120, giftTags: ['book'] },
@@ -282,7 +283,7 @@ export const SHOPS: Record<string, ShopDef> = {
   store: {
     id: 'store',
     name: 'QuickMart 便利店',
-    items: ['instant_noodles', 'rice_ball', 'sandwich', 'chocolate', 'water', 'canned_coffee', 'energy_drink', 'beer_can', 'groceries_basic', 'groceries_fresh', 'painkillers', 'wine_bottle', 'flowers', 'strategy_card', 'book_finance', 'book_career', 'book_social', 'book_cards'],
+    items: ['instant_noodles', 'rice_ball', 'sandwich', 'chocolate', 'water', 'canned_coffee', 'energy_drink', 'beer_can', 'groceries_basic', 'groceries_fresh', 'painkillers', 'umbrella', 'wine_bottle', 'flowers', 'strategy_card', 'book_finance', 'book_career', 'book_social', 'book_cards'],
     accepts: ['cash', 'card'],
     greeting: '欢迎光临 QuickMart！',
   },

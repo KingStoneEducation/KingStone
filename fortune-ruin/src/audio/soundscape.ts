@@ -17,6 +17,8 @@ export interface SoundContext {
   table: { game: string; area: string } | null;
   /** among the stalls of the night market while it is open */
   nightMarket?: boolean;
+  /** what it is doing outside */
+  weather?: { raining: boolean; intensity: number; storm: boolean; fog: number };
 }
 
 const LUXURY_HOMES = new Set(['home_penthouse', 'home_estate']);
@@ -86,11 +88,32 @@ export function musicFor(c: SoundContext): TrackId | null {
 /** Sparse spot sounds only (no continuous noise beds). */
 export type SpotAmbience = 'casino' | 'city_night' | 'cafe' | null;
 
+const outdoors = (c: SoundContext) => c.location === 'city' || c.location === 'isle';
+
 export function ambienceFor(c: SoundContext): SpotAmbience {
   if (c.screen !== 'game') return null;
   // no chips clicking on the quiet members' floor
   if (c.location === 'casino' && !c.table) return c.casinoArea && SKY_AREAS.has(c.casinoArea) ? null : 'casino';
-  if ((c.location === 'city' || c.location === 'isle') && c.night) return 'city_night';
+  // the night's small sounds are drowned by the rain
+  if (outdoors(c) && c.night) return c.weather?.raining ? null : 'city_night';
   if (c.ambience === 'cafe' || (c.ambience === 'restaurant' && c.location !== 'fine_dining')) return 'cafe';
   return null;
+}
+
+/** The weather as heard from where you are: how hard the rain falls on you or on the roof, and the foghorn. */
+export interface WeatherSound {
+  /** 0..1 */
+  rain: number;
+  /** heard through a roof and windows */
+  muffled: boolean;
+  foghorn: boolean;
+}
+
+export function weatherSoundFor(c: SoundContext): WeatherSound | null {
+  if (c.screen !== 'game' || !c.weather) return null;
+  // the casino floor has no windows and the tables are in it
+  if (c.location === 'casino' && (c.table || !c.casinoArea || !SKY_AREAS.has(c.casinoArea))) return null;
+  const out = outdoors(c);
+  const rain = c.weather.raining ? (c.weather.storm ? 1 : 0.25 + 0.75 * c.weather.intensity) : 0;
+  return { rain, muffled: !out, foghorn: out && c.weather.fog > 0.5 };
 }

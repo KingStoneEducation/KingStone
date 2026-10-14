@@ -79,6 +79,7 @@ function CruiseTab(): JSX.Element {
   const boarding = core.marina.boardingCruise();
   const out = core.marina.tourBoatOut();
   const err = core.marina.boardCheck('cruise', pay);
+  const storm = core.marina.stormy();
   return (
     <div className="stack">
       <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
@@ -86,7 +87,7 @@ function CruiseTab(): JSX.Element {
         <div className="grow stack" style={{ gap: 6 }}>
           <div className="note">双层的港湾游船，绕灯塔一周再回来，全程 {CRUISE_MINUTES} 分钟。开船前 {BOARD_BEFORE} 分钟开始登船，船票在船边买，现金、银行卡都行。</div>
           <div className="muted" style={{ fontSize: 12 }}>
-            {out ? '游船正在海上，回港以后才有下一班。' : boarding ? `${boarding.name}正在登船，${formatClock(boarding.at)} 开船。` : '游船靠在 A 泊位。'}
+            {storm ? '风暴天，游船全天停航，用双缆拴在 A 泊位。' : out ? '游船正在海上，回港以后才有下一班。' : boarding ? `${boarding.name}正在登船，${formatClock(boarding.at)} 开船。` : '游船靠在 A 泊位。'}
             {core.state.marina!.cruises > 0 && ` 你已经坐过 ${core.state.marina!.cruises} 次。`}
           </div>
         </div>
@@ -99,7 +100,8 @@ function CruiseTab(): JSX.Element {
             <div className="item" key={c.at}>
               <div className="grow">
                 <div className="title">
-                  {formatClock(c.at)} · {c.name} {now ? <span className="tag good">登船中</span> : gone ? <span className="tag">已开走</span> : <span className="tag">{formatClock(c.at - BOARD_BEFORE)} 起登船</span>}
+                  {formatClock(c.at)} · {c.name}{' '}
+                  {storm ? <span className="tag bad">停航</span> : now ? <span className="tag good">登船中</span> : gone ? <span className="tag">已开走</span> : <span className="tag">{formatClock(c.at - BOARD_BEFORE)} 起登船</span>}
                 </div>
                 <div className="desc">
                   <GV v={c.price} /> · 约 {formatClock(c.at + CRUISE_MINUTES)} 回港{c.at >= 19 * 60 ? ' · 夜游：灰港的灯火和灯塔的光' : c.at >= 17 * 60 ? ' · 正赶上日落' : ''}
@@ -237,6 +239,7 @@ function BookForm(props: { kind: 'charter' | 'own'; max: number; cost: number; l
   const core = useCore();
   const slots = core.marina.slots();
   const [at, setAt] = useState<number>(slots[0] ?? 0);
+  const stormDays = [0, 1].filter((i) => core.weather.stormDay(core.today() + i));
   const [guests, setGuests] = useState<string[]>([]);
   const [pay, setPay] = useState<Pay>('card');
   const [fb, say] = useFeedback();
@@ -250,6 +253,7 @@ function BookForm(props: { kind: 'charter' | 'own'; max: number; cost: number; l
           </button>
         ))}
       </div>
+      {stormDays.length > 0 && <div className="note">气象台预报{stormDays.map((i) => (i === 0 ? '今天' : '明天')).join('和')}有风暴，游艇会那天不出船。</div>}
       <div className="muted" style={{ fontSize: 12 }}>
         约朋友一起（最多 {props.max} 位，已选 {guests.length} 位）。答应的人会在开船前到码头等你。
       </div>

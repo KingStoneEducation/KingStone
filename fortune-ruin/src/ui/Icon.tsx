@@ -15,6 +15,8 @@ const COLORS: Record<string, string> = {
   b: '#4f7fbf',
   g: '#6f9a52',
   s: '#b8915a',
+  c: '#d6dde4',
+  G: '#8f99a6',
 };
 
 const ICONS: Record<string, string[]> = {
@@ -25,6 +27,13 @@ const ICONS: Record<string, string[]> = {
   clock: ['..kkkkkk..', '.kwwwwwwk.', 'kwwwkwwwwk', 'kwwwkwwwwk', 'kwwwkkkwwk', 'kwwwwwwwwk', 'kwwwwwwwwk', '.kwwwwwwk.', '..kkkkkk..', '..........'],
   calendar: ['.k..kk..k.', 'kkkkkkkkkk', 'krrrrrrrrk', 'kkkkkkkkkk', 'kwwwwwwwwk', 'kwkwkwkwwk', 'kwwwwwwwwk', 'kwkwkwwwwk', 'kkkkkkkkkk', '..........'],
   coin: ['..kkkkkk..', '.kyyyyyyk.', 'kyywyyyyyk', 'kywyykyyyk', 'kyyykkyyyk', 'kyyyykyyyk', 'kyyykkkyyk', '.kyyyyyyk.', '..kkkkkk..', '..........'],
+  // the weather
+  sun: ['....yy....', '.y......y.', '...kkkk...', '..kyyyyk..', 'y.kywyyk.y', 'y.kyyyyk.y', '..kyyyyk..', '...kkkk...', '.y......y.', '....yy....'],
+  moon: ['.....kkk..', '....kyyyk.', '...kyykk..', '...kyk....', '..kyyk....', '..kyyk....', '...kyk....', '...kyykk..', '....kyyyk.', '.....kkk..'],
+  cloud: ['..........', '..........', '...kkk....', '..kccck...', '.kccccccck.', 'kcccccccck', 'kccccccGck', '.kkkkkkkk.', '..........', '..........'],
+  rain: ['...kkk....', '..kccck...', '.kcccccck.', 'kccccccGck', '.kkkkkkkk.', '..........', '.b...b..b.', 'b...b..b..', '..........', '..b...b...'],
+  storm: ['...kkk....', '..kGGGk...', '.kGGGGGkk.', 'kGGGGGGGGk', '.kkkkykkk.', '....yy....', '...yy.....', '..yyyyy...', '....yy....', '...y......'],
+  fog: ['..........', '.GGGGGG...', '..........', '...GGGGGGG', '..........', 'GGGGGGG...', '..........', '..GGGGGGG.', '..........', '..........'],
 };
 
 export type IconName = keyof typeof ICONS;

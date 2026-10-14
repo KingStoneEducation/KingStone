@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { store, type Panel } from './store';
 import { useCore } from './hooks';
 import { Bar, GV, Keycap } from './components';
-import { formatClock, formatDate, MINUTES_PER_DAY, SEASON_NAMES, toDate, WEEKDAY_NAMES } from '../core/calendar';
+import { daylight, formatClock, formatDate, MINUTES_PER_DAY, SEASON_NAMES, toDate, WEEKDAY_NAMES } from '../core/calendar';
 import { LOCATIONS, isOpen } from '../data/locations';
 import { formatG, G, type Money } from '../core/money';
 import type { AccountId } from '../core/state';
 import { Icon } from './Icon';
+import { describeNow } from '../systems/WeatherSystem';
 
 function Clock(): JSX.Element {
   const core = useCore();
@@ -19,6 +20,9 @@ function Clock(): JSX.Element {
   const def = LOCATIONS[loc];
   let status = '';
   if (def?.hours && loc !== 'city') status = isOpen(def, d.weekday, d.minuteOfDay) ? '' : ' · 已过营业时间';
+  // the sky, as far as you can see it (not from the windowless casino floor)
+  const wx = core.weather.now();
+  const sky = describeNow(wx, daylight(core.now()) < 0.35);
   return (
     <div className="hud-box interactive" title={hide ? '赌场里没有时钟。可以在设置里打开。' : undefined}>
       <div className="clock">
@@ -26,6 +30,11 @@ function Clock(): JSX.Element {
         <span className="date">
           {formatDate(d)} · {SEASON_NAMES[d.season]}
         </span>
+        {!(inCasino && !upstairs) && (
+          <span className="date wx" title={core.weather.hasUmbrella() ? '你带着伞' : wx.raining ? '没带伞，走在外面会被淋湿' : undefined}>
+            <Icon name={sky.icon} /> {sky.name} {wx.temp}°
+          </span>
+        )}
       </div>
       <div className="loc">
         <Icon name="pin" /> {def?.name ?? loc}

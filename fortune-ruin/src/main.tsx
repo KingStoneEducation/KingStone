@@ -10,7 +10,7 @@ import { RouletteScene } from './tables/RouletteScene';
 import { PokerScene } from './tables/PokerScene';
 import { setGame } from './game/session';
 import { audio, sfx } from './audio/Audio';
-import { ambienceFor, musicFor, type SoundContext } from './audio/soundscape';
+import { ambienceFor, musicFor, weatherSoundFor, type SoundContext } from './audio/soundscape';
 import { LOCATIONS } from './data/locations';
 import { BIZ_TYPES } from './data/business';
 import { TABLE_BY_ID } from './casino/tables';
@@ -76,10 +76,12 @@ function updateSoundscape(): void {
     night: inGame ? daylight(core!.now()) < 0.35 : true,
     casinoArea: inGame ? (store.world?.casinoArea() ?? null) : null,
     table: table ? { game: table.game, area: table.area } : null,
-    nightMarket: inGame && loc === 'city' && inArea(core!.state.world, NIGHT_MARKET_AREA) && nightMarketOpen(core!.now()),
+    nightMarket: inGame && loc === 'city' && inArea(core!.state.world, NIGHT_MARKET_AREA) && nightMarketOpen(core!.now(), core!.weather.stormDay()),
+    weather: inGame ? core!.weather.now() : undefined,
   };
   audio.setMusic(musicFor(ctx));
   audio.setAmbience(ambienceFor(ctx));
+  audio.setWeather(weatherSoundFor(ctx));
 }
 
 // browsers only allow audio after a user gesture
