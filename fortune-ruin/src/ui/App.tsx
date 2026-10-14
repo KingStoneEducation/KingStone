@@ -21,6 +21,7 @@ import { BusinessPanel } from './panels/BusinessPanel';
 import { TableUI } from './table/TableUI';
 import { ConciergeModal } from './modals/ConciergeModal';
 import { Desktop } from './computer/Desktop';
+import { venueTheme } from './theme';
 
 function ModalHost(): JSX.Element | null {
   const m = store.modal;
@@ -167,12 +168,19 @@ function GameUI(): JSX.Element {
 
 export function App(): JSX.Element {
   useStore();
+  if (store.screen === 'game' && store.core) {
+    return (
+      <div className={`ui-theme ${venueTheme(store.core)}`}>
+        <GameUI />
+        <Toasts />
+      </div>
+    );
+  }
   return (
     <>
       {store.screen === 'menu' && <MainMenu />}
       {store.screen === 'create' && <CharacterCreate />}
-      {store.screen === 'game' && <GameUI />}
-      {store.screen !== 'game' && <ModalHost />}
+      <ModalHost />
       <Toasts />
     </>
   );

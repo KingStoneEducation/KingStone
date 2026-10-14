@@ -63,6 +63,7 @@
   --shadow: 4px 4px 0 rgba(20, 10, 4, 0.45);
   --font: 'Fusion Pixel', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
   --mono: 'Fusion Pixel', monospace;
+  --head-hi: #8a5c36;
 }
 
 * {
@@ -346,7 +347,7 @@ input[type='checkbox'] {
   border-bottom: 2px solid var(--line-dark);
   background: var(--wood);
   color: var(--cream);
-  box-shadow: inset 0 2px 0 #8a5c36;
+  box-shadow: inset 0 2px 0 var(--head-hi);
 }
 
 .modal-head h2 {
@@ -942,7 +943,7 @@ table.data th.r {
   background: var(--wood);
   padding: 0 6px;
   border: 2px solid var(--line-dark);
-  box-shadow: inset 0 2px 0 #8a5c36;
+  box-shadow: inset 0 2px 0 var(--head-hi);
 }
 
 .dlg-name .s {
@@ -1812,4 +1813,396 @@ kbd {
   --os-raised: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect width='8' height='8' fill='%23c0c0c0'/%3E%3Crect x='0' y='0' width='7' height='1' fill='%23ffffff'/%3E%3Crect x='0' y='0' width='1' height='7' fill='%23ffffff'/%3E%3Crect x='1' y='1' width='5' height='1' fill='%23dfdfdf'/%3E%3Crect x='1' y='1' width='1' height='5' fill='%23dfdfdf'/%3E%3Crect x='0' y='7' width='8' height='1' fill='%230a0a0a'/%3E%3Crect x='7' y='0' width='1' height='8' fill='%230a0a0a'/%3E%3Crect x='1' y='6' width='6' height='1' fill='%23808080'/%3E%3Crect x='6' y='1' width='1' height='6' fill='%23808080'/%3E%3C/svg%3E");
   --os-pressed: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect width='8' height='8' fill='%23b8b8b8'/%3E%3Crect x='0' y='0' width='7' height='1' fill='%230a0a0a'/%3E%3Crect x='0' y='0' width='1' height='7' fill='%230a0a0a'/%3E%3Crect x='1' y='1' width='5' height='1' fill='%23808080'/%3E%3Crect x='1' y='1' width='1' height='5' fill='%23808080'/%3E%3Crect x='0' y='7' width='8' height='1' fill='%23ffffff'/%3E%3Crect x='7' y='0' width='1' height='8' fill='%23ffffff'/%3E%3Crect x='1' y='6' width='6' height='1' fill='%23dfdfdf'/%3E%3Crect x='6' y='1' width='1' height='6' fill='%23dfdfdf'/%3E%3C/svg%3E");
   --os-sunken: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect width='8' height='8' fill='%23ffffff'/%3E%3Crect x='0' y='0' width='7' height='1' fill='%23808080'/%3E%3Crect x='0' y='0' width='1' height='7' fill='%23808080'/%3E%3Crect x='1' y='1' width='5' height='1' fill='%230a0a0a'/%3E%3Crect x='1' y='1' width='1' height='5' fill='%230a0a0a'/%3E%3Crect x='0' y='7' width='8' height='1' fill='%23ffffff'/%3E%3Crect x='7' y='0' width='1' height='8' fill='%23ffffff'/%3E%3Crect x='1' y='6' width='6' height='1' fill='%23dfdfdf'/%3E%3Crect x='6' y='1' width='1' height='6' fill='%23dfdfdf'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------------------------------------ venue themes
+ * The interface takes on the look of the place you are in (set on .ui-theme by
+ * the game screen). Every theme only redefines the frame images and colour
+ * tokens the components already use, so it stays the same pixel interface.
+ */
+
+.ui-theme {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.theme-casino {
+  --frame-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314030a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314030a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238a6a2a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23e0b13e'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233a0c18'/%3E%3C/svg%3E");
+  --frame-inset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23200610'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23200610'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%235a1828'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%231a040c'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%234a1222'/%3E%3C/svg%3E");
+  --frame-btn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314030a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314030a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%235a1222'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23c25062'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%238a1e30'/%3E%3C/svg%3E");
+  --frame-btn-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314030a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314030a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%236a1828'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23d86878'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%239a2638'/%3E%3C/svg%3E");
+  --frame-btn-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314030a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314030a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23c25062'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%235a1222'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%237a1a2a'/%3E%3C/svg%3E");
+  --frame-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23a8701a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffe9a8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8b44c'/%3E%3C/svg%3E");
+  --frame-gold-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23b98222'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23fff3c9'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23f3c45e'/%3E%3C/svg%3E");
+  --frame-gold-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23ffe9a8'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23a8701a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23dca43c'/%3E%3C/svg%3E");
+  --frame-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23a8701a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffe9a8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8b44c'/%3E%3C/svg%3E");
+  --frame-tab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314030a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314030a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%234a1020'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%238a3040'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%235a1424'/%3E%3C/svg%3E");
+  --frame-tab-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314030a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314030a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%233a0c18'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23c25062'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233a0c18'/%3E%3Crect x='1' y='6' width='6' height='2' fill='%233a0c18'/%3E%3Crect x='0' y='6' width='1' height='2' fill='%2314030a'/%3E%3Crect x='7' y='6' width='1' height='2' fill='%2314030a'/%3E%3C/svg%3E");
+  --frame-wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a0204'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a0204'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2314030a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%236a1828'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%2324060c'/%3E%3C/svg%3E");
+  --frame-ghost: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%23c9a24a'/%3E%3C/svg%3E");
+  --frame-ghost-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%23f6e8cc'/%3E%3C/svg%3E");
+  --paper: #3a0c18;
+  --paper-2: #4a1222;
+  --paper-3: #5a1828;
+  --ink: #f6e8cc;
+  --line-dark: #0a0204;
+  --wood: #24060c;
+  --cream: #f6e8cc;
+  --head-hi: #6a1828;
+  --panel: #3a0c18;
+  --panel-solid: #3a0c18;
+  --panel2: #4a1222;
+  --panel3: #5a1828;
+  --line: #8a6a2a;
+  --line-soft: #6a3a34;
+  --text: #f6e8cc;
+  --muted: #dcbc90;
+  --dim: #ac8c70;
+  --gold: #f0c84a;
+  --gold-light: #f0c84a;
+  --pink: #ff8ac0;
+  --cyan: #7ae0e8;
+  --good: #8ae09a;
+  --bad: #ff9a8a;
+  --warn: #f8c070;
+  --info: #9ac0f8;
+}
+.theme-casino button.primary {
+  color: #2a1206;
+}
+.theme-casino .tag {
+  background: rgba(0, 0, 0, 0.28);
+  border-color: var(--line);
+}
+.theme-casino .tag.good,
+.theme-casino .tag.bad,
+.theme-casino .tag.warn,
+.theme-casino .tag.gold {
+  background: rgba(0, 0, 0, 0.32);
+  border-color: currentColor;
+}
+.theme-casino .bar {
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.theme-casino .choice.active .d {
+  color: var(--muted);
+}
+.theme-sky {
+  --frame-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23060a16'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23060a16'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238a6a2a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23e0c070'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%231a2340'/%3E%3C/svg%3E");
+  --frame-inset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1020'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1020'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%232c3864'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23080c18'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23222c4e'/%3E%3C/svg%3E");
+  --frame-btn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23060a16'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23060a16'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231e2a50'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%236a7ab8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%2333416a'/%3E%3C/svg%3E");
+  --frame-btn-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23060a16'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23060a16'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2326346a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%237a8ac8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233d4c7a'/%3E%3C/svg%3E");
+  --frame-btn-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23060a16'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23060a16'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%236a7ab8'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%231e2a50'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232a375e'/%3E%3C/svg%3E");
+  --frame-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23a8701a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffe9a8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8b44c'/%3E%3C/svg%3E");
+  --frame-gold-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23b98222'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23fff3c9'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23f3c45e'/%3E%3C/svg%3E");
+  --frame-gold-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23ffe9a8'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23a8701a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23dca43c'/%3E%3C/svg%3E");
+  --frame-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23a8701a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffe9a8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8b44c'/%3E%3C/svg%3E");
+  --frame-tab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23060a16'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23060a16'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231a2448'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%234a5a90'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%2328335a'/%3E%3C/svg%3E");
+  --frame-tab-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23060a16'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23060a16'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231a2340'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%236a7ab8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%231a2340'/%3E%3Crect x='1' y='6' width='6' height='2' fill='%231a2340'/%3E%3Crect x='0' y='6' width='1' height='2' fill='%23060a16'/%3E%3Crect x='7' y='6' width='1' height='2' fill='%23060a16'/%3E%3C/svg%3E");
+  --frame-wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2304060e'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2304060e'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23060a16'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%232c3864'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23121a30'/%3E%3C/svg%3E");
+  --frame-ghost: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%23c9a24a'/%3E%3C/svg%3E");
+  --frame-ghost-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%23ece6d6'/%3E%3C/svg%3E");
+  --paper: #1a2340;
+  --paper-2: #222c4e;
+  --paper-3: #2c3864;
+  --ink: #ece6d6;
+  --line-dark: #04060e;
+  --wood: #121a30;
+  --cream: #ece6d6;
+  --head-hi: #33416a;
+  --panel: #1a2340;
+  --panel-solid: #1a2340;
+  --panel2: #222c4e;
+  --panel3: #2c3864;
+  --line: #8a6a2a;
+  --line-soft: #3a4670;
+  --text: #ece6d6;
+  --muted: #c0b8a4;
+  --dim: #8e8878;
+  --gold: #f0d68a;
+  --gold-light: #f0d68a;
+  --pink: #f8a0d0;
+  --cyan: #8ae0f0;
+  --good: #8ae09a;
+  --bad: #ff9a8a;
+  --warn: #f8c070;
+  --info: #a8c8ff;
+}
+.theme-sky button.primary {
+  color: #2a1206;
+}
+.theme-sky .tag {
+  background: rgba(0, 0, 0, 0.28);
+  border-color: var(--line);
+}
+.theme-sky .tag.good,
+.theme-sky .tag.bad,
+.theme-sky .tag.warn,
+.theme-sky .tag.gold {
+  background: rgba(0, 0, 0, 0.32);
+  border-color: currentColor;
+}
+.theme-sky .bar {
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.theme-sky .choice.active .d {
+  color: var(--muted);
+}
+.theme-bank {
+  --frame-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314202e'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314202e'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238a9ab0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e6edf4'/%3E%3C/svg%3E");
+  --frame-inset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%238a9ab0'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%238a9ab0'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23f8fbfe'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23c2cedb'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23dae3ec'/%3E%3C/svg%3E");
+  --frame-btn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314202e'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314202e'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238a9ab0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23d2dce6'/%3E%3C/svg%3E");
+  --frame-btn-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314202e'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314202e'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%239aa8bc'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e0e8f0'/%3E%3C/svg%3E");
+  --frame-btn-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314202e'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314202e'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23ffffff'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%238a9ab0'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23c8d4e0'/%3E%3C/svg%3E");
+  --frame-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1424'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1424'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231a3a6a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%237a9ad8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232c4c8c'/%3E%3C/svg%3E");
+  --frame-gold-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1424'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1424'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2324467a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%238aaae4'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233a5a9a'/%3E%3C/svg%3E");
+  --frame-gold-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1424'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1424'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%237a9ad8'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%231a3a6a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%2324407e'/%3E%3C/svg%3E");
+  --frame-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1424'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1424'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231a3a6a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%237a9ad8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232c4c8c'/%3E%3C/svg%3E");
+  --frame-tab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314202e'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314202e'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238a9ab0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23eef3f8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23cad6e2'/%3E%3C/svg%3E");
+  --frame-tab-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2314202e'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2314202e'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23e6edf4'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e6edf4'/%3E%3Crect x='1' y='6' width='6' height='2' fill='%23e6edf4'/%3E%3Crect x='0' y='6' width='1' height='2' fill='%2314202e'/%3E%3Crect x='7' y='6' width='1' height='2' fill='%2314202e'/%3E%3C/svg%3E");
+  --frame-wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1420'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1420'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2314202e'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%233a5a86'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%231e3a5e'/%3E%3C/svg%3E");
+  --frame-ghost: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%236a7a90'/%3E%3C/svg%3E");
+  --frame-ghost-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%2314202e'/%3E%3C/svg%3E");
+  --paper: #e6edf4;
+  --paper-2: #dae3ec;
+  --paper-3: #c8d4e0;
+  --ink: #142030;
+  --line-dark: #14202e;
+  --wood: #1e3a5e;
+  --cream: #f0f4f8;
+  --head-hi: #3a5a86;
+  --panel: #e6edf4;
+  --panel-solid: #e6edf4;
+  --panel2: #dae3ec;
+  --panel3: #c8d4e0;
+  --line: #8a9ab0;
+  --line-soft: #b8c4d2;
+  --text: #142030;
+  --muted: #46566a;
+  --dim: #7a8798;
+  --gold: #7a5a10;
+  --gold-light: #6a4a08;
+  --pink: #9a2a5a;
+  --cyan: #1a6070;
+  --good: #1f6a2e;
+  --bad: #a8281a;
+  --warn: #8a5008;
+  --info: #1e4a8a;
+}
+.theme-bank button.primary {
+  color: #ffffff;
+}
+.theme-cafe {
+  --frame-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1c10'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1c10'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23b8946a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23fffaf0'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23f4ead8'/%3E%3C/svg%3E");
+  --frame-inset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23b89c78'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23b89c78'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23fffaf0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23d8c6aa'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23ece0cc'/%3E%3C/svg%3E");
+  --frame-btn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1c10'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1c10'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23b8946a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23fffaf0'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23ecdcc0'/%3E%3C/svg%3E");
+  --frame-btn-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1c10'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1c10'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23c8a47a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23f4e6cc'/%3E%3C/svg%3E");
+  --frame-btn-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1c10'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1c10'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23fffaf0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23b8946a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e0d0b0'/%3E%3C/svg%3E");
+  --frame-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2310241a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2310241a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%232a5a3a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%239ad0a8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233f7a5a'/%3E%3C/svg%3E");
+  --frame-gold-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2310241a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2310241a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23346a46'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23aadcb6'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%234a8a66'/%3E%3C/svg%3E");
+  --frame-gold-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2310241a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2310241a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%239ad0a8'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%232a5a3a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%2336704e'/%3E%3C/svg%3E");
+  --frame-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2310241a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2310241a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%232a5a3a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%239ad0a8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233f7a5a'/%3E%3C/svg%3E");
+  --frame-tab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1c10'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1c10'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23b8946a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23f8eedc'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e2d2b4'/%3E%3C/svg%3E");
+  --frame-tab-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1c10'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1c10'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23f4ead8'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23fffaf0'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23f4ead8'/%3E%3Crect x='1' y='6' width='6' height='2' fill='%23f4ead8'/%3E%3Crect x='0' y='6' width='1' height='2' fill='%232a1c10'/%3E%3Crect x='7' y='6' width='1' height='2' fill='%232a1c10'/%3E%3C/svg%3E");
+  --frame-wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%2310241a'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%2310241a'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231a3a28'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%234a7a5a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232f5a44'/%3E%3C/svg%3E");
+  --frame-ghost: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%238b6a46'/%3E%3C/svg%3E");
+  --frame-ghost-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%232a1c10'/%3E%3C/svg%3E");
+  --paper: #f4ead8;
+  --paper-2: #ece0cc;
+  --paper-3: #dccab0;
+  --ink: #2a1c10;
+  --line-dark: #2a1c10;
+  --wood: #2f5a44;
+  --cream: #f4ead8;
+  --head-hi: #4a7a5a;
+  --panel: #f4ead8;
+  --panel-solid: #f4ead8;
+  --panel2: #ece0cc;
+  --panel3: #dccab0;
+  --line: #b89c78;
+  --line-soft: #d8c6aa;
+  --text: #2a1c10;
+  --muted: #6a5038;
+  --dim: #94785e;
+  --gold: #8a5a10;
+  --gold-light: #7a4a08;
+  --pink: #a8326a;
+  --cyan: #1f6f78;
+  --good: #2f7a3a;
+  --bad: #b23a2a;
+  --warn: #a9600e;
+  --info: #2f5c96;
+}
+.theme-cafe button.primary {
+  color: #ffffff;
+}
+.theme-bar {
+  --frame-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230c0602'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230c0602'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%236a4422'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23a8703f'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232e1c10'/%3E%3C/svg%3E");
+  --frame-inset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23120a04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23120a04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%234a2e18'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23160c06'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233a2414'/%3E%3C/svg%3E");
+  --frame-btn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230c0602'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230c0602'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%235a3a20'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23b07a48'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%237a5030'/%3E%3C/svg%3E");
+  --frame-btn-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230c0602'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230c0602'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%236a4428'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23c08a58'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%238a5a38'/%3E%3C/svg%3E");
+  --frame-btn-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230c0602'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230c0602'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23b07a48'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%235a3a20'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%236a4428'/%3E%3C/svg%3E");
+  --frame-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1404'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1404'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23a8601a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffd08a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8a040'/%3E%3C/svg%3E");
+  --frame-gold-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1404'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1404'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23b8702a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffe0a8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23f0b050'/%3E%3C/svg%3E");
+  --frame-gold-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1404'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1404'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23ffd08a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23a8601a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23d89030'/%3E%3C/svg%3E");
+  --frame-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%232a1404'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%232a1404'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23a8601a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffd08a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8a040'/%3E%3C/svg%3E");
+  --frame-tab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230c0602'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230c0602'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%234a2e18'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%238a5a38'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%235a3a22'/%3E%3C/svg%3E");
+  --frame-tab-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230c0602'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230c0602'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%232e1c10'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23a8703f'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232e1c10'/%3E%3Crect x='1' y='6' width='6' height='2' fill='%232e1c10'/%3E%3Crect x='0' y='6' width='1' height='2' fill='%230c0602'/%3E%3Crect x='7' y='6' width='1' height='2' fill='%230c0602'/%3E%3C/svg%3E");
+  --frame-wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23060302'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23060302'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%230c0602'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%235a3a20'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%231a1008'/%3E%3C/svg%3E");
+  --frame-ghost: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%23a8703f'/%3E%3C/svg%3E");
+  --frame-ghost-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%23f2dec2'/%3E%3C/svg%3E");
+  --paper: #2e1c10;
+  --paper-2: #3a2414;
+  --paper-3: #4a2e18;
+  --ink: #f2dec2;
+  --line-dark: #060302;
+  --wood: #1a1008;
+  --cream: #f2dec2;
+  --head-hi: #5a3a20;
+  --panel: #2e1c10;
+  --panel-solid: #2e1c10;
+  --panel2: #3a2414;
+  --panel3: #4a2e18;
+  --line: #7a5030;
+  --line-soft: #4a3220;
+  --text: #f2dec2;
+  --muted: #ccaa88;
+  --dim: #9c7c5c;
+  --gold: #f8c060;
+  --gold-light: #f8c060;
+  --pink: #ff9ac8;
+  --cyan: #8ae0e8;
+  --good: #9ae0a0;
+  --bad: #ff9a8a;
+  --warn: #f8c070;
+  --info: #a8c8f8;
+}
+.theme-bar button.primary {
+  color: #2a1206;
+}
+.theme-bar .tag {
+  background: rgba(0, 0, 0, 0.28);
+  border-color: var(--line);
+}
+.theme-bar .tag.good,
+.theme-bar .tag.bad,
+.theme-bar .tag.warn,
+.theme-bar .tag.gold {
+  background: rgba(0, 0, 0, 0.32);
+  border-color: currentColor;
+}
+.theme-bar .bar {
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.theme-bar .choice.active .d {
+  color: var(--muted);
+}
+.theme-luxe {
+  --frame-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23000000'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23000000'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238a6a2a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23e8c870'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%2315130f'/%3E%3C/svg%3E");
+  --frame-inset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23050505'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23050505'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%232a2620'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%230a0908'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%231e1b17'/%3E%3C/svg%3E");
+  --frame-btn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23000000'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23000000'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%232a2620'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%236a6458'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233a3630'/%3E%3C/svg%3E");
+  --frame-btn-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23000000'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23000000'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2334302a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%237a7466'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%2346423a'/%3E%3C/svg%3E");
+  --frame-btn-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23000000'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23000000'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%236a6458'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%232a2620'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23302c26'/%3E%3C/svg%3E");
+  --frame-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23a8701a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffe9a8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8b44c'/%3E%3C/svg%3E");
+  --frame-gold-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23b98222'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23fff3c9'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23f3c45e'/%3E%3C/svg%3E");
+  --frame-gold-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23ffe9a8'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23a8701a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23dca43c'/%3E%3C/svg%3E");
+  --frame-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231a0c04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231a0c04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23a8701a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffe9a8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8b44c'/%3E%3C/svg%3E");
+  --frame-tab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23000000'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23000000'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2324201c'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%235a5448'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232e2a24'/%3E%3C/svg%3E");
+  --frame-tab-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23000000'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23000000'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2315130f'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%236a6458'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%2315130f'/%3E%3Crect x='1' y='6' width='6' height='2' fill='%2315130f'/%3E%3Crect x='0' y='6' width='1' height='2' fill='%23000000'/%3E%3Crect x='7' y='6' width='1' height='2' fill='%23000000'/%3E%3C/svg%3E");
+  --frame-wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23000000'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23000000'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23050505'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%233a3630'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%230a0908'/%3E%3C/svg%3E");
+  --frame-ghost: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%238a6a2a'/%3E%3C/svg%3E");
+  --frame-ghost-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%23efe6d2'/%3E%3C/svg%3E");
+  --paper: #15130f;
+  --paper-2: #1e1b17;
+  --paper-3: #2a2620;
+  --ink: #efe6d2;
+  --line-dark: #000000;
+  --wood: #0a0908;
+  --cream: #efe6d2;
+  --head-hi: #3a3630;
+  --panel: #15130f;
+  --panel-solid: #15130f;
+  --panel2: #1e1b17;
+  --panel3: #2a2620;
+  --line: #8a6a2a;
+  --line-soft: #3a342a;
+  --text: #efe6d2;
+  --muted: #c0b290;
+  --dim: #8c8270;
+  --gold: #f0d070;
+  --gold-light: #f0d070;
+  --pink: #f8a0c8;
+  --cyan: #8ae0e8;
+  --good: #9ae0a0;
+  --bad: #ff9a8a;
+  --warn: #f8c870;
+  --info: #a8c8f8;
+}
+.theme-luxe button.primary {
+  color: #2a1206;
+}
+.theme-luxe .tag {
+  background: rgba(0, 0, 0, 0.28);
+  border-color: var(--line);
+}
+.theme-luxe .tag.good,
+.theme-luxe .tag.bad,
+.theme-luxe .tag.warn,
+.theme-luxe .tag.gold {
+  background: rgba(0, 0, 0, 0.32);
+  border-color: currentColor;
+}
+.theme-luxe .bar {
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+.theme-luxe .choice.active .d {
+  color: var(--muted);
+}
+.theme-office {
+  --frame-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231c2430'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231c2430'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%239aa4b0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23eceff2'/%3E%3C/svg%3E");
+  --frame-inset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23a8b0ba'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23a8b0ba'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23ffffff'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ccd2d8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e0e4e8'/%3E%3C/svg%3E");
+  --frame-btn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231c2430'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231c2430'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%239aa4b0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23dce1e6'/%3E%3C/svg%3E");
+  --frame-btn-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231c2430'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231c2430'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23aab4c0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8ecf0'/%3E%3C/svg%3E");
+  --frame-btn-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231c2430'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231c2430'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23ffffff'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%239aa4b0'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23d0d6dc'/%3E%3C/svg%3E");
+  --frame-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1830'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1830'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231a4a8a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%238ab4f0'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232f6fb8'/%3E%3C/svg%3E");
+  --frame-gold-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1830'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1830'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2324569a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%239ac0f8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233a7ac4'/%3E%3C/svg%3E");
+  --frame-gold-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1830'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1830'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238ab4f0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%231a4a8a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232862a8'/%3E%3C/svg%3E");
+  --frame-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1830'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1830'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231a4a8a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%238ab4f0'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232f6fb8'/%3E%3C/svg%3E");
+  --frame-tab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231c2430'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231c2430'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%239aa4b0'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23f4f6f8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23d6dce2'/%3E%3C/svg%3E");
+  --frame-tab-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%231c2430'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%231c2430'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23eceff2'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23eceff2'/%3E%3Crect x='1' y='6' width='6' height='2' fill='%23eceff2'/%3E%3Crect x='0' y='6' width='1' height='2' fill='%231c2430'/%3E%3Crect x='7' y='6' width='1' height='2' fill='%231c2430'/%3E%3C/svg%3E");
+  --frame-wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23101820'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23101820'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231c2430'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%234a5a72'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232a3a52'/%3E%3C/svg%3E");
+  --frame-ghost: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%237a8490'/%3E%3C/svg%3E");
+  --frame-ghost-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%2318202a'/%3E%3C/svg%3E");
+  --paper: #eceff2;
+  --paper-2: #e0e4e8;
+  --paper-3: #cfd5db;
+  --ink: #18202a;
+  --line-dark: #1c2430;
+  --wood: #2a3a52;
+  --cream: #f4f6f8;
+  --head-hi: #4a5a72;
+  --panel: #eceff2;
+  --panel-solid: #eceff2;
+  --panel2: #e0e4e8;
+  --panel3: #cfd5db;
+  --line: #9aa4b0;
+  --line-soft: #c4cad2;
+  --text: #18202a;
+  --muted: #4a5462;
+  --dim: #7a8490;
+  --gold: #7a5a10;
+  --gold-light: #6a4a08;
+  --pink: #9a2a5a;
+  --cyan: #1a6070;
+  --good: #1f6a2e;
+  --bad: #a8281a;
+  --warn: #8a5008;
+  --info: #1e4a8a;
+}
+.theme-office button.primary {
+  color: #ffffff;
 }

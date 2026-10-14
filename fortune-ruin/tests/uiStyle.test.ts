@@ -5,6 +5,11 @@ const sources = import.meta.glob('../src/ui/**/*.tsx', { query: '?raw', import: 
 const css = Object.values(import.meta.glob('../src/ui/styles.css', { query: '?raw', import: 'default', eager: true }) as Record<string, string>)[0];
 
 describe('pixel interface rules', () => {
+  it('reads the whole stylesheet (the checks below would pass on an empty one)', () => {
+    expect(css.length).toBeGreaterThan(50_000);
+    expect(css).toContain('#ui-root');
+  });
+
   it('scales the interface so the pixel font lands on whole device pixels where it can', () => {
     expect(uiZoom(1280, 720, 1)).toBe(1);
     expect(uiZoom(1366, 768, 1)).toBe(1);

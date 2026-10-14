@@ -23,5 +23,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    // let tests read the stylesheet's text (otherwise CSS imports come back empty)
+    css: { include: [/styles\.css/] },
   },
 });
