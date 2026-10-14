@@ -23,6 +23,7 @@ import { ConciergeModal } from './modals/ConciergeModal';
 import { Desktop } from './computer/Desktop';
 import { CharityModal, FortuneModal, LaborModal, PawnModal } from './modals/OldTownModals';
 import { AuctionModal } from './modals/AuctionModal';
+import { CruiseModal, MarinaModal } from './modals/MarinaModal';
 import { venueTheme } from './theme';
 
 function ModalHost(): JSX.Element | null {
@@ -87,6 +88,10 @@ function ModalHost(): JSX.Element | null {
       return <FortuneModal />;
     case 'auction':
       return <AuctionModal tab={m.tab} lot={m.lot} />;
+    case 'marina':
+      return <MarinaModal tab={m.tab} />;
+    case 'cruise':
+      return <CruiseModal report={m.report} />;
   }
 }
 

@@ -6,6 +6,7 @@ import { formatG } from '../core/money';
 import { LOCATIONS } from '../data/locations';
 import { emptyOldTown } from './OldTownSystem';
 import { emptyAuction } from './AuctionSystem';
+import { emptyMarina } from './MarinaSystem';
 
 export interface StorageLike {
   getItem(key: string): string | null;
@@ -71,6 +72,7 @@ export function migrate(state: GameState): GameState {
   s.economy.stakes ??= [];
   s.oldtown ??= emptyOldTown();
   s.auction ??= emptyAuction();
+  s.marina ??= emptyMarina();
   s.meta.version = SAVE_VERSION;
   return s;
 }

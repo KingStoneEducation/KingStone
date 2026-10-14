@@ -40,9 +40,17 @@ describe('the interface takes on the look of the venue', () => {
     expect(venueTheme(c)).toBe('theme-sky');
   });
 
+  it('turns nautical on the marina pontoon, and back on the promenade', () => {
+    const c = newCore();
+    c.setLocation('city', 109, 45);
+    expect(venueTheme(c)).toBe('theme-marina');
+    c.setLocation('city', 104, 45);
+    expect(venueTheme(c)).toBe('');
+  });
+
   it('defines every theme it hands out, with the full set of frames and colours', () => {
     const c = newCore();
-    const used = new Set<string>();
+    const used = new Set<string>(['theme-marina']);
     for (const id of allInteriorIds()) {
       c.setLocation(id, 1, 1);
       used.add(venueTheme(c));

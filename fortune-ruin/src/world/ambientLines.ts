@@ -1,6 +1,6 @@
 import type { GameCore } from '../core/GameCore';
 import type { Patron } from '../core/state';
-import { toDate } from '../core/calendar';
+import { formatClock, toDate } from '../core/calendar';
 
 function pick<T>(arr: T[], seed: number): T {
   return arr[((seed % arr.length) + arr.length) % arr.length];
@@ -144,6 +144,15 @@ export function staffLine(role: string, core: GameCore): string {
     }
     case 'fortune':
       return pick(['看相吗？二十块，不灵不要钱——开玩笑的，灵不灵都要钱。', '坐下，让我看看你的眼睛。'], r);
+    case 'dockmaster': {
+      const b = core.state.marina?.booking;
+      const own = core.marina.ownedDef();
+      if (b) return pick([`您约的船 ${formatClock(toDate(b.at).minuteOfDay)} 出发，提前半小时就可以登船。`, '客人到了我会让他们在栈桥上等您。'], r);
+      if (own) return pick([`${own.name}昨天刚做过保养，随时可以出海。`, 'C 泊位那条是您的吧？船员都在。', '这个月的泊位费账单一号会寄到。'], r);
+      return pick(['游船在 A 泊位，开船前半小时登船。', '想包船的话，到办公室窗口来登记。', 'C 泊位空着呢。那两条船都在卖，有兴趣可以看看。', '南边那条深蓝色的是惠特莫尔家的。'], r);
+    }
+    case 'deckhand':
+      return pick(['上船请扶好栏杆。', '船票在这边买，现金、刷卡都行。', '今天风小，坐上层看得最远。'], r);
     case 'guard_booth':
     default:
       return '你好。';

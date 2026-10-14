@@ -3100,12 +3100,201 @@ def({
   },
 });
 
+
+// ------------------------------------------------------------------ the marina
+
+/** The harbour tour boat: two decks, a striped funnel, bobbing at the pier. */
+def({
+  id: 'tour_boat',
+  w: 72,
+  h: 38,
+  foot: { w: 4, h: 1 },
+  frames: 2,
+  draw: (ctx, f) => {
+    const y = f;
+    shadow(ctx, 36, 32 + y, 34, 4);
+    // hull
+    rect(ctx, 2, 22 + y, 68, 9, '#f4f1ea');
+    rect(ctx, 2, 28 + y, 68, 3, '#2a4a8a');
+    for (let x = 2; x < 6; x++) px(ctx, x, 30 + y - (x - 2), '#f4f1ea');
+    strokeRect(ctx, 2, 22 + y, 68, 9, O);
+    // lower deck with windows, upper deck with railings
+    rect(ctx, 8, 14 + y, 54, 9, '#e8e2d0');
+    for (let x = 11; x < 60; x += 6) rect(ctx, x, 16 + y, 4, 4, '#3a6a9a');
+    strokeRect(ctx, 8, 14 + y, 54, 9, O);
+    rect(ctx, 14, 8 + y, 34, 6, '#e8e2d0');
+    for (let x = 14; x < 48; x += 3) vline(ctx, x, 5 + y, 3, '#5a606a');
+    hline(ctx, 14, 5 + y, 34, '#5a606a');
+    strokeRect(ctx, 14, 8 + y, 34, 6, O);
+    // funnel and flag
+    rect(ctx, 52, 4 + y, 6, 10, '#c8283a');
+    hline(ctx, 52, 7 + y, 6, '#f4f1ea');
+    vline(ctx, 20, 0 + y, 6, '#2a2a2e');
+    rect(ctx, 21, 0 + y, 5, 3, '#e0b13e');
+    drawText(ctx, 'TOURS', 26, 24 + y, '#2a4a8a', '3x5');
+  },
+  night: (ctx, f) => {
+    for (let x = 11; x < 60; x += 6) rect(ctx, x, 16 + f, 4, 4, '#ffd88a');
+  },
+});
+
+/** A Seagull 42 sailing yacht, sails furled; the hull stripe and name tell the boats apart. */
+function sailYacht(id: string, name: string, stripe: string): void {
+  def({
+    id,
+    w: 64,
+    h: 54,
+    foot: { w: 4, h: 1 },
+    frames: 2,
+    draw: (ctx, f) => {
+      const y = f;
+      shadow(ctx, 32, 48 + y, 30, 4);
+      // mast, stays, boom and the furled sail
+      vline(ctx, 30, 2 + y, 36, '#c8ccd4');
+      vline(ctx, 31, 2 + y, 36, '#8a8f96');
+      for (let k = 0; k < 20; k++) px(ctx, 31 + k, 4 + y + Math.round(k * 1.6), '#5a606a');
+      for (let k = 0; k < 16; k++) px(ctx, 29 - k, 4 + y + Math.round(k * 2), '#5a606a');
+      hline(ctx, 14, 31 + y, 18, '#8a8f96');
+      rect(ctx, 15, 28 + y, 15, 3, '#f4f1ea');
+      for (let x = 17; x < 30; x += 4) px(ctx, x, 29 + y, '#5a606a');
+      // hull with a raked bow on the right
+      rect(ctx, 4, 38 + y, 52, 8, '#f8f6f0');
+      for (let k = 0; k < 6; k++) vline(ctx, 56 + k, 38 + y, 7 - k, '#f8f6f0');
+      rect(ctx, 4, 44 + y, 53, 2, stripe);
+      hline(ctx, 4, 38 + y, 56, O);
+      hline(ctx, 4, 46 + y, 52, O);
+      vline(ctx, 3, 38 + y, 9, O);
+      for (let k = 0; k < 6; k++) px(ctx, 56 + k, 45 + y - k, O);
+      drawText(ctx, name, 8, 39 + y, stripe, '3x5');
+      // cabin, cockpit and the teak deck
+      rect(ctx, 20, 33 + y, 22, 5, '#e8e2d0');
+      for (const x of [23, 29, 35]) rect(ctx, x, 34 + y, 4, 2, '#3a5a7a');
+      strokeRect(ctx, 20, 33 + y, 22, 5, O);
+      hline(ctx, 5, 37 + y, 50, '#b88a56');
+      rect(ctx, 6, 35 + y, 6, 2, '#a8703f');
+      // the rail and the stern ladder
+      hline(ctx, 4, 34 + y, 14, '#c8ccd4');
+      for (const x of [4, 9, 14]) vline(ctx, x, 34 + y, 3, '#c8ccd4');
+      vline(ctx, 2, 40 + y, 6, '#c8ccd4');
+    },
+    night: (ctx, f) => {
+      for (const x of [23, 29, 35]) rect(ctx, x, 34 + f, 4, 2, '#ffd88a');
+      px(ctx, 30, 2 + f, '#ff5a4a');
+      px(ctx, 60, 39 + f, '#5aff7a');
+    },
+  });
+}
+sailYacht('yacht_club', 'ALBATROSS', '#b8283a');
+sailYacht('yacht_seagull', 'SEAGULL', '#1c2a4a');
+
+/** A big motor yacht: flybridge, tinted glass. */
+function motorYacht(id: string, name: string, hull: string, trim: string, letters: string): void {
+  def({
+    id,
+    w: 96,
+    h: 44,
+    foot: { w: 6, h: 1 },
+    frames: 2,
+    draw: (ctx, f) => {
+      const y = f;
+      shadow(ctx, 48, 38 + y, 46, 4);
+      rect(ctx, 2, 26 + y, 84, 10, hull);
+      for (let k = 0; k < 10; k++) vline(ctx, 86 + k, 26 + y, Math.max(1, 9 - k), hull);
+      rect(ctx, 2, 32 + y, 86, 2, trim);
+      hline(ctx, 2, 26 + y, 92, O);
+      hline(ctx, 2, 36 + y, 84, O);
+      vline(ctx, 1, 26 + y, 11, O);
+      for (let k = 0; k < 10; k++) px(ctx, 86 + k, 35 + y - k, O);
+      // swim platform at the stern
+      rect(ctx, 0, 33 + y, 4, 2, '#b88a56');
+      // main deck saloon and the flybridge
+      rect(ctx, 14, 16 + y, 62, 10, '#f0ede4');
+      rect(ctx, 18, 18 + y, 54, 5, '#1a2230');
+      hline(ctx, 18, 18 + y, 54, '#3a4a60');
+      strokeRect(ctx, 14, 16 + y, 62, 10, O);
+      rect(ctx, 28, 9 + y, 34, 7, '#f0ede4');
+      rect(ctx, 32, 10 + y, 24, 4, '#1a2230');
+      strokeRect(ctx, 28, 9 + y, 34, 7, O);
+      vline(ctx, 50, 2 + y, 7, '#c8ccd4');
+      hline(ctx, 46, 4 + y, 9, '#c8ccd4');
+      hline(ctx, 4, 25 + y, 10, '#c8ccd4');
+      hline(ctx, 76, 25 + y, 10, '#c8ccd4');
+      drawText(ctx, name, 6, 27 + y, letters, '3x5');
+    },
+    night: (ctx, f) => {
+      rect(ctx, 18, 18 + f, 54, 5, '#ffd88a');
+      rect(ctx, 32, 10 + f, 24, 4, '#ffe2a8');
+      hline(ctx, 2, 36 + f, 84, 'rgba(120,180,255,0.6)');
+    },
+  });
+}
+motorYacht('yacht_aurora', 'AURORA', '#f8f6f0', '#2a2e38', '#a8801a');
+motorYacht('yacht_whitmore', 'WHITMORE', '#1c2a44', '#c9a24a', '#e0b13e');
+
+def({
+  id: 'marina_office',
+  w: 32,
+  h: 40,
+  foot: { w: 2, h: 1 },
+  light: { x: 16, y: 20, r: 30, color: '#ffe2a0' },
+  draw: (ctx) => {
+    shadow(ctx, 16, 38, 14, 2);
+    rect(ctx, 2, 12, 28, 26, '#f4f1ea');
+    for (let yy = 14; yy < 36; yy += 4) hline(ctx, 2, yy, 28, '#dcd6c8');
+    // roof
+    for (let i = 0; i < 6; i++) hline(ctx, 1 + i, 6 + i, 30 - i * 2, i === 0 ? O : '#2a4a8a');
+    rect(ctx, 0, 11, 32, 2, '#1c3a6a');
+    // sign, window, door, life ring
+    rect(ctx, 3, 14, 26, 7, '#2a4a8a');
+    drawText(ctx, 'MARINA', 5, 15, '#ffffff', '3x5');
+    rect(ctx, 5, 23, 9, 7, '#3a6a9a');
+    strokeRect(ctx, 5, 23, 9, 7, O);
+    rect(ctx, 18, 24, 8, 14, P.woodDark);
+    px(ctx, 24, 31, P.gold);
+    circle(ctx, 9, 34, 3, '#e86a2a');
+    circle(ctx, 9, 34, 1, '#f4f1ea');
+    strokeRect(ctx, 2, 12, 28, 26, O);
+  },
+  night: (ctx) => {
+    rect(ctx, 5, 23, 9, 7, '#ffd88a');
+  },
+});
+
+def({
+  id: 'bollard',
+  w: 10,
+  h: 12,
+  foot: { w: 1, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 5, 10, 4, 1);
+    rect(ctx, 2, 3, 6, 7, '#2a2e38');
+    rect(ctx, 1, 2, 8, 2, '#3a3f4a');
+    hline(ctx, 2, 5, 6, '#c9b48e');
+  },
+});
+
 // ------------------------------------------------------------------ registry & build
 
 export const PROPS: Record<string, PropDef> = Object.fromEntries(defs.map((d) => [d.id, d]));
 
 export function propFrameName(id: string, frame: number, night = false): string {
   return `prop:${id}:${frame}${night ? ':n' : ''}`;
+}
+
+const urls = new Map<string, string>();
+
+/** A prop drawn on its own, as a data URL (the UI shows boats and the like with it). */
+export function propImageUrl(id: string, frame = 0): string {
+  const key = `${id}:${frame}`;
+  let u = urls.get(key);
+  if (!u) {
+    const d = PROPS[id];
+    const { canvas, ctx } = makeCanvas(d.w, d.h);
+    d.draw(ctx, frame);
+    u = canvas.toDataURL();
+    urls.set(key, u);
+  }
+  return u;
 }
 
 export function buildPropImages(add: (name: string, c: HTMLCanvasElement) => void): void {

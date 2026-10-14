@@ -261,7 +261,7 @@ export class EconomySystem {
   }
 
   totalAssets(): Money {
-    return this.liquid() + this.securitiesValue() + this.propertyValue() + this.vehicleValue() + this.valuablesValue() + this.receivablesValue() + this.stakesValue() + this.core.business.value() + this.core.pawn.equity() + this.core.auction.value();
+    return this.liquid() + this.securitiesValue() + this.propertyValue() + this.vehicleValue() + this.valuablesValue() + this.receivablesValue() + this.stakesValue() + this.core.business.value() + this.core.pawn.equity() + this.core.auction.value() + this.core.marina.value();
   }
 
   /** Real net worth: assets minus liabilities. */

@@ -66,6 +66,9 @@ const UNIFORMS: Record<string, Partial<CharacterLook>> = {
   vendor: { style: 'apron', top: '#4a6a8a', topShade: '#36506a', bottom: '#2a2a30', shoes: '#2a2a2e', accent: '#e8e2d0' },
   foreman: { style: 'jacket', top: '#e86a2a', topShade: '#b85020', bottom: '#2f3a52', shoes: '#3a2a1a', accent: '#f2d24a', hat: 'cap' },
   fortune: { style: 'jacket', top: '#3a2a4a', topShade: '#2a1c36', bottom: '#1a1a22', shoes: '#111111', accent: '#c9a24a', glasses: true },
+  // the marina
+  dockmaster: { style: 'uniform', top: '#f4f1ea', topShade: '#cfcabe', bottom: '#1c2a4a', shoes: '#2a1a12', accent: '#e0b13e', hat: 'cap' },
+  deckhand: { style: 'shirt', top: '#2a4a8a', topShade: '#1c3466', bottom: '#e8e4da', shoes: '#f4f1ea', accent: '#f4f1ea' },
 };
 
 /** Generic staff and extras get a uniform matching their role. */

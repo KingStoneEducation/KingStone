@@ -84,8 +84,15 @@ function planks(light: string, dark: string, seam: string, horizontal = true, se
         hline(ctx, x, yy, 16, shade(c, 0.08));
         speckle(ctx, x, yy, 16, 3, dark, 0.06, seed + r);
       } else {
-        rect(ctx, x + r * 4, y, 4, 16, c);
-        vline(ctx, x + r * 4 + 3, y, 16, seam);
+        const xx = x + r * 4;
+        rect(ctx, xx, y, 4, 16, c);
+        vline(ctx, xx + 3, y, 16, seam);
+        const cut = Math.floor(hash2(r, seed, 2) * 12) + 2;
+        hline(ctx, xx, y + cut, 3, seam);
+        vline(ctx, xx, y, 16, shade(c, 0.08));
+        speckle(ctx, xx, y, 3, 16, dark, 0.06, seed + r);
+        // the screws that hold a board down
+        px(ctx, xx + 1, y + ((cut + 8) % 16), shade(seam, -0.1));
       }
     }
   };
@@ -427,6 +434,15 @@ def('sand', (ctx, x, y) => {
   speckle(ctx, x, y, 16, 16, shade(P.sand, 0.1), 0.08, 32);
 });
 def('dock', planks('#8a6a4a', '#5e4630', '#4a3624', true, 3));
+// the marina's floating pontoons: teak boards, the south edge showing the float and a white fender strip
+def('deck', planks('#bf9160', '#9a7044', '#6e4c2c', false, 5));
+def('deck_s', (ctx, x, y) => {
+  planks('#bf9160', '#9a7044', '#6e4c2c', false, 5)(ctx, x, y);
+  rect(ctx, x, y + 11, 16, 5, '#4a3a2e');
+  hline(ctx, x, y + 11, 16, '#2e241c');
+  hline(ctx, x, y + 13, 16, '#e8e4dc');
+  hline(ctx, x, y + 15, 16, '#2a3a4a');
+});
 def('court', (ctx, x, y) => {
   rect(ctx, x, y, 16, 16, '#3f6f8a');
   speckle(ctx, x, y, 16, 16, '#36607a', 0.1, 41);
@@ -607,6 +623,7 @@ for (let k = 1; k < 4; k++) {
   def(`wood_light~${k}`, planks(P.woodPale, P.wood, shade(P.wood, -0.2), true, 81 + k * 17));
   def(`wood_mid~${k}`, planks(P.woodLight, P.wood, P.woodDark, true, 82 + k * 17));
   def(`wood_dark~${k}`, planks('#5a3a26', '#3a2416', '#2a1a10', true, 83 + k * 17));
+  def(`deck~${k}`, planks('#bf9160', '#9a7044', '#6e4c2c', false, 5 + k * 13));
   def(`sidewalk~${k}`, worn(pavers(P.sidewalk, P.sidewalkDark, P.sidewalkLight, 8, 1), k, P.sidewalkDark, 140 + k));
   def(`sidewalk2~${k}`, worn(pavers(P.sidewalk, P.sidewalkDark, P.sidewalkLight, 8, 2), k, P.sidewalkDark, 150 + k));
   def(`plaza~${k}`, worn(pavers(P.plaza, P.plazaDark, P.plazaLight, 8, 11), k, P.plazaDark, 160 + k));
@@ -649,7 +666,7 @@ for (const base of ['marble', 'marble2', 'marble_dark']) {
     return TILE_INDEX[`${base}~${d}${(x % 2) + (y % 2) * 2}`];
   });
 }
-for (const base of ['wood_light', 'wood_mid', 'wood_dark']) {
+for (const base of ['wood_light', 'wood_mid', 'wood_dark', 'deck']) {
   DISPLAY.set(TILE_INDEX[base], (x, y) => {
     const k = Math.floor(hash2(x, y, 223) * 4);
     return k === 0 ? TILE_INDEX[base] : TILE_INDEX[`${base}~${k}`];

@@ -642,6 +642,18 @@ export interface GameState {
   oldtown?: OldTownState;
   /** the Sunday art sale at the Grand Hotel and the player's collection; absent in old saves */
   auction?: AuctionState;
+  /** the marina: cruises, charters and the player's boat; absent in old saves */
+  marina?: MarinaState;
+}
+
+export interface MarinaState {
+  owned: 'seagull' | 'aurora' | null;
+  boughtDay: number;
+  /** a charter or a party on your own boat, booked for a departure time */
+  booking: { at: number; kind: 'charter' | 'own'; guests: string[]; paid: Money; reminded?: boolean } | null;
+  cruises: number;
+  charters: number;
+  trips: number;
 }
 
 /** A painting or a collectible: in a catalogue, or owned by the player. */

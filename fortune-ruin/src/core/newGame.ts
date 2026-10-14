@@ -11,6 +11,7 @@ import { emptyFlow } from '../systems/EconomySystem';
 import { initialMarket } from '../systems/MarketSystem';
 import { emptyOldTown } from '../systems/OldTownSystem';
 import { emptyAuction } from '../systems/AuctionSystem';
+import { emptyMarina } from '../systems/MarinaSystem';
 import { BASE_IMPULSIVITY } from '../systems/PlayerSystem';
 import { GameCore } from './GameCore';
 
@@ -210,6 +211,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
     stories: { active: [], done: [], ended: {} },
     oldtown: emptyOldTown(),
     auction: emptyAuction(),
+    marina: emptyMarina(),
   };
 
   // relationships

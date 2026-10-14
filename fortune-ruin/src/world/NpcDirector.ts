@@ -162,6 +162,31 @@ export class NpcDirector {
     }
   }
 
+  /** Friends going aboard with the player: they stop where they are and take no orders from the schedule until they are back. */
+  board(ids: string[]): CharacterSprite[] {
+    const out: CharacterSprite[] = [];
+    for (const id of ids) {
+      const s = this.sprites.get(id);
+      if (!s || this.leaving.has(id)) continue;
+      this.engage(id);
+      s.fixedDepth = null;
+      s.setSitting(false);
+      out.push(s);
+    }
+    return out;
+  }
+
+  /** Back on the pier: they go to wherever the simulation has them now (lingering on the pontoon, then off home). */
+  disembark(ids: string[]): void {
+    for (const id of ids) {
+      this.engaged.delete(id);
+      this.displaced.delete(id);
+      this.returnAt.delete(id);
+      // a spot that differs from the remembered one makes them walk there on the next update
+      this.targetSpot.set(id, null);
+    }
+  }
+
   /** Reconcile sprites with simulation state; animate arrivals, departures and spot changes. */
   update(dt: number, now: number, nowF: number): void {
     const loc = this.host.map.id;
@@ -180,7 +205,14 @@ export class NpcDirector {
         const seat = loc === 'casino' ? this.host.seatFor(def.id) : null;
         const spot = this.spotFor(def.id, rt.spot);
         const goal = seat ? { x: Math.floor(seat.x / 16), y: Math.floor(seat.y / 16) } : { x: spot.x, y: spot.y };
-        const startTile = loc === 'city' ? this.cityAnchorTile(rt.travel?.from ?? null, def.district) ?? { x: spot.x, y: spot.y } : this.host.regionEntry(goal.x, goal.y);
+        // someone who just crossed town on foot carries on from where their walk ended; someone who got
+        // there while time skipped ahead (a night's sleep, a shift) is simply there
+        const crossed = loc === 'city' ? this.travellers.get(def.id) : undefined;
+        const startTile = crossed
+          ? { x: Math.floor(crossed.sprite.x / 16), y: Math.floor((crossed.sprite.y - 3) / 16) }
+          : loc === 'city'
+            ? { x: spot.x, y: spot.y }
+            : this.host.regionEntry(goal.x, goal.y);
         const p = tilePx(startTile);
         s.setPos(p.x, p.y);
         const path = findPath(this.host.map, startTile.x, startTile.y, goal.x, goal.y, loc === 'city') ?? [];
@@ -392,7 +424,8 @@ export class NpcDirector {
         const fromLoc = rt.travel.from;
         const toLoc = rt.travel.to;
         const a = locationAnchor(fromLoc, fromLoc === 'city' ? rt.spot : null, def.district);
-        const b = locationAnchor(toLoc, null, def.district);
+        // a walk to somewhere outdoors ends at that spot, not at their home's door
+        const b = locationAnchor(toLoc, toLoc === 'city' ? core.npcs.target(rt.id, rt.travel.arrive).spot : null, def.district);
         const start = { x: a.x, y: a.y + (fromLoc && fromLoc !== 'city' ? 1 : 0) };
         const end = { x: b.x, y: b.y + (toLoc && toLoc !== 'city' ? 1 : 0) };
         const path = [start, ...(findPath(this.host.map, start.x, start.y, end.x, end.y, true, 20000) ?? [end])];

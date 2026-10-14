@@ -123,6 +123,37 @@ export const CITY_SPOTS: Record<string, { x: number; y: number; face?: 'down' | 
   nm_stroll: { x: 36, y: 81, face: 'up' },
   // the foreman's corner at Pier 7
   pier7: { x: 13, y: 87, face: 'left' },
+  // the marina's pontoon: guests waiting by the club's boat (berth B) and by the player's berth (C)
+  marina_c1: { x: 110, y: 45, face: 'right' },
+  marina_c2: { x: 109, y: 46, face: 'right' },
+  marina_c3: { x: 110, y: 47, face: 'right' },
+  marina_o1: { x: 110, y: 50, face: 'right' },
+  marina_o2: { x: 109, y: 51, face: 'right' },
+  marina_o3: { x: 110, y: 52, face: 'right' },
+  marina_o4: { x: 109, y: 50, face: 'right' },
+  marina_o5: { x: 109, y: 52, face: 'right' },
+  marina_o6: { x: 110, y: 49, face: 'right' },
+  marina_o7: { x: 109, y: 49, face: 'right' },
+  marina_o8: { x: 110, y: 53, face: 'right' },
+  // Alexander by the family's boat at the south berth
+  marina_whitmore: { x: 111, y: 55, face: 'right' },
+  marina_view: { x: 111, y: 40, face: 'right' },
+};
+
+/** The marina's pontoon off the river promenade, and its four berths (anchor row of each boat). */
+export const MARINA = { x0: 108, x1: 111, y0: 40, y1: 57, gangway: 47, berths: { tour: 42, club: 46, own: 51, whitmore: 56 }, boatX: 112 };
+
+/** Places out of doors that the map shows and a taxi can drop you at (there is no door, so no LOCATIONS entry). */
+export const OUTDOOR_PLACES: Record<string, { name: string; short: string; tile: { x: number; y: number }; desc: string; hours: string }> = {
+  marina: {
+    name: '灰港游艇会',
+    short: '游艇会',
+    tile: { x: 106, y: 47 },
+    desc: '河滨步道东侧的浮动码头：港湾游船、包船出海，也代售游艇。',
+    hours: '游船 11:00、14:00、17:00、19:30 开船 · 包船 10:00、14:00、18:00',
+  },
+  night_market: { name: '旧码头夜市', short: '夜市', tile: { x: 36, y: 81 }, desc: '老城区水边的夜市：炒档、烤串、糖水、旧书和看相。只收现金。', hours: '每天 18:00–24:00，周五、周六到凌晨 2:00' },
+  pier7: { name: '7 号码头', short: '7 号码头', tile: { x: 12, y: 87 }, desc: '清早在这里招临时工卸货，当场结钱。', hours: '周一至周六 5:30 起招工' },
 };
 
 export const BUS_STOPS: { id: string; name: string; x: number; y: number }[] = [

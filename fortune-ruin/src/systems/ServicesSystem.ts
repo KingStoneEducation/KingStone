@@ -2,7 +2,7 @@ import type { GameCore } from '../core/GameCore';
 import { G, formatG, type Money } from '../core/money';
 import { toDate } from '../core/calendar';
 import { NPCS } from '../data/npcs';
-import { LOCATION_BUILDING, BUILDING_BY_ID, locationAnchor } from '../world/maps/cityLayout';
+import { LOCATION_BUILDING, BUILDING_BY_ID, OUTDOOR_PLACES, locationAnchor } from '../world/maps/cityLayout';
 
 export type ServiceResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -95,6 +95,7 @@ export class ServicesSystem {
   }
 
   destinationTile(loc: string): { x: number; y: number } | null {
+    if (OUTDOOR_PLACES[loc]) return { ...OUTDOOR_PLACES[loc].tile };
     const b = LOCATION_BUILDING[loc];
     const bd = b ? BUILDING_BY_ID[b] : null;
     if (!bd?.door) return null;

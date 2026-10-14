@@ -21,7 +21,7 @@ function Thumb(props: { id: string }): JSX.Element {
   return d?.kind === 'outfit' && d.look ? <Portrait look={lookFor(core.state.player.appearance, props.id)} scale={2} /> : <ItemIcon id={props.id} />;
 }
 
-function PayToggle(props: { value: Pay; onChange: (p: Pay) => void }): JSX.Element {
+export function PayToggle(props: { value: Pay; onChange: (p: Pay) => void }): JSX.Element {
   const core = useCore();
   return (
     <div className="row" style={{ gap: 6 }}>

@@ -56,7 +56,7 @@ export const DIM_NAMES: Record<keyof RelDims, string> = {
 const BIPOLAR: (keyof RelDims)[] = ['affection', 'trust', 'respect'];
 
 /** Kinds that people like to talk about. */
-const GOSSIP_KINDS = new Set(['new_partner', 'big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend', 'donated', 'pawned', 'volunteered', 'donated_kitchen', 'free_meal_rich']);
+const GOSSIP_KINDS = new Set(['new_partner', 'big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend', 'donated', 'pawned', 'volunteered', 'donated_kitchen', 'free_meal_rich', 'yacht_trip']);
 
 export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   big_win: (m) => `在赌场赢了 ${formatG(Number(m.data.amount ?? 0))}${m.data.game ? `（${m.data.game}）` : ''}`,
@@ -124,6 +124,7 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   volunteered: () => '在社区食堂做义工',
   donated_kitchen: (m) => `给社区食堂捐了 ${formatG(Number(m.data.amount ?? 0))}`,
   day_labor: () => '在码头打零工卸货',
+  yacht_trip: () => '请我坐游艇出海',
   outbid_me: (m) => `在拍卖会上抢走了我想要的${m.data.item ?? '拍品'}`,
   casino_night: (m) => `和我一起去了赌场${Number(m.data.net ?? 0) ? `（我${Number(m.data.net) > 0 ? '赢' : '输'}了 ${formatG(Math.abs(Number(m.data.net)))}）` : ''}`,
 };
@@ -868,6 +869,8 @@ export class SocialSystem {
         return { kind: m.kind, facets: { generosity: Math.min(1, mag), kindness: 0.2 }, importance: m.importance, data: m.data };
       case 'free_meal_rich':
         return { kind: m.kind, facets: { stinginess: 0.5 }, importance: m.importance, data: m.data };
+      case 'yacht_trip':
+        return { kind: m.kind, facets: { wealthDisplay: 0.5, generosity: 0.2 }, importance: m.importance * 0.8, data: m.data };
     }
     return null;
   }

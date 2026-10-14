@@ -3,7 +3,7 @@ import { store } from '../store';
 import { useCore } from '../hooks';
 import { GV, Modal, useFeedback } from '../components';
 import { buildCityMap } from '../../world/maps/city';
-import { BUILDINGS, BUS_STOPS, CITY_H, CITY_W } from '../../world/maps/cityLayout';
+import { BUILDINGS, BUS_STOPS, CITY_H, CITY_W, OUTDOOR_PLACES } from '../../world/maps/cityLayout';
 import { TILE_INDEX } from '../../art/tiles';
 import { LOCATIONS, hoursText, isOpen } from '../../data/locations';
 import { toDate } from '../../core/calendar';
@@ -22,6 +22,7 @@ function tileColor(name: string): string {
   if (name.startsWith('path') || name === 'sand') return '#a9946a';
   if (name.startsWith('runner')) return '#8a1a2a';
   if (name === 'dock') return '#6a5038';
+  if (name.startsWith('deck')) return '#a87a4a';
   if (name === 'rail') return '#222';
   return '#8a8478';
 }
@@ -71,6 +72,7 @@ export function MapPanel(): JSX.Element {
   useEffect(() => setSel((s) => s), []);
   const pins = BUILDINGS.filter((b) => b.target && b.door);
   const selDef = sel ? LOCATIONS[sel] : null;
+  const selPlace = sel && !selDef ? OUTDOOR_PLACES[sel] ?? null : null;
   const taxi = sel ? core.services.taxiQuote(sel) : null;
   const drive = sel ? core.services.driveQuote(sel) : null;
   const go = (mode: 'taxi' | 'drive') => {
@@ -115,6 +117,16 @@ export function MapPanel(): JSX.Element {
               </div>
             );
           })}
+          {Object.entries(OUTDOOR_PLACES).map(([id, p]) => (
+            <div
+              key={id}
+              className="mappin"
+              style={{ left: `${((p.tile.x + 0.5) / CITY_W) * 100}%`, top: `${(p.tile.y / CITY_H) * 100}%`, borderColor: sel === id ? 'var(--gold-light)' : undefined }}
+              onClick={() => setSel(id)}
+            >
+              {p.short}
+            </div>
+          ))}
           {BUS_STOPS.map((s) => (
             <div key={s.id} style={{ position: 'absolute', left: `${(s.x / CITY_W) * 100}%`, top: `${(s.y / CITY_H) * 100}%`, transform: 'translate(-50%,-50%)', fontSize: 12 }} title={s.name}>
               <Icon name="bus" />
@@ -125,7 +137,43 @@ export function MapPanel(): JSX.Element {
           </div>
         </div>
         <div className="stack">
-          {selDef ? (
+          {selPlace && (
+            <>
+              <h3 style={{ margin: 0, color: 'var(--gold-light)' }}>{selPlace.name}</h3>
+              <div className="muted" style={{ fontSize: 12 }}>{selPlace.desc}</div>
+              <div style={{ fontSize: 12 }}>{selPlace.hours}</div>
+              <div className="card">
+                <div className="row between">
+                  <span>出租车</span>
+                  {taxi ? (
+                    <span>
+                      <GV v={taxi.fare} /> · {taxi.minutes} 分钟
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </div>
+                <button className="small primary" style={{ marginTop: 6 }} disabled={!taxi} onClick={() => go('taxi')}>
+                  打车前往
+                </button>
+                {drive && (
+                  <>
+                    <div className="row between" style={{ marginTop: 8 }}>
+                      <span>{core.inventory.vehicle()?.name}</span>
+                      <span>
+                        <GV v={drive.cost} /> · {drive.minutes} 分钟
+                      </span>
+                    </div>
+                    <button className="small" style={{ marginTop: 6 }} onClick={() => go('drive')}>
+                      {core.inventory.vehicle()?.id === 'bicycle' ? '骑车前往' : '开车前往'}
+                    </button>
+                  </>
+                )}
+              </div>
+              {fb}
+            </>
+          )}
+          {selPlace ? null : selDef ? (
             <>
               <h3 style={{ margin: 0, color: 'var(--gold-light)' }}>{selDef.name}</h3>
               <div className="muted" style={{ fontSize: 12 }}>{selDef.desc}</div>

@@ -55,6 +55,7 @@ function Overview(): JSX.Element {
     ...(core.state.business ? ([['自己的生意（估值）', core.business.value()]] as [string, number][]) : []),
     ...(core.pawn.openTickets().length ? ([['当在当铺的东西（估价减去赎回所需）', core.pawn.equity()]] as [string, number][]) : []),
     ...(core.state.auction?.collection.length ? ([['收藏品（拍卖行参考市值）', core.auction.value()]] as [string, number][]) : []),
+    ...(core.state.marina?.owned ? ([['游艇（转售价）', core.marina.value()]] as [string, number][]) : []),
   ];
   return (
     <div className="stack">

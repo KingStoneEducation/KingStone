@@ -34,10 +34,15 @@ export type InteractKind =
   | 'charity'
   | 'labor'
   | 'fortune'
-  | 'auction';
+  | 'auction'
+  | 'marina';
 
-/** staff (and props) that are only there, or only open, at certain times */
-export type StaffWhen = 'sky_night' | 'night_market';
+/**
+ * Staff (and props) that are only there, or only open, at certain times: the
+ * members' Saturday night, the night market, the tour boat while it is in
+ * (and boarding), and the player's own yacht in its berth.
+ */
+export type StaffWhen = 'sky_night' | 'night_market' | 'tour_in' | 'tour_boarding' | 'own_seagull' | 'own_aurora' | 'no_yacht';
 
 export interface Interaction {
   kind: InteractKind;

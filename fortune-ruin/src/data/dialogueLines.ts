@@ -163,6 +163,13 @@ export const FACT_LINES: Record<string, Partial<Record<Attitude, string[]>>> = {
     disapprover: ['那些饭是给吃不上饭的人的。', '{src}你在食堂排队领饭。你不缺那一顿吧？'],
     neutral: ['{src}你在社区食堂领饭？'],
   },
+  yacht_trip: {
+    caring: ['那天在海上，真好。谢谢你叫上我。'],
+    envious: ['游艇啊……有钱真好。'],
+    snob: ['出海的事，大家都在说。'],
+    opportunist: ['下次出海可别忘了叫上我~'],
+    neutral: ['上次出海真开心，什么时候再去？'],
+  },
   outbid_me: {
     snob: ['上次那件{item}，你举牌举得很果断。拍卖会上的你，倒有几分气度。'],
     envious: ['那件{item}本来应该是我的。', '你上次在拍卖会上可真舍得。'],

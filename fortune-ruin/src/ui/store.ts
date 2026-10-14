@@ -5,6 +5,7 @@ import type { ShiftReport } from '../systems/CareerSystem';
 import type { WorldApi } from '../world/WorldScene';
 import type { TableApi, TablePhase } from '../tables/TableScene';
 import type { Money } from '../core/money';
+import type { TripReport } from '../systems/MarinaSystem';
 
 export interface TableUiState {
   /** selected chip denomination, whole G */
@@ -46,12 +47,15 @@ export type Modal =
   | { type: 'charity'; tab: CharityTab }
   | { type: 'labor' }
   | { type: 'fortune' }
-  | { type: 'auction'; tab: AuctionTab; lot?: number };
+  | { type: 'auction'; tab: AuctionTab; lot?: number }
+  | { type: 'marina'; tab: MarinaTab }
+  | { type: 'cruise'; report: TripReport };
 
 export type ConciergeTab = 'suite' | 'spa' | 'car' | 'dining' | 'store' | 'perks';
 export type PawnTab = 'pawn' | 'tickets' | 'sell' | 'shelf';
 export type CharityTab = 'meal' | 'volunteer' | 'donate';
 export type AuctionTab = 'live' | 'catalogue' | 'collection' | 'results';
+export type MarinaTab = 'cruise' | 'charter' | 'own';
 
 export interface Toast {
   id: number;

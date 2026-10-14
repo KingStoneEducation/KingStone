@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
 import type { GameCore } from '../core/GameCore';
-import { store, type AuctionTab, type CharityTab, type PawnTab } from '../ui/store';
+import { store, type AuctionTab, type CharityTab, type MarinaTab, type PawnTab } from '../ui/store';
 import { buildCityMap, type CityMap } from './maps/city';
 import { interiorMap } from './maps/interiors';
 import { ownShopMap } from './maps/ownShop';
 import { BIZ_TYPES } from '../data/business';
 import { CASINO_TABLES, casinoArea, type CasinoArea } from './maps/casinoMap';
-import { regionAt, type Door, type Face, type Interactable, type InteractKind, type MapData, type MapRegion, type StaffWhen } from './maps/types';
-import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING } from './maps/cityLayout';
+import { regionAt, type Door, type Face, type Interactable, type InteractKind, type MapData, type MapRegion, type PlacedProp, type StaffWhen } from './maps/types';
+import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING, MARINA } from './maps/cityLayout';
 import { PROPS, propFrameName, type PropDef } from '../art/props';
 import { TILE_INDEX, displayTile, tileIndex } from '../art/tiles';
 import { buildShading } from './shading';
@@ -32,6 +32,7 @@ import { patronLine, pedestrianLine, staffLine } from './ambientLines';
 import { sfx } from '../audio/Audio';
 import { nightMarketOpen } from '../systems/OldTownSystem';
 import { pieceCanvas } from '../art/artworks';
+import type { TripKind } from '../systems/MarinaSystem';
 
 const DIR_VEC: Record<CharDir, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
@@ -73,6 +74,15 @@ const VERBS: Record<InteractKind, string> = {
   labor: '应工',
   fortune: '看相（20 G）',
   auction: '拍卖会',
+  marina: '游艇会',
+};
+
+/** Where people stand on each boat's deck (image pixels): the deck line and the spots along it, the first one yours. */
+const DECKS: Record<string, { y: number; xs: number[] }> = {
+  tour_boat: { y: 22, xs: [36, 28, 44, 20, 52, 14, 60, 32, 48] },
+  yacht_club: { y: 37, xs: [12, 44, 50, 18, 38] },
+  yacht_seagull: { y: 37, xs: [12, 44, 50, 18, 38, 24, 54, 8, 32] },
+  yacht_aurora: { y: 25, xs: [10, 82, 22, 72, 64, 30, 88, 40, 56] },
 };
 
 const WALK_SPEED = 58;
@@ -89,6 +99,7 @@ const DISTRICTS: { name: string; x0: number; y0: number; x1: number; y1: number 
   { name: '老城区', x0: 0, y0: 64, x1: 52, y1: 78 },
   { name: '旧码头', x0: 0, y0: 79, x1: 52, y1: 89 },
   { name: '河滨公园', x0: 53, y0: 64, x1: 103, y1: 89 },
+  { name: '灰港游艇会', x0: 107, y0: 39, x1: 119, y1: 58 },
   { name: '河滨步道', x0: 104, y0: 26, x1: 119, y1: 89 },
 ];
 
@@ -124,8 +135,15 @@ interface PropView {
   rate: number;
   phase: number;
   frame: number;
-  /** a stall that opens and shuts with the clock instead of animating */
+  /** a stall that opens and shuts with the clock instead of animating, or a boat that comes and goes */
   when?: StaffWhen;
+  placed: PlacedProp;
+  /** where the image sits when the prop is in its place (boats sail away from it) */
+  x0: number;
+  /** shown now (null until the first frame decides) */
+  shown: boolean | null;
+  /** a boat on its way out or in: the clock does not show or hide it meanwhile */
+  sailing: boolean;
 }
 
 interface NightView {
@@ -162,6 +180,8 @@ export interface WorldApi {
   openTable(tableId: string): void;
   /** the casino room the player is standing in (null outside the casino) */
   casinoArea(): CasinoArea | null;
+  /** walk aboard at the marina and go out on the water */
+  sail(kind: TripKind, method?: 'cash' | 'card'): Promise<void>;
 }
 
 export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
@@ -445,7 +465,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       const depth = d.ground ? -900 : d.wall ? -800 + p.y : d.overhead ? 120000 + base : base - 1;
       img.setDepth(depth);
       this.objects.push(img);
-      const view: PropView = { img, night: null, em: null, def: d, refs, nightRefs: [], rate: 200, phase: (p.x * 31 + p.y * 17) % 7, frame: 0, when: p.when };
+      const view: PropView = { img, night: null, em: null, def: d, refs, nightRefs: [], rate: 200, phase: (p.x * 31 + p.y * 17) % 7, frame: 0, when: p.when, placed: p, x0: x, shown: null, sailing: false };
+      if (p.id === 'tour_boat' || p.id.startsWith('yacht')) view.rate = 900;
       if (p.id === 'fountain') view.rate = 170;
       else if (p.id === 'roulette_table') view.rate = 120;
       else if (p.id.startsWith('slot')) view.rate = 240 + ((p.x * 13) % 5) * 40;
@@ -727,6 +748,10 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   private animate(time: number): void {
     for (const v of this.props) {
+      if (v.when && !v.def.shut && !v.sailing) {
+        const on = this.whenActive(v.when);
+        if (on !== v.shown) this.setShown(v, on);
+      }
       if (v.refs.length < 2) continue;
       const f = v.def.shut ? (this.whenActive(v.when) ? 0 : 1) : Math.floor(time / v.rate + v.phase) % v.refs.length;
       if (f === v.frame) continue;
@@ -777,7 +802,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       n.img.setAlpha(a);
       if (n.em) n.em.alpha = a;
     }
-    for (const v of this.props) if (v.em && v.night) v.em.alpha = v.night.alpha;
+    for (const v of this.props) if (v.em && v.night) v.em.alpha = v.night.visible ? v.night.alpha : 0;
     const lights = this.staticLights.slice();
     for (const t of this.timedLights) if (this.whenActive(t.when)) lights.push(t.light);
     if (this.city) lights.push(...this.city.lights(night > 0.3));
@@ -823,16 +848,81 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       n.img.setAlpha(1);
       if (n.em) n.em.alpha = 1;
     }
-    for (const v of this.props) if (v.em && v.night) v.em.alpha = v.night.alpha;
+    for (const v of this.props) if (v.em && v.night) v.em.alpha = v.night.visible ? v.night.alpha : 0;
     const lights = this.staticLights.concat(this.city?.lights(true) ?? []);
     this.lighting.render(cam, 0.72, this.map.ambient.color, lights, 1, time, this.emissives);
   }
 
   /** Whether something that keeps hours (Saturday night upstairs, the night market) is on right now. */
   private whenActive(when: StaffWhen | undefined): boolean {
-    if (!when || this.attract) return true;
-    if (when === 'sky_night') return this.core.sky.isSkyNight();
-    return nightMarketOpen(this.core.now());
+    if (!when) return true;
+    // the title screen's city: everything open, nobody's own boat in the berth
+    if (this.attract) return when !== 'own_seagull' && when !== 'own_aurora';
+    const owned = this.core.state.marina?.owned ?? null;
+    switch (when) {
+      case 'sky_night':
+        return this.core.sky.isSkyNight();
+      case 'night_market':
+        return nightMarketOpen(this.core.now());
+      case 'tour_in':
+        return !this.core.marina.tourBoatOut();
+      case 'tour_boarding':
+        return !!this.core.marina.boardingCruise();
+      case 'own_seagull':
+        return owned === 'seagull';
+      case 'own_aurora':
+        return owned === 'aurora';
+      case 'no_yacht':
+        return owned === null;
+    }
+  }
+
+  private showProp(v: PropView, on: boolean): void {
+    v.shown = on;
+    v.img.setVisible(on);
+    v.night?.setVisible(on);
+  }
+
+  /** Put a boat's images (and whoever stands on its deck) at x. */
+  private moveBoat(v: PropView, x: number, riders: { s: CharacterSprite; dx: number }[]): void {
+    const xi = Math.round(x);
+    v.img.x = xi;
+    if (v.night) v.night.x = xi;
+    if (v.em) v.em.x = xi;
+    for (const r of riders) r.s.x = xi + r.dx;
+  }
+
+  private sailBoat(v: PropView, to: number, ms: number, ease: string, riders: { s: CharacterSprite; dx: number }[]): Promise<void> {
+    const proxy = { x: v.img.x };
+    return new Promise((res) =>
+      this.tweens.add({ targets: proxy, x: to, duration: ms, ease, onUpdate: () => this.moveBoat(v, proxy.x, riders), onComplete: () => res() }),
+    );
+  }
+
+  /** The clock shows or hides a prop; the tour boat casts off and comes back in when the player is there to see it. */
+  private setShown(v: PropView, on: boolean): void {
+    const first = v.shown === null;
+    const p = this.player;
+    const near = !!p && Math.abs(p.x - v.x0) < 420 && Math.abs(p.y - v.img.y) < 280;
+    if (first || !near || v.when !== 'tour_in') {
+      this.showProp(v, on);
+      return;
+    }
+    v.sailing = true;
+    v.shown = on;
+    const away = v.x0 + (this.map.w * 16 - v.x0) + 40;
+    if (on) {
+      this.showProp(v, true);
+      this.moveBoat(v, away, []);
+      void this.sailBoat(v, v.x0, 3200, 'Sine.easeOut', []).then(() => (v.sailing = false));
+    } else {
+      sfx('horn');
+      void this.sailBoat(v, away, 3600, 'Sine.easeIn', []).then(() => {
+        this.showProp(v, false);
+        this.moveBoat(v, v.x0, []);
+        v.sailing = false;
+      });
+    }
   }
 
   private updateStaffVisibility(): void {
@@ -971,7 +1061,12 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   private interactableAt(x: number, y: number): Interactable | null {
     for (const it of this.map.interactables) {
-      if (x >= it.x && x < it.x + it.w && y >= it.y && y < it.y + it.h) return it;
+      if (x >= it.x && x < it.x + it.w && y >= it.y && y < it.y + it.h) {
+        // a boat that is out (or not yours yet) cannot be used
+        const present = it.interact.data?.present as StaffWhen | undefined;
+        if (present && !this.whenActive(present)) continue;
+        return it;
+      }
     }
     return null;
   }
@@ -1014,6 +1109,15 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       verb = it.interact.data?.tab === 'shelf' ? '看二手货' : '典当 / 赎当';
     } else if (k === 'elevator') {
       verb = it.interact.data?.floor === 'sky' ? '上楼' : '下楼';
+    } else if (k === 'marina') {
+      const d = it.interact.data ?? {};
+      const m = this.core.marina;
+      const booked = this.core.state.marina?.booking;
+      if (d.boat === 'tour') verb = m.boardingCruise() ? '买票上船' : '看时刻表';
+      else if (d.boat === 'club') verb = booked?.kind === 'charter' && !m.canSail() ? '登船出海' : '包船出海';
+      else if (d.boat === 'own') verb = booked?.kind === 'own' && !m.canSail() ? '登船出海' : '上船';
+      else if (d.present === 'no_yacht') verb = '看看';
+      else verb = '游船 / 包船 / 游艇';
     } else if (k === 'shop' || k === 'order') {
       const loc = LOCATIONS[this.map.id];
       if (loc?.name) label = `${label}`;
@@ -1270,6 +1374,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       case 'auction':
         store.openModal({ type: 'auction', tab: String(d.tab ?? 'catalogue') as AuctionTab, lot: typeof d.lot === 'number' ? d.lot : undefined });
         break;
+      case 'marina':
+        store.openModal({ type: 'marina', tab: String(d.tab ?? 'cruise') as MarinaTab });
+        break;
       case 'door':
         break;
     }
@@ -1493,6 +1600,121 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     sfx('slide');
     await Promise.all([this.tweenTo(b.doorL, { x: b.x0 + 4 }, 420), this.tweenTo(b.doorR, { x: b.x0 + 16 }, 420)]);
     this.endLiftParts();
+  }
+
+  // ------------------------------------------------------------------ the marina
+
+  /** The boat a trip of this kind leaves on, as it lies in its berth. */
+  private boatView(kind: TripKind): PropView | null {
+    const booked = this.core.state.marina?.booking?.kind;
+    const key = kind === 'cruise' ? 'tour' : kind === 'charter' || booked === 'charter' ? 'club' : 'own';
+    return this.props.find((v) => v.placed.interact?.data?.boat === key && v.shown !== false) ?? null;
+  }
+
+  private walkSpriteTo(s: CharacterSprite, tile: Pt): Promise<void> {
+    const from = { x: Math.floor(s.x / 16), y: Math.floor((s.y - 3) / 16) };
+    const path = findPath(this.map, from.x, from.y, tile.x, tile.y, false) ?? [tile];
+    return new Promise((res) => s.walkPath(path, WALK_SPEED, () => res()));
+  }
+
+  private untilModalClosed(): Promise<void> {
+    return new Promise((res) => {
+      const check = () => (store.modal ? this.time.delayedCall(150, check) : res());
+      check();
+    });
+  }
+
+  /**
+   * Going out on the water: walk to the boat, step aboard (friends who were
+   * waiting on the pier come aboard too), the horn, and she pulls away from
+   * the pontoon and out of sight. The trip itself passes while the postcards
+   * are on screen; then the boat comes back in and everyone steps off.
+   */
+  async sail(kind: TripKind, method: 'cash' | 'card' = 'cash'): Promise<void> {
+    if (this.transitioning || !this.player || this.map.id !== 'city' || !this.npcDir) return;
+    const core = this.core;
+    const err = core.marina.boardCheck(kind, method);
+    if (err) {
+      store.toast(err, 'warn');
+      sfx('deny');
+      return;
+    }
+    const v = this.boatView(kind);
+    const deck = v ? DECKS[v.def.id] : null;
+    store.closeAll();
+    const p = this.player;
+    const scene = this.scene;
+    this.transitioning = true;
+    core.paused.add('transition');
+    this.setFocus(null);
+    this.marker?.setVisible(false);
+    p.stop();
+    p.path = [];
+    this.arriveAction = null;
+    if (this.benchSit) this.standUpFromBench();
+    const guestIds = kind === 'cruise' ? [] : core.marina.waiting();
+    const guests = this.npcDir.board(guestIds);
+    const riders: { s: CharacterSprite; dx: number }[] = [];
+    const cam = this.cameras.main;
+    const away = v ? v.x0 + (this.map.w * 16 - v.x0) + 40 : 0;
+    const gang = v ? { x: MARINA.x1, y: v.placed.y } : null;
+    if (v && deck && gang) {
+      v.sailing = true;
+      const board = async (s: CharacterSprite, i: number) => {
+        await Promise.race([this.walkSpriteTo(s, gang), this.wait(i === 0 ? 7000 : 5000)]);
+        s.stop();
+        const dx = deck.xs[i % deck.xs.length];
+        s.fixedDepth = v.img.depth + 0.05 + i * 0.001;
+        s.noShadow = true;
+        s.setMoving(true, 'right');
+        await this.tweenTo(s, { x: v.img.x + dx, y: v.img.y + deck.y }, 380);
+        s.setMoving(false, 'down');
+        s.face('down');
+        riders.push({ s, dx });
+      };
+      await board(p, 0);
+      sfx('click');
+      await Promise.all(guests.map((g, i) => this.wait(i * 260).then(() => board(g, i + 1))));
+      if (!scene.isActive()) return;
+      await this.wait(300);
+      sfx('horn');
+      await this.wait(700);
+      await this.sailBoat(v, away, 3400, 'Sine.easeIn', riders);
+    }
+    cam.fadeOut(420, 8, 6, 14);
+    await this.wait(460);
+    if (!scene.isActive()) return;
+    const r = core.marina.sail(kind, method);
+    if (r.ok) {
+      store.openModal({ type: 'cruise', report: r.report });
+      await this.untilModalClosed();
+      if (!scene.isActive()) return;
+    } else store.toast(r.error, 'warn');
+    cam.fadeIn(520, 8, 6, 14);
+    if (v && gang) {
+      await this.sailBoat(v, v.x0, 3000, 'Sine.easeOut', riders);
+      await this.wait(250);
+      // step off, one after the other
+      for (const rd of riders) {
+        rd.s.setMoving(true, 'left');
+        await this.tweenTo(rd.s, { x: gang.x * 16 + 8, y: gang.y * 16 + 14 }, 320);
+        rd.s.setMoving(false, 'left');
+        rd.s.fixedDepth = null;
+        rd.s.noShadow = false;
+        if (rd.s === p) {
+          // across the pontoon, out of the way of those still coming off
+          p.setMoving(true, 'left');
+          await this.tweenTo(p, { x: MARINA.x0 * 16 + 8 }, 760);
+          p.setMoving(false, 'right');
+          p.face('right');
+        }
+      }
+      v.sailing = false;
+    }
+    this.npcDir?.disembark(guestIds);
+    for (const id of guestIds) this.core.social.observePlayer(id);
+    core.paused.delete('transition');
+    this.transitioning = false;
   }
 
   // ------------------------------------------------------------------ casino tables

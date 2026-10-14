@@ -27,6 +27,7 @@ import { SkyFloorSystem, SUITE_COMFORT } from '../systems/SkyFloorSystem';
 import { PawnSystem } from '../systems/PawnSystem';
 import { OldTownSystem } from '../systems/OldTownSystem';
 import { AuctionSystem } from '../systems/AuctionSystem';
+import { MarinaSystem } from '../systems/MarinaSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -116,6 +117,7 @@ export class GameCore {
   pawn: PawnSystem;
   oldtown: OldTownSystem;
   auction: AuctionSystem;
+  marina: MarinaSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -145,6 +147,7 @@ export class GameCore {
     this.pawn = new PawnSystem(this);
     this.oldtown = new OldTownSystem(this);
     this.auction = new AuctionSystem(this);
+    this.marina = new MarinaSystem(this);
   }
 
   now(): number {
@@ -228,6 +231,7 @@ export class GameCore {
     this.encounters.tick(t);
     this.career.tickMinute(t, activity);
     this.events.tickMinute(t);
+    this.marina.tickMinute(t);
     this.casino.tickBackground(1);
     if (d.hour !== before.hour) this.onHour(d.hour);
     if (d.dayIndex !== before.dayIndex) this.onDay(d.dayIndex);
@@ -281,6 +285,7 @@ export class GameCore {
     if (d.day === 1) {
       this.housing.issueMonthlyBills();
       this.business.monthlyBills();
+      this.marina.monthlyBills();
       this.economy.payMonthlyInterest();
       this.casino.monthlyReview();
       this.career.monthlyReset();

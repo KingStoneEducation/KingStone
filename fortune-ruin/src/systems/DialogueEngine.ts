@@ -77,6 +77,7 @@ const FACT_MOOD: Record<string, Expression> = {
   free_meal_rich: 'frown',
   day_labor: 'surprised',
   outbid_me: 'surprised',
+  yacht_trip: 'smile',
 };
 
 /** Read a reaction from the change in how they feel about the player. */

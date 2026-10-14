@@ -225,6 +225,8 @@ export const NPCS: NpcDef[] = [
       { days: [6], from: hm(11), to: hm(13), loc: 'city', spot: 'hill_garden', act: 'leisure', chance: 0.7 },
       { days: [5], from: hm(21, 45), to: hm(23), loc: 'casino', spot: 'sky_bar1', act: 'drink', chance: 0.7 },
       { days: [6], from: hm(14, 45), to: hm(17), loc: 'hotel', spot: 'auc_seat3', act: 'shop', chance: 0.6 },
+      // Saturday mornings on the family's boat at the marina
+      { days: [5], from: hm(10), to: hm(12, 30), loc: 'city', spot: 'marina_whitmore', act: 'leisure', chance: 0.8 },
     ],
     circle: ['lillian', 'sophia', 'victor'],
     initial: { met: false, knowsName: false },

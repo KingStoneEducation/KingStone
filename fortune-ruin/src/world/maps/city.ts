@@ -1,6 +1,6 @@
 import { hash2 } from '../../art/canvas';
 import { tileIndex } from '../../art/tiles';
-import { BUILDINGS, BUS_STOPS, CITY_H, CITY_SPOTS, CITY_W } from './cityLayout';
+import { BUILDINGS, BUS_STOPS, CITY_H, CITY_SPOTS, CITY_W, MARINA } from './cityLayout';
 import { MapBuilder, type MapData } from './types';
 
 export interface Lane {
@@ -317,6 +317,38 @@ export function buildCityMap(): CityMap {
     b.block(s.x + 1, s.y, 1, 1);
   }
 
+  // the marina: a floating pontoon off the promenade, four berths on its river side
+  const M = MARINA;
+  const deck = new Set<number>();
+  for (let y = M.y0; y <= M.y1; y++) {
+    for (let x = M.x0; x <= M.x1; x++) {
+      b.set(x, y, y === M.y1 ? 'deck_s' : 'deck', false);
+      deck.add(b.idx(x, y));
+    }
+  }
+  for (const y of [M.gangway, M.gangway + 1]) b.set(107, y, 'deck', false);
+  b.data.water = b.data.water.filter((i) => !deck.has(i));
+  b.prop('marina_office', M.x0, M.y0 + 1, { kind: 'marina', label: '灰港游艇会 · 码头办公室', data: { tab: 'cruise' } });
+  b.staff(M.x0 + 2, M.y0 + 1, 'down', 4301, '码头管理员', 'dockmaster');
+  b.prop('aframe', M.x0, M.berths.tour + 1, {
+    kind: 'sign',
+    label: '游船时刻表',
+    data: { text: '灰港港湾游船 · 每日四班\n11:00 上午航班 · 14:00 下午航班 · 17:00 日落航班（60 G）\n19:30 夜游航班（90 G）\n全程约 90 分钟，绕灯塔一周后返港。开船前半小时开始登船，现金、银行卡均可。\n\n私人包船（信天翁号，含船长和船员，最多 3 位客人）每天 10:00、14:00、18:00 出发，请到码头办公室预约。' },
+  });
+  b.staff(M.x0 + 2, M.berths.tour + 1, 'right', 4302, '游船船员', 'deckhand', 'tour_boarding');
+  b.prop('tour_boat', M.boatX, M.berths.tour, { kind: 'marina', label: '港湾游船', data: { boat: 'tour', tab: 'cruise', present: 'tour_in' } }, { when: 'tour_in' });
+  b.prop('yacht_club', M.boatX, M.berths.club, { kind: 'marina', label: '信天翁号 · 游艇会包船', data: { boat: 'club', tab: 'charter' } });
+  b.prop('yacht_seagull', M.boatX, M.berths.own, { kind: 'marina', label: '海鸥号 · 你的游艇', data: { boat: 'own', tab: 'own', present: 'own_seagull' } }, { when: 'own_seagull' });
+  b.prop('yacht_aurora', M.boatX, M.berths.own, { kind: 'marina', label: '极光号 · 你的游艇', data: { boat: 'own', tab: 'own', present: 'own_aurora' } }, { when: 'own_aurora' });
+  b.interactable('marina_berth_c', M.boatX, M.berths.own, 4, 1, { kind: 'marina', label: 'C 泊位 · 空着', data: { tab: 'own', present: 'no_yacht' } });
+  b.prop('yacht_whitmore', M.boatX, M.berths.whitmore, {
+    kind: 'sign',
+    label: '惠特莫尔号',
+    data: { text: '惠特莫尔家族的游艇，船身是深蓝色的，栏杆擦得发亮。甲板上的船员看你走近，客气地点了点头：「私人船只，请勿登船。」' },
+  });
+  for (const y of [M.berths.tour + 2, M.berths.club + 2, M.berths.own + 2]) b.prop('bollard', M.x1, y);
+  for (const y of [M.berths.tour + 2, M.berths.own + 3]) b.prop('lamp', M.x0, y);
+
   // NPC spots and spawns
   for (const [name, s] of Object.entries(CITY_SPOTS)) b.spot(name, s.x, s.y, s.face ?? 'down', s.sit);
   b.spawn('start', 7, 75, 'down');
@@ -339,7 +371,7 @@ export function buildCityMap(): CityMap {
   ];
   // pedestrian walkways
   const walk = new Uint8Array(CITY_W * CITY_H);
-  const pref = new Set(['sidewalk', 'sidewalk2', 'curb_s', 'curb_n', 'curb_e', 'curb_w', 'plaza', 'plaza2', 'plaza_fancy', 'path', 'crosswalk_h', 'crosswalk_v', 'runner_l', 'runner_c', 'runner_r', 'concrete', 'dock'].map(tileIndex));
+  const pref = new Set(['sidewalk', 'sidewalk2', 'curb_s', 'curb_n', 'curb_e', 'curb_w', 'plaza', 'plaza2', 'plaza_fancy', 'path', 'crosswalk_h', 'crosswalk_v', 'runner_l', 'runner_c', 'runner_r', 'concrete', 'dock', 'deck'].map(tileIndex));
   for (let i = 0; i < walk.length; i++) if (pref.has(data.ground[i]) && !data.blocked[i]) walk[i] = 1;
   data.walkways = walk;
   data.ambient = { day: 1, night: 0.22, color: 0x0a0a2a };

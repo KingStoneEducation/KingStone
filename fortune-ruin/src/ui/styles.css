@@ -2038,6 +2038,54 @@ kbd {
 .theme-cafe button.primary {
   color: #ffffff;
 }
+/* the marina: white sailcloth, navy trim and brass */
+.theme-marina {
+  --frame-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230e1a30'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230e1a30'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238aa4c4'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23eef2f6'/%3E%3C/svg%3E");
+  --frame-inset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%238aa0bc'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%238aa0bc'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23ffffff'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23c4d0e0'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e4eaf2'/%3E%3C/svg%3E");
+  --frame-btn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230e1a30'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230e1a30'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238aa4c4'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e2e8f0'/%3E%3C/svg%3E");
+  --frame-btn-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230e1a30'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230e1a30'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%239ab4d4'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23e8eef6'/%3E%3C/svg%3E");
+  --frame-btn-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230e1a30'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230e1a30'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23ffffff'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%238aa4c4'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23d4dce8'/%3E%3C/svg%3E");
+  --frame-gold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1428'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1428'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231c3a6a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%238ab4e8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232a5490'/%3E%3C/svg%3E");
+  --frame-gold-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1428'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1428'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2324467c'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23a0c4f0'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233460a0'/%3E%3C/svg%3E");
+  --frame-gold-down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1428'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1428'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238ab4e8'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%231c3a6a'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%2328508a'/%3E%3C/svg%3E");
+  --frame-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1428'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1428'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%231c3a6a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%238ab4e8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232a5490'/%3E%3C/svg%3E");
+  --frame-tab: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230e1a30'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230e1a30'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%238aa4c4'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23f2f6fa'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23dce4ee'/%3E%3C/svg%3E");
+  --frame-tab-on: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230e1a30'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230e1a30'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%23eef2f6'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23ffffff'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%23eef2f6'/%3E%3Crect x='1' y='6' width='6' height='2' fill='%23eef2f6'/%3E%3Crect x='0' y='6' width='1' height='2' fill='%230e1a30'/%3E%3Crect x='7' y='6' width='1' height='2' fill='%230e1a30'/%3E%3C/svg%3E");
+  --frame-wood: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230a1428'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230a1428'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%2314284a'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%233a6aa8'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%231e3c6e'/%3E%3C/svg%3E");
+  --frame-ghost: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%235a7aa0'/%3E%3C/svg%3E");
+  --frame-ghost-hover: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h6v1h-6zM1 7h6v1h-6zM0 1h1v6h-1zM7 1h1v6h-1z' fill='%230e1a30'/%3E%3C/svg%3E");
+  --paper: #eef2f6;
+  --paper-2: #e4eaf2;
+  --paper-3: #d0dae6;
+  --ink: #0e1a30;
+  --line-dark: #0e1a30;
+  --wood: #1e3c6e;
+  --cream: #eef2f6;
+  --head-hi: #3a6aa8;
+  --panel: #eef2f6;
+  --panel-solid: #eef2f6;
+  --panel2: #e4eaf2;
+  --panel3: #d0dae6;
+  --line: #8aa0bc;
+  --line-soft: #c4d0e0;
+  --text: #0e1a30;
+  --muted: #3a5070;
+  --dim: #6a7e98;
+  --gold: #8a6a1a;
+  --gold-light: #7a5a10;
+  --pink: #a8326a;
+  --cyan: #1f6f78;
+  --good: #2f7a3a;
+  --bad: #b23a2a;
+  --warn: #a9600e;
+  --info: #2f5c96;
+}
+.theme-marina button.primary {
+  color: #ffffff;
+}
+.theme-marina .choice.active .d {
+  color: #c4d8f0;
+}
 .theme-bar {
   --frame-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%230c0602'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%230c0602'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%236a4422'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23a8703f'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%232e1c10'/%3E%3C/svg%3E");
   --frame-inset: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='6' height='8' fill='%23120a04'/%3E%3Crect x='0' y='1' width='8' height='6' fill='%23120a04'/%3E%3Crect x='1' y='1' width='6' height='6' fill='%234a2e18'/%3E%3Crect x='1' y='1' width='5' height='5' fill='%23160c06'/%3E%3Crect x='2' y='2' width='4' height='4' fill='%233a2414'/%3E%3C/svg%3E");
@@ -2245,4 +2293,24 @@ img.art {
 }
 .item.focus {
   outline: 2px solid var(--gold);
+}
+
+/* the trip's postcards */
+.postcard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.postcard img {
+  width: 100%;
+  max-width: 408px;
+  image-rendering: pixelated;
+  display: block;
+}
+.postcard .cap {
+  font-size: 12px;
+  color: var(--text);
+  text-align: center;
+  max-width: 408px;
 }

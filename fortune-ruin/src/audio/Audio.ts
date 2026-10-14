@@ -9,7 +9,7 @@ import type { SpotAmbience } from './soundscape';
  * sparse, quiet spot sounds — no continuous noise beds.
  */
 
-export type SfxName = 'card' | 'chip' | 'chips' | 'win' | 'bigwin' | 'lose' | 'click' | 'door' | 'shuffle' | 'cash' | 'phone' | 'ball' | 'deny' | 'blackjack' | 'ding' | 'slide' | 'lift' | 'gavel' | 'paddle';
+export type SfxName = 'card' | 'chip' | 'chips' | 'win' | 'bigwin' | 'lose' | 'click' | 'door' | 'shuffle' | 'cash' | 'phone' | 'ball' | 'deny' | 'blackjack' | 'ding' | 'slide' | 'lift' | 'gavel' | 'paddle' | 'horn';
 
 interface Volumes {
   music: number;
@@ -219,6 +219,27 @@ class AudioEngine {
     o.stop(start + dur + 0.05);
   }
 
+  /** A reedy note that swells in, holds and fades: a sawtooth softened by a low-pass filter. */
+  private held(freq: number, start: number, dur: number, gain: number, bus: AudioNode): void {
+    const c = this.ctx!;
+    const o = c.createOscillator();
+    const f = c.createBiquadFilter();
+    const g = c.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(freq * 0.97, start);
+    o.frequency.linearRampToValueAtTime(freq, start + 0.18);
+    f.type = 'lowpass';
+    f.frequency.value = 520;
+    f.Q.value = 0.7;
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(gain, start + 0.16);
+    g.gain.setValueAtTime(gain, start + dur - 0.35);
+    g.gain.linearRampToValueAtTime(0, start + dur);
+    o.connect(f).connect(g).connect(bus);
+    o.start(start);
+    o.stop(start + dur + 0.05);
+  }
+
   /** A short pitched chirp sliding from one frequency to another: clicks and flicks without noise. */
   private chirp(f0: number, f1: number, start: number, dur: number, type: OscillatorType, gain: number, bus: AudioNode): void {
     const c = this.ctx!;
@@ -329,6 +350,12 @@ class AudioEngine {
         // a paddle raised in the room: a light tap
         this.tone(880, t, 0.04, 'triangle', 0.05, b, 0.003);
         this.tone(660, t + 0.02, 0.05, 'sine', 0.04, b, 0.003);
+        break;
+      case 'horn':
+        // a ship's horn: two low reed notes a third apart, swelling, held, then let go
+        this.held(110, t, 1.5, 0.05, b);
+        this.held(138.6, t, 1.5, 0.035, b);
+        this.held(55, t, 1.5, 0.03, b);
         break;
       case 'lift':
         // the car moving: a slow low swell

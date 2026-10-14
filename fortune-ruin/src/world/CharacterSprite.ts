@@ -32,6 +32,8 @@ export class CharacterSprite {
   onArrive: (() => void) | null = null;
   bob = 0;
   alpha = 1;
+  /** standing on something that casts its own shadow (a boat's deck) */
+  noShadow = false;
 
   constructor(
     private scene: Phaser.Scene,
@@ -148,7 +150,7 @@ export class CharacterSprite {
     const d = this.fixedDepth ?? this.y + this.depthBias;
     this.sprite.setDepth(d);
     this.shadow.setDepth(d - 0.5);
-    this.shadow.setVisible(!this.sitting);
+    this.shadow.setVisible(!this.sitting && !this.noShadow);
     this.sprite.setAlpha(this.alpha);
     this.shadow.setAlpha(this.alpha);
     if (this.label) this.label.setPosition(Math.round(this.x), Math.round(this.y) - 34);
