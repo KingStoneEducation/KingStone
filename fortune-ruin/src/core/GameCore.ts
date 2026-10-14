@@ -20,6 +20,7 @@ import { ServicesSystem } from '../systems/ServicesSystem';
 import { EncounterSystem } from '../systems/EncounterSystem';
 import { StorySystem } from '../systems/StorySystem';
 import { OUTREACH_HOURS, OutreachSystem } from '../systems/OutreachSystem';
+import { RomanceSystem } from '../systems/RomanceSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -102,6 +103,7 @@ export class GameCore {
   encounters: EncounterSystem;
   stories: StorySystem;
   outreach: OutreachSystem;
+  romance: RomanceSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -124,6 +126,7 @@ export class GameCore {
     this.encounters = new EncounterSystem(this);
     this.stories = new StorySystem(this);
     this.outreach = new OutreachSystem(this);
+    this.romance = new RomanceSystem(this);
   }
 
   now(): number {
@@ -236,6 +239,7 @@ export class GameCore {
       this.events.processPlayerDebts();
     }
     if (hour === 11) this.stories.dailyPass();
+    if (hour === 7) this.romance.dailyPass();
     if (OUTREACH_HOURS.includes(hour)) this.outreach.pass(hour);
     if (hour === 18) this.events.dailyPass('evening');
     this.bus.emit('time:hour', { hour });

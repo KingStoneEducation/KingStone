@@ -8,6 +8,7 @@ import { CITY_SPOTS } from '../world/maps/cityLayout';
 import { HOMES } from '../data/housing';
 
 export type Facet =
+  | 'romance'
   | 'wealthGain'
   | 'wealthLoss'
   | 'wealthDisplay'
@@ -55,7 +56,7 @@ export const DIM_NAMES: Record<keyof RelDims, string> = {
 const BIPOLAR: (keyof RelDims)[] = ['affection', 'trust', 'respect'];
 
 /** Kinds that people like to talk about. */
-const GOSSIP_KINDS = new Set(['big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend', 'donated']);
+const GOSSIP_KINDS = new Set(['new_partner', 'big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend', 'donated']);
 
 export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   big_win: (m) => `在赌场赢了 ${formatG(Number(m.data.amount ?? 0))}${m.data.game ? `（${m.data.game}）` : ''}`,
@@ -110,6 +111,11 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   vulgar: () => '炫富、粗俗',
   advice_taken: () => '听取了我的建议',
   donated: (m) => `在慈善晚宴上认捐了 ${formatG(Number(m.data.amount ?? 0))}`,
+  date: (m) => `和我约会${m.data.venue ? `（${m.data.venue}）` : ''}`,
+  stood_up: () => '约好了却放我鸽子',
+  broke_up: () => '和我分手了',
+  new_partner: (m) => `和${m.data.name ?? '别人'}在一起了`,
+  neglected: () => '很久没有联系我',
 };
 
 export function describeMemory(m: Memory): string {
@@ -260,6 +266,11 @@ export function appraise(t: Traits, facets: Partial<Record<Facet, number>>, rel:
         d.trust += m * (6 + 4 * t.loyalty);
         d.dependency += m * 4;
         break;
+      case 'romance':
+        d.attraction += m * (4 + 4 * t.sociability);
+        d.affection += m * 3;
+        d.familiarity += m * 2;
+        break;
       case 'betrayal':
         d.trust -= m * (18 + 12 * t.loyalty);
         d.affection -= m * (12 + 10 * t.loyalty);
@@ -396,6 +407,8 @@ export class SocialSystem {
     const w = sourceWeight(source, reliability);
     const delta: Partial<RelDims> = {};
     for (const [k, v] of Object.entries(raw) as [keyof RelDims, number][]) delta[k] = v * w;
+    // people who could not fall for the player can admire them, but only so far
+    if ((delta.attraction ?? 0) > 0 && !this.core.romance.npcInterested(npcId)) delta.attraction = delta.attraction! * 0.35;
     if (opts.routine) {
       const fresh = 1 / (1 + this.socialLoad(rel));
       for (const k of Object.keys(delta) as (keyof RelDims)[]) {

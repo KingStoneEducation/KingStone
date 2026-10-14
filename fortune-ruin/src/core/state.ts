@@ -81,6 +81,8 @@ export interface PlayerState {
   /** Running mood modifiers from events that decay over time */
   moodBuffs: { id: string; amount: number; until: number; label: string }[];
   flags: Record<string, number | boolean | string>;
+  /** who the player character is interested in; absent in old saves (= anyone) */
+  romanceInterest?: import('../data/romance').Interest;
 }
 
 // ------------------------------------------------------------------ world

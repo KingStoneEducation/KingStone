@@ -13,6 +13,7 @@ import { OUTFITS } from '../data/items';
 import { Bust, BACKDROPS } from './Bust';
 import { EYE_COLORS, EYE_SHAPES, playerFace } from '../data/faces';
 import type { Expression } from '../art/portraits';
+import { INTERESTS, type Interest } from '../data/romance';
 
 const HAIR_STYLES = ['短发', '侧分', '长直发', '波波头', '马尾', '盘发', '卷发', '背头', '寸头', '长波浪', '光头', '长卷发'];
 const NAMES = ['林默', '周远', '陈夏', '苏言', '顾北', '江屿', '叶晚', '程野', '许诺', '沈星'];
@@ -65,6 +66,7 @@ export function CharacterCreate(): JSX.Element {
   const [personality, setPersonality] = useState<PersonalityTendency>('rational');
   const [background, setBackground] = useState<BackgroundId>('local');
   const [start, setStart] = useState<StartPreset>('ordinary');
+  const [interest, setInterest] = useState<Interest>('all');
   const [outfit, setOutfit] = useState<StarterOutfit>('outfit_casual');
   const [frame, setFrame] = useState(0);
   const [expr, setExpr] = useState<Expression>('neutral');
@@ -248,6 +250,16 @@ export function CharacterCreate(): JSX.Element {
             </div>
           </div>
           <div className="field">
+            <label>感情：会对谁动心</label>
+            <div className="row wrap" style={{ gap: 4 }}>
+              {INTERESTS.map(([k, l]) => (
+                <button key={k} className={`small ${interest === k ? 'primary' : ''}`} onClick={() => setInterest(k)}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="field">
             <label>开局</label>
             <div className="choice-grid">
               {(Object.keys(STARTS) as StartPreset[]).map((k) => (
@@ -300,6 +312,7 @@ export function CharacterCreate(): JSX.Element {
                   personality,
                   background,
                   start,
+                  interest,
                 });
                 const core = store.core;
                 if (core && outfit !== 'outfit_casual') {

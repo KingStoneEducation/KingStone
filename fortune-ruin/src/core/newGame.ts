@@ -1,3 +1,4 @@
+import type { Interest } from '../data/romance';
 import { formatG, G } from './money';
 import { HOMES } from '../data/housing';
 import { Rng } from './rng';
@@ -18,6 +19,8 @@ export interface NewGameOptions {
   background: BackgroundId;
   /** how life looks on the first morning (odds are the same for everyone) */
   start?: StartPreset;
+  /** who the character is interested in */
+  interest?: Interest;
   seed?: number;
 }
 
@@ -103,6 +106,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
       vehicle: null,
       moodBuffs: [],
       flags: {},
+      romanceInterest: opts.interest ?? 'all',
     },
     world: { location: 'home_basic', x: -1, y: -1, facing: 'down', cityReturn: null, visited: { home_basic: 1 } },
     economy: {

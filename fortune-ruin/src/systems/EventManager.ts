@@ -64,6 +64,20 @@ const npcName = (id: string) => NPC_BY_ID[id]?.name ?? id;
 // ---------------------------------------------------------------- social events (invitations)
 
 export const SOCIAL_EVENTS: Record<string, SocialEventDef> = {
+  date: {
+    id: 'date',
+    name: '约会',
+    // the venue is on each scheduled date
+    location: 'venue',
+    arrival: (core, ev) => core.romance.arrival(ev),
+    choices: () => [
+      { id: 'listen', label: '认真听 TA 说话' },
+      { id: 'share', label: '聊聊你自己' },
+      { id: 'joke', label: '逗 TA 开心' },
+    ],
+    attend: (core, ev, choice) => core.romance.attend(ev, choice),
+    miss: (core, ev) => core.romance.miss(ev),
+  },
   gala: {
     id: 'gala',
     name: '慈善晚宴',

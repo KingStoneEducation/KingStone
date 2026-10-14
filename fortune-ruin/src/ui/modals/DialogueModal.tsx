@@ -47,7 +47,7 @@ export function DialogueModal(props: { view: DialogueView }): JSX.Element {
   return (
     <div className="backdrop" style={{ background: 'rgba(5,3,10,0.25)', alignItems: 'flex-end' }}>
       <div className="dialogue">
-        <div className="portrait">{def && face && <Bust look={def.look} face={face} expr={v.mood} scale={2} bg={bg} talkKey={v.lines.join('|')} />}</div>
+        <div className="portrait">{def && face && <Bust look={def.look} face={face} expr={v.mood} scale={2} bg={bg} talkKey={v.lines.join('|')} blush={['dating', 'partner'].includes(core.romance.stage(def.id))} />}</div>
         <div>
           <div className="dlg-name">
             <span className="n">{v.name}</span>

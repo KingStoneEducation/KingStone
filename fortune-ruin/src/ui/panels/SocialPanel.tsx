@@ -118,7 +118,7 @@ function Detail(props: { id: string }): JSX.Element {
     <div className="stack">
       <div className="row" style={{ alignItems: 'flex-start', gap: 14 }}>
         <div className="portrait" style={{ width: 140, height: 172, flex: 'none' }}>
-          <Bust look={def.look} face={faceFor(def.id, def.look)} expr={moodFrom(0, core.social.disposition(def.id), def.traits.temper)} scale={2} bg={BACKDROPS.home} />
+          <Bust look={def.look} face={faceFor(def.id, def.look)} expr={moodFrom(0, core.social.disposition(def.id), def.traits.temper)} scale={2} bg={BACKDROPS.home} blush={['dating', 'partner'].includes(core.romance.stage(def.id))} />
         </div>
         <div className="grow">
           <h3 style={{ margin: 0, color: 'var(--gold-light)' }}>
@@ -134,6 +134,13 @@ function Detail(props: { id: string }): JSX.Element {
             </div>
           )}
           {r.familiarity < 20 && <div className="dim" style={{ fontSize: 12 }}>多聊几次，才能更了解 TA。</div>}
+          {(() => {
+            const st = core.romance.stage(def.id);
+            if (st === 'partner') return <div style={{ fontSize: 12, marginTop: 4 }} className="good">恋人 · 在一起 {core.today() - Number(r.flags.partnerSince ?? core.today())} 天 · 约会 {core.romance.dates(def.id)} 次</div>;
+            if (st === 'dating') return <div style={{ fontSize: 12, marginTop: 4 }} className="good">约会中 · 已约会 {core.romance.dates(def.id)} 次</div>;
+            if (st === 'ex') return <div style={{ fontSize: 12, marginTop: 4 }} className="muted">前任</div>;
+            return null;
+          })()}
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             上次交谈：{r.lastTalk > 0 ? formatAgo(core.now(), r.lastTalk) : '还没有'}
             {seenRecently && rt.location && ` · 刚才在${LOCATIONS[rt.location]?.name ?? '城里'}`}

@@ -25,7 +25,7 @@ const reducedMotion = (): boolean => typeof matchMedia === 'function' && matchMe
  * Half-body portrait. Blinks every few seconds and moves its mouth for a
  * moment whenever `talkKey` changes (new lines in a conversation).
  */
-export function Bust(props: { look: CharacterLook; face: FaceSpec; expr?: Expression; scale?: number; crop?: 'full' | 'head'; bg?: string | null; talkKey?: string; still?: boolean }): JSX.Element {
+export function Bust(props: { look: CharacterLook; face: FaceSpec; expr?: Expression; scale?: number; crop?: 'full' | 'head'; bg?: string | null; talkKey?: string; still?: boolean; blush?: boolean }): JSX.Element {
   const ref = useRef<HTMLCanvasElement>(null);
   const [blink, setBlink] = useState(false);
   const [talk, setTalk] = useState(false);
@@ -76,8 +76,8 @@ export function Bust(props: { look: CharacterLook; face: FaceSpec; expr?: Expres
     const ctx = c.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, c.width, c.height);
-    const src = portraitCanvas(props.look, props.face, { expr: props.expr, blink, talk, bg: props.bg ?? null });
+    const src = portraitCanvas(props.look, props.face, { expr: props.expr, blink, talk, bg: props.bg ?? null, blush: props.blush });
     ctx.drawImage(src, sx, sy, sw, sh, 0, 0, sw * scale, sh * scale);
-  }, [props.look, props.face, props.expr, props.bg, blink, talk, scale, sx, sy, sw, sh]);
+  }, [props.look, props.face, props.expr, props.bg, blink, talk, scale, sx, sy, sw, sh, props.blush]);
   return <canvas ref={ref} className="bust" width={sw * scale} height={sh * scale} />;
 }

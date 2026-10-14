@@ -42,7 +42,7 @@ export interface DialogueTextProvider {
 
 interface Session {
   npcId: string;
-  menu: 'main' | 'share' | 'gift' | 'borrow' | 'services' | 'respond';
+  menu: 'main' | 'share' | 'gift' | 'borrow' | 'services' | 'respond' | 'romance';
   lastFact: Memory | null;
   pendingAsk: boolean;
   /** disposition when the last view was built, to read their reaction from */
@@ -89,6 +89,8 @@ const fmt = (m: Money) => formatG(m);
 function fill(t: string, vars: Record<string, string>): string {
   return t.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 }
+
+const stage = (core: GameCore, id: string) => core.romance.stage(id);
 
 export class DialogueEngine {
   session: Session | null = null;
@@ -177,6 +179,7 @@ export class DialogueEngine {
     const plan = this.core.events.upcoming().find((e) => e.npc === npcId && e.status === 'accepted' && e.at - this.core.now() < 18 * 60);
     if (plan) lines.push(`别忘了${toDate(plan.at).hour}点的约哦。`);
     this.core.social.touchContact(npcId);
+    this.core.romance.onTalk(npcId);
     this.core.paused.add('dialogue');
     // stay for the conversation, even when chatting makes time pass
     this.core.state.npcs[npcId].flags.talkHold = true;
@@ -344,6 +347,19 @@ export class DialogueEngine {
     if (s.menu === 'services') {
       return [...this.serviceOptions(id), { id: 'main', label: '返回', tone: 'leave' }];
     }
+    const rom = this.core.romance;
+    const stage = rom.stage(id);
+    if (s.menu === 'romance') {
+      const ask = rom.askOption(id);
+      if (ask.show) opts.push({ id: 'romance_ask', label: '「明晚有空吗？想单独约你。」', tone: 'warm', disabled: ask.disabled });
+      const again = rom.dateAgainOption(id);
+      if (again.show) opts.push({ id: 'romance_date', label: '「明晚再一起出去吧。」', tone: 'warm', disabled: again.disabled });
+      const conf = rom.confessOption(id);
+      if (conf.show) opts.push({ id: 'romance_confess', label: '「我喜欢你。我们在一起吧。」', tone: 'warm', disabled: conf.disabled });
+      if (stage === 'dating' || stage === 'partner') opts.push({ id: 'romance_end', label: stage === 'partner' ? '提出分手' : '「我们还是做朋友吧。」', tone: 'risky' });
+      opts.push({ id: 'main', label: '算了', tone: 'leave' });
+      return opts;
+    }
     // main menu
     const talked = r.talkDay === this.core.today() ? r.talksToday : 0;
     opts.push({ id: 'chat', label: '聊聊天', tone: 'warm', disabled: talked > 5 ? '今天已经聊得够多了' : undefined });
@@ -363,6 +379,7 @@ export class DialogueEngine {
     if (negative && !negative.data.apologized) opts.push({ id: 'apologize', label: '为之前的事道歉', tone: 'warm' });
     if (st.stress >= 62 || st.impulsivity >= 66 || st.drunk >= 45) opts.push({ id: 'lash_out', label: '（烦躁）冲对方发脾气', tone: 'risky' });
     if (this.serviceOptions(id).length) opts.push({ id: 'menu_services', label: this.serviceLabel(def), tone: 'service' });
+    if (stage === 'dating' || stage === 'partner' || rom.askOption(id).show) opts.push({ id: 'menu_romance', label: stage === 'partner' ? '我们俩……' : '感情……', tone: 'warm' });
     opts.push({ id: 'bye', label: '告辞', tone: 'leave' });
     return opts;
   }
@@ -491,6 +508,34 @@ export class DialogueEngine {
         s.menu = 'borrow';
         lines.push('（你斟酌着怎么开口……）');
         break;
+      case 'menu_romance':
+        s.menu = 'romance';
+        lines.push(stage(this.core, id) === 'partner' ? this.pick(id, ['嗯？', '怎么了？']) ?? '' : '（你犹豫着该怎么开口……）');
+        break;
+      case 'romance_ask': {
+        const res = this.core.romance.askOut(id);
+        lines.push(res.line);
+        s.hint = res.yes ? 'smile' : 'worried';
+        s.menu = 'main';
+        break;
+      }
+      case 'romance_date':
+        lines.push(this.core.romance.dateAgain(id));
+        s.hint = 'smile';
+        s.menu = 'main';
+        break;
+      case 'romance_confess': {
+        const res = this.core.romance.confess(id);
+        lines.push(res.line);
+        s.hint = res.yes ? 'grin' : 'worried';
+        s.menu = 'main';
+        break;
+      }
+      case 'romance_end': {
+        lines.push(this.core.romance.breakUp(id));
+        this.end();
+        return this.viewEnded(id, lines);
+      }
       case 'menu_services':
         s.menu = 'services';
         lines.push(this.pick(id, ['请说。', '需要什么？', '我能帮你什么？']) ?? '');

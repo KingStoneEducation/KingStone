@@ -51,6 +51,8 @@ export interface PortraitOpts {
   talk?: boolean;
   /** backdrop colour; transparent when absent */
   bg?: string | null;
+  /** flushed cheeks (someone they are in love with) */
+  blush?: boolean;
 }
 
 // ------------------------------------------------------------------ raster helpers
@@ -825,9 +827,9 @@ function drawMouth(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression,
   }
 }
 
-function drawCheeks(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression): void {
+function drawCheeks(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression, flushed: boolean): void {
   const skinAt = (x: number, y: number) => buf.tag(x, y) === T.skin;
-  const blush = face.blush || expr === 'grin' || (g.fem && expr === 'smile');
+  const blush = flushed || face.blush || expr === 'grin' || (g.fem && expr === 'smile');
   if (blush) {
     for (const [x, y] of [
       [21, 34],
@@ -1454,7 +1456,7 @@ export function portraitPixels(look: CharacterLook, face: FaceSpec, opts: Portra
     if (look.hair === 10) for (const [x, y] of [[26, 15], [27, 15], [25, 16]] as Pt[]) buf.put(x, y, mix(pal.skin.hi, '#ffffff', 0.3), T.skin);
   }
   // 6 features
-  drawCheeks(buf, g, face, pal, expr);
+  drawCheeks(buf, g, face, pal, expr, !!opts.blush);
   drawBeard(buf, g, face, pal, fm);
   drawNose(buf, face, pal);
   drawMouth(buf, g, face, pal, expr, !!opts.talk);
@@ -1505,7 +1507,7 @@ const cache = new Map<string, HTMLCanvasElement>();
 
 /** Canvas of a portrait, cached by everything that affects it. */
 export function portraitCanvas(look: CharacterLook, face: FaceSpec, opts: PortraitOpts = {}): HTMLCanvasElement {
-  const key = JSON.stringify([look, face, opts.expr ?? face.rest ?? 'neutral', !!opts.blink, !!opts.talk, opts.bg ?? null]);
+  const key = JSON.stringify([look, face, opts.expr ?? face.rest ?? 'neutral', !!opts.blink, !!opts.talk, opts.bg ?? null, !!opts.blush]);
   const hit = cache.get(key);
   if (hit) {
     cache.delete(key);
