@@ -22,6 +22,7 @@ import { StorySystem } from '../systems/StorySystem';
 import { OUTREACH_HOURS, OutreachSystem } from '../systems/OutreachSystem';
 import { RomanceSystem } from '../systems/RomanceSystem';
 import { BusinessSystem } from '../systems/BusinessSystem';
+import { CompanionSystem } from '../systems/CompanionSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -106,6 +107,7 @@ export class GameCore {
   outreach: OutreachSystem;
   romance: RomanceSystem;
   business: BusinessSystem;
+  companions: CompanionSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -130,6 +132,7 @@ export class GameCore {
     this.outreach = new OutreachSystem(this);
     this.romance = new RomanceSystem(this);
     this.business = new BusinessSystem(this);
+    this.companions = new CompanionSystem(this);
   }
 
   now(): number {

@@ -380,6 +380,8 @@ export class DialogueEngine {
     if (st.stress >= 62 || st.impulsivity >= 66 || st.drunk >= 45) opts.push({ id: 'lash_out', label: '（烦躁）冲对方发脾气', tone: 'risky' });
     if (this.serviceOptions(id).length) opts.push({ id: 'menu_services', label: this.serviceLabel(def), tone: 'service' });
     if (stage === 'dating' || stage === 'partner' || rom.askOption(id).show) opts.push({ id: 'menu_romance', label: stage === 'partner' ? '我们俩……' : '感情……', tone: 'warm' });
+    const casino = this.core.companions.inviteOption(id);
+    if (casino.show) opts.push({ id: 'invite_casino', label: '「今晚一起去赌场？」', tone: 'risky', disabled: casino.disabled });
     opts.push({ id: 'bye', label: '告辞', tone: 'leave' });
     return opts;
   }
@@ -512,6 +514,13 @@ export class DialogueEngine {
         s.menu = 'romance';
         lines.push(stage(this.core, id) === 'partner' ? this.pick(id, ['嗯？', '怎么了？']) ?? '' : '（你犹豫着该怎么开口……）');
         break;
+      case 'invite_casino': {
+        const res = this.core.companions.invite(id);
+        lines.push(res.line);
+        s.hint = res.yes ? 'smile' : null;
+        s.menu = 'main';
+        break;
+      }
       case 'romance_ask': {
         const res = this.core.romance.askOut(id);
         lines.push(res.line);

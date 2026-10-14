@@ -402,12 +402,30 @@ export class CasinoManager {
     return cfg.rules.minBet ?? G(10);
   }
 
-  /** Named NPCs scheduled to gamble become patrons with their own money. */
+  /** Named NPCs scheduled to gamble (or out with the player tonight) become patrons with their own money. */
   private syncNpcPatrons(releaseAll: boolean): void {
-    for (const [npcId, tableId] of Object.entries(NPC_TABLES)) {
+    const tables: [string, string][] = Object.entries(NPC_TABLES);
+    for (const id of this.core.companions.playing()) {
+      const at = this.core.companions.tableFor(id);
+      const i = tables.findIndex(([n]) => n === id);
+      if (i >= 0) tables[i] = [id, at];
+      else tables.push([id, at]);
+    }
+    for (const [npcId, wanted] of tables) {
+      let tableId = wanted;
       const rt = this.core.state.npcs[npcId];
       if (!rt) continue;
-      const existing = this.cs.patrons.find((p) => p.npc === npcId && p.state !== 'gone');
+      let existing = this.cs.patrons.find((p) => p.npc === npcId && p.state !== 'gone');
+      // a companion follows you to another table between rounds
+      if (existing && existing.seat && !existing.seat.startsWith(`${tableId}:`) && !releaseAll) {
+        const from = existing.seat.split(':')[0];
+        if (!this.roundInProgress(from) && from !== this.cs.activeTable) {
+          rt.money = existing.bankroll + Math.max(0, Number(rt.flags.heldBack ?? 0));
+          rt.flags.heldBack = 0;
+          this.retirePatron(existing);
+          existing = undefined;
+        }
+      }
       const shouldPlay = !releaseAll && rt.location === 'casino' && rt.activity === 'gamble' && rt.money > G(30);
       if (existing && (!shouldPlay || existing.bankroll < this.tableMin(TABLE_BY_ID[tableId]))) {
         if ((this.roundInProgress(tableId) || tableId === this.cs.activeTable) && !releaseAll) continue;
@@ -418,7 +436,19 @@ export class CasinoManager {
         continue;
       }
       if (!existing && shouldPlay && rt.flags.bustedTonight !== this.core.today()) {
-        const seat = this.freeSeat(tableId);
+        let seat = this.freeSeat(tableId);
+        if (seat < 0 && tableId === this.cs.activeTable && !this.roundInProgress(tableId)) {
+          // a stranger makes room for your friend
+          const p = this.patronsAt(tableId).find((x) => !x.npc);
+          if (p) {
+            seat = Number(p.seat!.split(':')[1]);
+            this.retirePatron(p);
+          }
+        }
+        if (seat < 0 && this.core.companions.playing().includes(npcId)) {
+          tableId = this.core.companions.homeTable(npcId);
+          seat = this.freeSeat(tableId);
+        }
         if (seat < 0) continue;
         const def = NPC_BY_ID[npcId];
         // NPCs bring only part of their money to the table
@@ -493,6 +523,8 @@ export class CasinoManager {
       else this.core.state.player.flags[`seat:${tableId}`] = seat;
     }
     this.cs.activeTable = tableId;
+    // friends who came with you join this table now
+    if (this.core.companions.playing().length) this.syncNpcPatrons(false);
     this.core.bus.emit('casino:sit', { tableId });
     this.core.touch();
     return ok(seat);

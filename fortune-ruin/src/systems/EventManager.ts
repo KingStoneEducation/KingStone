@@ -39,6 +39,8 @@ export interface SocialEventDef {
   choices?: (core: GameCore, ev: ScheduledEvent) => { id: string; label: string; hint?: string }[];
   attend: (core: GameCore, ev: ScheduledEvent, choice?: string) => string;
   miss: (core: GameCore, ev: ScheduledEvent) => void;
+  /** once the event's time is over, if the player came */
+  after?: (core: GameCore, ev: ScheduledEvent) => void;
   guests?: (ev: ScheduledEvent) => string[];
 }
 
@@ -64,6 +66,34 @@ const npcName = (id: string) => NPC_BY_ID[id]?.name ?? id;
 // ---------------------------------------------------------------- social events (invitations)
 
 export const SOCIAL_EVENTS: Record<string, SocialEventDef> = {
+  casino_night: {
+    id: 'casino_night',
+    name: '赌场之夜',
+    location: 'casino',
+    arrival: (core, ev) => core.companions.arrival(ev),
+    choices: (core, ev) => [
+      { id: 'together', label: ev.data.mode === 'watch' ? '「走吧，进去转转。」' : '「跟我来，坐一桌。」' },
+      { id: 'drink', label: '先去酒吧喝一杯（约 30 G）' },
+    ],
+    attend: (core, ev, choice) => {
+      const id = String(ev.npc);
+      if (choice === 'drink') {
+        const r = core.economy.pay(G(30), 'drinks', '赌场酒吧：两杯酒', 'casino_bar', ['cash', 'bank']);
+        if (r.ok) {
+          core.social.applyDirect(id, { kind: 'treated_me', facets: { generosity: 0.4, attention: 0.4 }, importance: 10, data: { what: '喝酒' } }, { source: 'witnessed' });
+          core.player.change('mood', 3);
+          core.advance(30, 'talking');
+          return `你们在幸运七酒吧喝了一杯，聊了会儿天。`;
+        }
+        return '你摸了摸口袋，还是算了。';
+      }
+      return ev.data.mode === 'watch' ? `${npcName(id)}跟在你身后。` : `${npcName(id)}会坐到你所在的赌桌（21 点、百家乐或轮盘）；你不在桌上时，TA 去自己喜欢的那张桌子。`;
+    },
+    miss: (core, ev) => {
+      core.social.applyDirect(String(ev.npc), { kind: 'missed_party', facets: { unreliability: 0.6 }, importance: 22, data: { event: '赌场之约' } });
+    },
+    after: (core, ev) => core.companions.after(ev),
+  },
   date: {
     id: 'date',
     name: '约会',
@@ -854,6 +884,13 @@ export class EventManager {
         } else {
           ev.status = 'expired';
         }
+      }
+    }
+    for (const ev of this.e.scheduled) {
+      const def = SOCIAL_EVENTS[ev.def];
+      if (ev.status === 'attended' && def?.after && !ev.data.done && now >= ev.until) {
+        ev.data.done = true;
+        def.after(this.core, ev);
       }
     }
     if (this.e.scheduled.length > 60) this.e.scheduled = this.e.scheduled.filter((x) => x.until > now - 30 * MINUTES_PER_DAY);

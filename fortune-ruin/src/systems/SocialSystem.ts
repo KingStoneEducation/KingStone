@@ -116,6 +116,9 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   broke_up: () => '和我分手了',
   new_partner: (m) => `和${m.data.name ?? '别人'}在一起了`,
   neglected: () => '很久没有联系我',
+  invited_gamble: () => '约我去赌场',
+  tempted: () => '在马可戒赌的时候约他去赌场',
+  casino_night: (m) => `和我一起去了赌场${Number(m.data.net ?? 0) ? `（我${Number(m.data.net) > 0 ? '赢' : '输'}了 ${formatG(Math.abs(Number(m.data.net)))}）` : ''}`,
 };
 
 export function describeMemory(m: Memory): string {
