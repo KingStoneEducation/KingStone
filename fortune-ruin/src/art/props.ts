@@ -38,7 +38,12 @@ function def(d: PropDef): void {
 
 // ------------------------------------------------------------------ helpers
 
+let drewShadow = false;
+/** props whose art already contains a ground shadow (the world adds one to the rest) */
+export const OWN_SHADOW = new Set<string>();
+
 function shadow(ctx: Ctx, cx: number, cy: number, rx: number, ry: number): void {
+  drewShadow = true;
   ellipse(ctx, cx, cy, rx, ry, 'rgba(10,6,20,0.28)');
 }
 
@@ -1941,7 +1946,9 @@ export function buildPropImages(add: (name: string, c: HTMLCanvasElement) => voi
     const frames = d.frames ?? 1;
     for (let f = 0; f < frames; f++) {
       const { canvas, ctx } = makeCanvas(d.w, d.h);
+      drewShadow = false;
       d.draw(ctx, f);
+      if (drewShadow) OWN_SHADOW.add(d.id);
       add(propFrameName(d.id, f), canvas);
       if (d.night) {
         const n = makeCanvas(d.w, d.h);

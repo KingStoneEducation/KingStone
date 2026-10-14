@@ -30,6 +30,13 @@ export interface Appearance {
   body?: 'm' | 'f';
   glasses?: boolean;
   beard?: boolean;
+  earrings?: boolean;
+  hat?: 'beanie' | 'cap' | null;
+  /** colour of the top for everyday clothes (hex) */
+  topColor?: string;
+  /** portrait eye shape and colour (indices into data/faces) */
+  eyes?: number;
+  eyeColor?: number;
 }
 
 export type PersonalityTendency = 'cautious' | 'bold' | 'sociable' | 'rational';

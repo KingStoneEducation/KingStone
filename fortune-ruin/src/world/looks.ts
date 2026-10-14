@@ -11,21 +11,27 @@ const FALLBACK: OutfitLook = { top: '#4f7fbf', topShade: '#3a5f94', bottom: '#3b
 /** Sprite look from a character-creation appearance and an outfit id. */
 export function lookFor(a: Appearance, outfitId: string): CharacterLook {
   const o = OUTFITS[outfitId]?.look ?? FALLBACK;
+  // everyday clothes come in the colour picked at character creation
+  const recolor = a.topColor && EVERYDAY.has(outfitId);
   return {
     skin: a.skin,
     hair: a.hairStyle,
     hairColor: P.hair[a.hairColor] ?? P.hair[0],
-    top: o.top,
-    topShade: o.topShade,
+    top: recolor ? a.topColor! : o.top,
+    topShade: recolor ? shade(a.topColor!, -0.25) : o.topShade,
     bottom: o.bottom,
     shoes: o.shoes,
     accent: o.accent,
     style: o.style,
     glasses: a.glasses,
     beard: a.beard,
+    earrings: a.earrings,
+    hat: a.hat ?? null,
     body: a.body ?? (a.pronoun === 'she' ? 'f' : 'm'),
   };
 }
+
+const EVERYDAY = new Set(['outfit_casual', 'outfit_hoodie', 'outfit_smart']);
 
 export function playerLook(core: GameCore): CharacterLook {
   return lookFor(core.state.player.appearance, core.state.player.outfit);

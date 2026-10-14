@@ -1,8 +1,12 @@
+import { useMemo } from 'react';
 import { store, type Panel } from '../store';
 import { useCore, useKey } from '../hooks';
-import { Portrait } from '../components';
+import { Bust, BACKDROPS } from '../Bust';
 import type { DialogueView } from '../../systems/DialogueEngine';
 import { NPC_BY_ID } from '../../data/npcs';
+import { faceFor } from '../../data/faces';
+import { LOCATIONS } from '../../data/locations';
+import { toDate } from '../../core/calendar';
 
 const DIM_NAMES: [keyof import('../../core/state').RelDims, string][] = [
   ['affection', '好感'],
@@ -16,6 +20,10 @@ export function DialogueModal(props: { view: DialogueView }): JSX.Element {
   const v = props.view;
   const def = NPC_BY_ID[v.npcId];
   const rel = core.social.rel(v.npcId);
+  const face = useMemo(() => (def ? faceFor(def.id, def.look) : null), [def]);
+  const amb = LOCATIONS[core.state.world.location]?.ambience ?? 'city';
+  const hour = toDate(core.now()).hour;
+  const bg = amb === 'city' && (hour >= 19 || hour < 6) ? '#3a4466' : BACKDROPS[amb];
   const choose = (id: string) => {
     const next = core.dialogue.choose(id);
     if (next.ended) {
@@ -39,7 +47,7 @@ export function DialogueModal(props: { view: DialogueView }): JSX.Element {
   return (
     <div className="backdrop" style={{ background: 'rgba(5,3,10,0.25)', alignItems: 'flex-end' }}>
       <div className="dialogue">
-        <div className="portrait">{def && <Portrait look={def.look} scale={6} crop="bust" />}</div>
+        <div className="portrait">{def && face && <Bust look={def.look} face={face} expr={v.mood} scale={2} bg={bg} talkKey={v.lines.join('|')} />}</div>
         <div>
           <div className="dlg-name">
             <span className="n">{v.name}</span>

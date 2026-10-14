@@ -9,6 +9,7 @@ import { LOCATIONS } from '../data/locations';
 import { toDate } from '../core/calendar';
 import { TIER_INDEX, tierInfo } from '../casino/tables';
 import { JOBS } from '../data/jobs';
+import type { Expression } from '../art/portraits';
 
 export interface DialogueOption {
   id: string;
@@ -27,6 +28,8 @@ export interface DialogueView {
   ended?: boolean;
   /** UI panel to open after the conversation */
   openPanel?: string;
+  /** face to show; absent = their resting expression */
+  mood?: Expression;
 }
 
 /**
@@ -42,6 +45,43 @@ interface Session {
   menu: 'main' | 'share' | 'gift' | 'borrow' | 'services' | 'respond';
   lastFact: Memory | null;
   pendingAsk: boolean;
+  /** disposition when the last view was built, to read their reaction from */
+  lastDisp: number;
+  /** expression called for by what was just said */
+  hint: Expression | null;
+}
+
+/** How a fact they bring up shows on their face. */
+const FACT_MOOD: Record<string, Expression> = {
+  big_win: 'surprised',
+  flashy_purchase: 'surprised',
+  vip_upgrade: 'surprised',
+  promotion: 'smile',
+  helped: 'smile',
+  repaid: 'smile',
+  attended_party: 'smile',
+  lent_money: 'smile',
+  big_loss: 'worried',
+  fired: 'worried',
+  evicted: 'worried',
+  outburst: 'worried',
+  debt_unpaid: 'frown',
+  lied: 'frown',
+  missed_party: 'frown',
+  refused_help: 'frown',
+  drunk_scene: 'frown',
+  angry_at_me: 'angry',
+};
+
+/** Read a reaction from the change in how they feel about the player. */
+export function moodFrom(delta: number, disposition: number, temper: number): Expression | undefined {
+  if (delta >= 3) return 'grin';
+  if (delta >= 0.8) return 'smile';
+  if (delta <= -3) return temper > 0.55 ? 'angry' : 'sad';
+  if (delta <= -0.8) return 'frown';
+  if (disposition <= -25) return temper > 0.6 ? 'angry' : 'frown';
+  if (disposition <= -12) return 'frown';
+  return undefined;
 }
 
 const fmt = (m: Money) => formatG(m);
@@ -99,7 +139,7 @@ export class DialogueEngine {
   start(npcId: string): DialogueView {
     const def = this.def(npcId);
     const r = this.core.social.rel(npcId);
-    this.session = { npcId, menu: 'main', lastFact: null, pendingAsk: false };
+    this.session = { npcId, menu: 'main', lastFact: null, pendingAsk: false, lastDisp: this.core.social.disposition(npcId), hint: null };
     this.core.social.observePlayer(npcId);
     if (def.role === 'banker' && this.core.state.world.location === 'bank') this.core.social.institutionalKnowledge(npcId);
     const lines: string[] = [];
@@ -125,6 +165,7 @@ export class DialogueEngine {
         fact.discussed = true;
         this.session.lastFact = fact;
         this.session.menu = 'respond';
+        this.session.hint = FACT_MOOD[fact.kind] ?? null;
       }
     }
     // Visible state comments
@@ -207,11 +248,23 @@ export class DialogueEngine {
     const loc = LOCATIONS[this.core.state.world.location];
     const prestige = this.core.inventory.currentOutfit().prestige ?? 1;
     const hour = toDate(this.core.now()).hour;
-    if (s.drunk >= 50) return this.byAttitude(npcId, STATE_LINES.drunk, {});
-    if (s.sleep <= 15 || s.energy <= 12) return this.byAttitude(npcId, STATE_LINES.exhausted, {});
+    const hint = (e: Expression) => {
+      if (this.session) this.session.hint = e;
+    };
+    if (s.drunk >= 50) {
+      hint('frown');
+      return this.byAttitude(npcId, STATE_LINES.drunk, {});
+    }
+    if (s.sleep <= 15 || s.energy <= 12) {
+      hint('worried');
+      return this.byAttitude(npcId, STATE_LINES.exhausted, {});
+    }
     if (loc && loc.priceLevel >= 4 && prestige < 3) return this.byAttitude(npcId, STATE_LINES.shabby_upscale, {});
     if (this.core.state.world.location === 'casino' && hour >= 3 && hour < 7) return this.byAttitude(npcId, STATE_LINES.late_casino, {});
-    if (s.stress >= 75 && this.core.rng.chance(0.6)) return this.byAttitude(npcId, STATE_LINES.stressed, {});
+    if (s.stress >= 75 && this.core.rng.chance(0.6)) {
+      hint('worried');
+      return this.byAttitude(npcId, STATE_LINES.stressed, {});
+    }
     if (s.hunger >= 80 && this.core.rng.chance(0.5)) return this.byAttitude(npcId, STATE_LINES.hungry, {});
     const b = this.core.social.belief(npcId);
     if (prestige >= 3 && b.outfitPrestige >= 0 && this.core.rng.chance(0.3)) return this.byAttitude(npcId, STATE_LINES.sharp, {});
@@ -224,7 +277,11 @@ export class DialogueEngine {
     const s = this.session!;
     const def = this.def(s.npcId);
     const r = this.core.social.rel(s.npcId);
-    const final = this.provider ? this.provider.phrase({ npc: def, lines, disposition: this.core.social.disposition(s.npcId) }) : lines;
+    const disp = this.core.social.disposition(s.npcId);
+    const final = this.provider ? this.provider.phrase({ npc: def, lines, disposition: disp }) : lines;
+    const mood = s.hint ?? moodFrom(disp - s.lastDisp, disp, def.traits.temper);
+    s.lastDisp = disp;
+    s.hint = null;
     return {
       npcId: s.npcId,
       name: r.knowsName ? def.name : '陌生人',
@@ -233,6 +290,7 @@ export class DialogueEngine {
       options: ended ? [] : this.options(),
       ended,
       openPanel,
+      mood,
     };
   }
 
@@ -499,6 +557,7 @@ export class DialogueEngine {
       case 'resp_honest':
         soc.applyDirect(id, { kind: 'admit_trouble', facets: { honesty: 0.6, intimacy: 0.4, crisis: 0.3 }, importance: 16 }, { silent: true });
         lines.push(this.byAttitude(id, SHARE_REACTIONS.admit_trouble, {}) ?? this.pick(id, def.voice.onTrouble) ?? '');
+        if (def.traits.empathy > 0.5) s.hint = 'worried';
         this.core.player.change('stress', -3);
         s.menu = 'main';
         break;
@@ -540,6 +599,7 @@ export class DialogueEngine {
         soc.applyDirect(id, { kind: 'admit_trouble', facets: truthy ? { honesty: 0.6, intimacy: 0.5, crisis: 0.5 } : { intimacy: 0.3, crisis: 0.2 }, importance: 18 }, { silent: true });
         soc.applyDirect(id, { kind: 'claim', facets: {}, importance: 10, data: { claim: 'struggling', text: '手头很紧', truthful: truthy } }, { silent: true });
         lines.push(this.pick(id, def.voice.onTrouble) ?? this.byAttitude(id, SHARE_REACTIONS.admit_trouble, {}) ?? '');
+        if (def.traits.empathy > 0.5) s.hint = 'worried';
         s.menu = 'main';
         break;
       }

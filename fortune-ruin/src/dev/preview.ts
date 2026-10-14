@@ -77,7 +77,7 @@ import { interiorMap } from '../world/maps/interiors';
 import { buildCityMap } from '../world/maps/city';
 import { PROPS, propFrameName } from '../art/props';
 import { BUILDING_BY_ID } from '../world/maps/cityLayout';
-import { TILESET_COLUMNS } from '../art/tiles';
+import { TILESET_COLUMNS, displayTile } from '../art/tiles';
 import type { MapData } from '../world/maps/types';
 
 function renderMap(m: MapData, scale: number, night: boolean) {
@@ -90,7 +90,7 @@ function renderMap(m: MapData, scale: number, night: boolean) {
   const x = c.getContext('2d')!;
   x.imageSmoothingEnabled = false;
   for (let i = 0; i < m.w * m.h; i++) {
-    const t = m.ground[i];
+    const t = displayTile(m.ground[i], i % m.w, Math.floor(i / m.w));
     const sx = (t % TILESET_COLUMNS) * 16;
     const sy = Math.floor(t / TILESET_COLUMNS) * 16;
     x.drawImage(ts, sx, sy, 16, 16, (i % m.w) * 16, Math.floor(i / m.w) * 16, 16, 16);
@@ -122,3 +122,107 @@ function renderMap(m: MapData, scale: number, night: boolean) {
 }
 const mid = new URLSearchParams(location.search).get('id');
 if (mode === 'map' && mid) renderMap(mid === 'city' ? buildCityMap() : interiorMap(mid), Number(new URLSearchParams(location.search).get('s') ?? 2), false);
+
+if (mode === 'hair') {
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.flexWrap = 'wrap';
+  wrap.style.background = '#6a6a5a';
+  out.appendChild(wrap);
+  for (let s = 0; s < 12; s++) {
+    const look = { skin: 1, hair: s, hairColor: '#7a5233', top: '#4f7fbf', topShade: '#3a5f94', bottom: '#3b4a66', shoes: '#2a2a2e', style: 'tee' as const, body: (s % 2 ? 'f' : 'm') as 'm' | 'f' };
+    const sheet = buildCharacterSheet(look);
+    const c = document.createElement('canvas');
+    c.width = 16 * 4 * 5;
+    c.height = 32 * 5;
+    const x = c.getContext('2d')!;
+    x.imageSmoothingEnabled = false;
+    for (let d = 0; d < 4; d++) x.drawImage(sheet, d * 4 * 16, 0, 16, 32, d * 16 * 5, 0, 16 * 5, 32 * 5);
+    c.title = String(s);
+    c.style.margin = '4px';
+    wrap.appendChild(c);
+  }
+}
+
+import { portraitCanvas, EXPRESSIONS } from '../art/portraits';
+import { faceFor } from '../data/faces';
+
+if (mode === 'busts' || mode === 'expr') {
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.flexWrap = 'wrap';
+  wrap.style.background = '#3a2a20';
+  out.appendChild(wrap);
+  const sc = Number(new URLSearchParams(location.search).get('s') ?? 3);
+  const add = (c: HTMLCanvasElement, label: string) => {
+    const box = document.createElement('div');
+    box.style.margin = '3px';
+    box.style.color = '#f4e6c8';
+    const s = document.createElement('canvas');
+    s.width = c.width * sc;
+    s.height = c.height * sc;
+    const x = s.getContext('2d')!;
+    x.imageSmoothingEnabled = false;
+    x.drawImage(c, 0, 0, s.width, s.height);
+    box.appendChild(s);
+    const t = document.createElement('div');
+    t.textContent = label;
+    box.appendChild(t);
+    wrap.appendChild(box);
+  };
+  if (mode === 'busts') {
+    const ids = new URLSearchParams(location.search).get('ids')?.split(',');
+    for (const n of NPCS.filter((v) => !ids || ids.includes(v.id))) add(portraitCanvas(n.look, faceFor(n.id, n.look), { bg: '#8a6a4a' }), n.name);
+  } else {
+    const id = new URLSearchParams(location.search).get('id') ?? 'eileen';
+    const n = NPCS.find((v) => v.id === id)!;
+    for (const e of EXPRESSIONS) add(portraitCanvas(n.look, faceFor(n.id, n.look), { bg: '#8a6a4a', expr: e }), e);
+    add(portraitCanvas(n.look, faceFor(n.id, n.look), { bg: '#8a6a4a', blink: true }), 'blink');
+    add(portraitCanvas(n.look, faceFor(n.id, n.look), { bg: '#8a6a4a', talk: true }), 'talk');
+  }
+}
+
+import { lookFor } from '../world/looks';
+import { playerFace } from '../data/faces';
+
+if (mode === 'hairbust') {
+  const wrap = document.createElement('div');
+  wrap.style.display = 'flex';
+  wrap.style.flexWrap = 'wrap';
+  wrap.style.background = '#3a2a20';
+  out.appendChild(wrap);
+  const sc = Number(new URLSearchParams(location.search).get('s') ?? 3);
+  const body = (new URLSearchParams(location.search).get('b') ?? 'm') as 'm' | 'f';
+  const add = (c: HTMLCanvasElement, label: string) => {
+    const box = document.createElement('div');
+    box.style.margin = '3px';
+    box.style.color = '#f4e6c8';
+    const s = document.createElement('canvas');
+    s.width = c.width * sc;
+    s.height = c.height * sc;
+    const x = s.getContext('2d')!;
+    x.imageSmoothingEnabled = false;
+    x.drawImage(c, 0, 0, s.width, s.height);
+    box.appendChild(s);
+    const t = document.createElement('div');
+    t.textContent = label;
+    box.appendChild(t);
+    wrap.appendChild(box);
+  };
+  const extras: [string, Partial<import('../core/state').Appearance>][] = [
+    ['beanie', { hat: 'beanie' }],
+    ['cap', { hat: 'cap', hairStyle: 10 }],
+    ['glasses+earrings', { glasses: true, earrings: true }],
+    ['beard', { beard: true, hairStyle: 8 }],
+  ];
+  for (let h = 0; h < 12; h++) {
+    const app = { skin: (h % 6), hairStyle: h, hairColor: (h * 5) % 12, pronoun: body === 'f' ? 'she' : 'he', body, eyes: h % 4, eyeColor: h % 6 } as import('../core/state').Appearance;
+    const look = lookFor(app, 'outfit_casual');
+    add(portraitCanvas(look, playerFace(app, look), { bg: '#8a6a4a' }), `hair ${h}`);
+  }
+  for (const [label, extra] of extras) {
+    const app = { skin: 1, hairStyle: 2, hairColor: 1, pronoun: body === 'f' ? 'she' : 'he', body, ...extra } as import('../core/state').Appearance;
+    const look = lookFor(app, 'outfit_hoodie');
+    add(portraitCanvas(look, playerFace(app, look), { bg: '#8a6a4a' }), label);
+  }
+}

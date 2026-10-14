@@ -4,7 +4,7 @@ import { useCore } from './hooks';
 import { Bar, GV, Keycap } from './components';
 import { formatClock, formatDate, MINUTES_PER_DAY, SEASON_NAMES, toDate, WEEKDAY_NAMES } from '../core/calendar';
 import { LOCATIONS, isOpen } from '../data/locations';
-import { formatG, type Money } from '../core/money';
+import { formatG, G, type Money } from '../core/money';
 import type { AccountId } from '../core/state';
 import { Icon } from './Icon';
 
@@ -47,6 +47,8 @@ function WorkLine(): JSX.Element | null {
   if (core.state.world.location === 'casino' && !store.settings.showCasinoClock) return null;
   if (items.length === 0) {
     if (core.career.activeJobs().length > 0) return null;
+    // nobody has to tell the well-off to go job hunting
+    if (core.economy.balance('bank') + core.economy.balance('cash') >= G(200000)) return null;
     return (
       <div className="hud-box interactive work-line" onClick={() => store.openModal({ type: 'jobs' })} title="查看招聘信息">
         <div className="what">目前没有工作</div>

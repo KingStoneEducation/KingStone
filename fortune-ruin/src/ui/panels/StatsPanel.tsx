@@ -6,6 +6,11 @@ import { SKILL_NAMES, STAT_NAMES } from '../../systems/PlayerSystem';
 import { GAME_NAMES } from '../../casino/tables';
 import { formatDate, toDate } from '../../core/calendar';
 import { LineChart } from './charts';
+import { Bust, BACKDROPS } from '../Bust';
+import { playerFace } from '../../data/faces';
+import { playerLook } from '../../world/looks';
+import { HOMES } from '../../data/housing';
+import type { Expression } from '../../art/portraits';
 import type { GameKind, PlayerStats, SkillId } from '../../core/state';
 
 type Tab = 'self' | 'casino' | 'life';
@@ -36,9 +41,23 @@ function Self(): JSX.Element {
   const core = useCore();
   const p = core.state.player;
   const stats: (keyof PlayerStats)[] = ['energy', 'hunger', 'sleep', 'stress', 'mood', 'confidence', 'impulsivity', 'social', 'health', 'drunk'];
+  const look = playerLook(core);
+  const face = playerFace(p.appearance, look);
+  const expr: Expression = p.stats.stress >= 75 ? 'worried' : p.stats.mood <= 25 ? 'sad' : p.stats.mood >= 70 ? 'smile' : 'neutral';
   return (
     <div className="grid2">
       <div className="card">
+        <div className="row" style={{ gap: 12, alignItems: 'flex-start', marginBottom: 8 }}>
+          <div className="portrait" style={{ width: 140, height: 172, flex: 'none' }}>
+            <Bust look={look} face={face} expr={expr} scale={2} bg={BACKDROPS.home} />
+          </div>
+          <div className="stack" style={{ gap: 4, fontSize: 12 }}>
+            <h3 style={{ margin: 0 }}>{p.name}</h3>
+            <div className="muted">{core.wealth.wealthClass().name}</div>
+            <div>住在{HOMES[core.state.housing.homeId]?.name ?? '城里'}</div>
+            <div>{core.inventory.currentOutfit().name}</div>
+          </div>
+        </div>
         <h3>身心状态</h3>
         {stats.map((k) => (
           <div className="need" key={k} style={{ gridTemplateColumns: '40px 1fr 30px' }}>

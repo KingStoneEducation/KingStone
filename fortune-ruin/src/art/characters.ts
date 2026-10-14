@@ -238,6 +238,10 @@ function headFront(p: Painter, c: Colors, look: CharacterLook): void {
     p.p(4, 12, c.skin);
     p.p(11, 12, c.skin);
   }
+  if (look.earrings) {
+    p.p(2, 11, '#e8c860');
+    p.p(13, 11, '#e8c860');
+  }
   if (look.glasses) {
     p.r(4, 9, 3, 3, '#2a2a34');
     p.r(9, 9, 3, 3, '#2a2a34');
@@ -329,6 +333,28 @@ function hairFront(p: Painter, c: Colors, style: number): void {
       p.r(4, 5, 6, 1, c.hairHi);
       p.r(5, 6, 4, 1, c.hairHi);
       break;
+    case 10:
+      // shaved: only a shadow of stubble
+      p.r(4, 5, 8, 1, c.hairShade);
+      p.r(5, 4, 6, 1, shade(c.hairShade, 0.2));
+      break;
+    case 11:
+      // long curls
+      cap();
+      p.r(3, 8, 3, 1, h);
+      p.r(10, 8, 3, 1, h);
+      for (let y = 7; y < 20; y++) {
+        const w = y % 2 === 0 ? 3 : 2;
+        p.r(4 - w, y, w, 1, h);
+        p.r(12, y, w, 1, h);
+        if (y % 3 === 0) {
+          p.p(4 - w, y, c.hairShade);
+          p.p(11 + w, y, c.hairShade);
+        }
+      }
+      p.r(2, 20, 2, 1, c.hairShade);
+      p.r(12, 20, 2, 1, c.hairShade);
+      break;
     case 9:
     default:
       cap();
@@ -347,6 +373,12 @@ function hairFront(p: Painter, c: Colors, style: number): void {
 
 function hairBack(p: Painter, c: Colors, style: number): void {
   const h = c.hair;
+  if (style === 10) {
+    p.r(4, 4, 8, 1, c.hairShade);
+    p.r(3, 5, 10, 9, shade(c.hairShade, 0.15));
+    p.r(4, 14, 8, 1, c.hairShade);
+    return;
+  }
   p.r(4, 4, 8, 1, h);
   p.r(3, 5, 10, 10, h);
   p.r(4, 15, 8, 1, h);
@@ -385,6 +417,15 @@ function hairBack(p: Painter, c: Colors, style: number): void {
       for (let y = 15; y < 21; y += 3) {
         p.p(2, y, c.hairShade);
         p.p(13, y + 1, c.hairShade);
+      }
+      break;
+    case 11:
+      p.r(2, 7, 12, 13, h);
+      p.r(3, 20, 10, 1, h);
+      for (let y = 8; y < 20; y += 2) {
+        p.p(2 + (y % 4 === 0 ? 1 : 0), y, c.hairShade);
+        p.p(13 - (y % 4 === 0 ? 1 : 0), y, c.hairShade);
+        p.p(7, y, c.hairShade);
       }
       break;
   }
@@ -515,6 +556,7 @@ function headSide(p: Painter, c: Colors, look: CharacterLook): void {
     p.p(4, 10, '#9fd0e8');
     p.r(7, 9, 3, 1, '#2a2a34');
   }
+  if (look.earrings) p.p(9, 12, '#e8c860');
 }
 
 function hairSide(p: Painter, c: Colors, style: number): void {
@@ -578,6 +620,17 @@ function hairSide(p: Painter, c: Colors, style: number): void {
       p.r(8, 7, 4, 5, h);
       p.r(4, 4, 5, 1, c.hairHi);
       break;
+    case 10:
+      p.r(5, 4, 6, 1, shade(c.hairShade, 0.2));
+      p.r(4, 5, 8, 1, c.hairShade);
+      p.r(9, 6, 3, 4, shade(c.hairShade, 0.15));
+      break;
+    case 11:
+      base();
+      p.r(4, 7, 2, 2, h);
+      for (let y = 7; y < 20; y++) p.r(8, y, y % 2 === 0 ? 5 : 4, 1, h);
+      for (let y = 8; y < 20; y += 3) p.p(12, y, c.hairShade);
+      break;
     case 9:
     default:
       base();
@@ -591,6 +644,59 @@ function hairSide(p: Painter, c: Colors, style: number): void {
   }
 }
 
+const HAT = { beanie: '#b8432e', cap: '#2f4f7a' };
+
+/** Hats sit over the hair: a knitted beanie, or a cap with a brim facing the way the head does. */
+function hatFront(p: Painter, look: CharacterLook): void {
+  if (!look.hat) return;
+  const c = HAT[look.hat];
+  if (look.hat === 'beanie') {
+    p.r(4, 2, 8, 1, c);
+    p.r(3, 3, 10, 5, c);
+    p.r(3, 7, 10, 1, shade(c, -0.25));
+    for (let x = 4; x < 13; x += 2) p.p(x, 5, shade(c, 0.18));
+    p.r(7, 1, 2, 1, '#f2e6d0');
+  } else {
+    p.r(4, 3, 8, 1, c);
+    p.r(3, 4, 10, 3, c);
+    p.r(5, 4, 2, 1, shade(c, 0.25));
+    p.r(3, 7, 10, 1, shade(c, -0.3));
+    p.r(4, 8, 8, 1, shade(c, -0.15));
+  }
+}
+
+function hatBack(p: Painter, look: CharacterLook): void {
+  if (!look.hat) return;
+  const c = HAT[look.hat];
+  if (look.hat === 'beanie') {
+    p.r(4, 2, 8, 1, c);
+    p.r(3, 3, 10, 5, c);
+    p.r(3, 7, 10, 1, shade(c, -0.25));
+    p.r(7, 1, 2, 1, '#f2e6d0');
+  } else {
+    p.r(4, 3, 8, 1, c);
+    p.r(3, 4, 10, 4, c);
+    p.r(6, 7, 4, 1, shade(c, -0.3));
+  }
+}
+
+function hatSide(p: Painter, look: CharacterLook): void {
+  if (!look.hat) return;
+  const c = HAT[look.hat];
+  if (look.hat === 'beanie') {
+    p.r(5, 2, 6, 1, c);
+    p.r(4, 3, 8, 5, c);
+    p.r(4, 7, 8, 1, shade(c, -0.25));
+    p.r(8, 1, 2, 1, '#f2e6d0');
+  } else {
+    p.r(5, 3, 6, 1, c);
+    p.r(4, 4, 8, 3, c);
+    // the brim points forward (this view faces left)
+    p.r(1, 7, 6, 1, shade(c, -0.3));
+    p.r(4, 7, 8, 1, shade(c, -0.15));
+  }
+}
+
 // ------------------------------------------------------------------ frames
 
 function drawLeft(ctx: Ctx, ox: number, oy: number, look: CharacterLook, pose: CharPose): void {
@@ -599,7 +705,13 @@ function drawLeft(ctx: Ctx, ox: number, oy: number, look: CharacterLook, pose: C
   legsSide(p, c, look, pose);
   torsoSide(p, c, look, pose);
   headSide(p, c, look);
-  hairSide(p, c, look.hair);
+  hairSide(p, c, look.hat ? hatHair(look.hair) : look.hair);
+  hatSide(p, look);
+}
+
+/** Under a hat only the hair below the band shows; very tall styles (updo) are flattened. */
+function hatHair(style: number): number {
+  return style === 5 ? 0 : style;
 }
 
 export function drawCharacterFrame(ctx: Ctx, ox: number, oy: number, look: CharacterLook, dir: CharDir, pose: CharPose): void {
@@ -619,20 +731,22 @@ export function drawCharacterFrame(ctx: Ctx, ox: number, oy: number, look: Chara
   }
   const p = new Painter(ctx, ox, oy);
   if (dir === 'down') {
-    if (look.hair === 2 || look.hair === 9) {
+    if (look.hair === 2 || look.hair === 9 || look.hair === 11) {
       // long hair falls behind the shoulders
       p.r(2, 14, 12, 7, c.hairShade);
     }
     legsFront(p, c, look, pose);
     torsoFront(p, c, look, pose, false);
     headFront(p, c, look);
-    hairFront(p, c, look.hair);
+    hairFront(p, c, look.hat ? hatHair(look.hair) : look.hair);
+    hatFront(p, look);
   } else {
     legsFront(p, c, look, pose);
     torsoFront(p, c, look, pose, true);
     // neck and head back
     p.r(6, 15, 4, 2, c.skinShade);
-    hairBack(p, c, look.hair);
+    hairBack(p, c, look.hat ? hatHair(look.hair) : look.hair);
+    hatBack(p, look);
   }
 }
 

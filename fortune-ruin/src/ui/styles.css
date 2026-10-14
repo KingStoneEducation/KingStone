@@ -836,13 +836,21 @@ table.data th.r {
   left: 50%;
   bottom: 12px;
   transform: translateX(-50%);
-  width: min(860px, calc(var(--vw, 100vw) - 32px));
+  width: min(880px, calc(var(--vw, 100vw) - 32px));
   display: grid;
-  grid-template-columns: 112px 1fr;
+  grid-template-columns: 140px 1fr;
   gap: 10px;
   padding: 6px 8px;
   pointer-events: auto;
   animation: slideup 0.15s steps(3);
+}
+
+/* the portrait stands a little taller than the text box */
+.dialogue .portrait {
+  width: 140px;
+  height: 172px;
+  margin-top: -48px;
+  align-self: end;
 }
 
 .portrait {
@@ -1052,6 +1060,10 @@ table.data th.r {
 
 .choice.active {
   border-image: var(--frame-gold) 3 fill / 6px stretch;
+}
+
+.choice.active:hover:not(:disabled) {
+  border-image-source: var(--frame-gold-hover);
 }
 
 .choice .t {

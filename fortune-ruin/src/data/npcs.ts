@@ -43,6 +43,8 @@ export interface CharacterLook {
   style: 'tee' | 'hoodie' | 'shirt' | 'suit' | 'dress' | 'gown' | 'jacket' | 'apron' | 'vest' | 'uniform';
   glasses?: boolean;
   beard?: boolean;
+  earrings?: boolean;
+  hat?: 'beanie' | 'cap' | null;
   body: 'm' | 'f';
 }
 

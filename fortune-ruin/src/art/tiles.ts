@@ -1,5 +1,5 @@
 import { P } from './palette';
-import { dither, hash2, hline, makeCanvas, px, rect, shade, speckle, vline, type Ctx } from './canvas';
+import { dither, hash2, hline, makeCanvas, mix, px, rect, shade, speckle, vline, type Ctx } from './canvas';
 
 export const TILE = 16;
 const COLS = 32;
@@ -147,6 +147,78 @@ function marble(base: string, vein: string, seed: number): Draw {
     }
     hline(ctx, x, y, 16, shade(base, -0.12));
     vline(ctx, x, y, 16, shade(base, -0.12));
+  };
+}
+
+/** A polished 32 × 32 slab: soft clouding, a couple of veins, bevelled joints. */
+const slabCache = new Map<string, HTMLCanvasElement>();
+function slabCanvas(base: string, vein: string, design: number): HTMLCanvasElement {
+  const key = `${base}|${vein}|${design}`;
+  const hit = slabCache.get(key);
+  if (hit) return hit;
+  const { canvas, ctx } = makeCanvas(32, 32);
+  rect(ctx, 0, 0, 32, 32, base);
+  const cloud = shade(base, -0.035);
+  for (let k = 0; k < 3; k++) {
+    const cx = hash2(design, k, 1) * 32;
+    const cy = hash2(k, design, 2) * 32;
+    const r = 5 + hash2(design, k, 3) * 8;
+    for (let j = 0; j < 32; j++)
+      for (let i = 0; i < 32; i++) {
+        const d = Math.hypot(i - cx, j - cy) / r;
+        if (d < 0.7 || (d < 1 && (i + j) % 2 === 0)) px(ctx, i, j, cloud);
+      }
+  }
+  speckle(ctx, 0, 0, 32, 32, shade(base, 0.04), 0.05, design + 40);
+  // veins wander across the slab; one dark, one faint and light beside it
+  for (let v = 0; v < 2; v++) {
+    let yy = Math.floor(hash2(design, v, 5) * 28) + 2;
+    const col = v === 0 ? vein : shade(vein, 0.18);
+    for (let i = 0; i < 32; i++) {
+      if (hash2(i, v, design + 6) > 0.12) px(ctx, i, yy, col);
+      if (v === 0 && hash2(i, design, 7) < 0.3) px(ctx, i, yy - 1, shade(base, 0.06));
+      const r = hash2(i, design, v + 8);
+      if (r < 0.28) yy -= 1;
+      else if (r > 0.72) yy += 1;
+      yy = Math.max(1, Math.min(30, yy));
+    }
+  }
+  // joints: lit top-left edge, shaded bottom-right edge
+  hline(ctx, 0, 0, 32, shade(base, 0.1));
+  vline(ctx, 0, 0, 32, shade(base, 0.07));
+  hline(ctx, 0, 31, 32, shade(base, -0.2));
+  vline(ctx, 31, 0, 32, shade(base, -0.16));
+  slabCache.set(key, canvas);
+  return canvas;
+}
+
+function marbleSlab(base: string, vein: string, design: number, part: number): Draw {
+  return (ctx, x, y) => {
+    ctx.drawImage(slabCanvas(base, vein, design), (part % 2) * 16, Math.floor(part / 2) * 16, 16, 16, x, y, 16, 16);
+  };
+}
+
+/** Paving with a little wear: a stained, cracked or sunken slab here and there. */
+function worn(draw: Draw, kind: number, dark: string, seed: number): Draw {
+  return (ctx, x, y) => {
+    draw(ctx, x, y);
+    const ox = x + 2 + Math.floor(hash2(seed, kind, 1) * 6);
+    const oy = y + 2 + Math.floor(hash2(kind, seed, 2) * 6);
+    if (kind === 1) {
+      // stain
+      for (let j = 0; j < 5; j++) for (let i = 0; i < 6; i++) if (Math.hypot(i - 2.5, j - 2) < 2.6 && (i + j) % 2 === 0) px(ctx, ox + i, oy + j, shade(dark, 0.08));
+    } else if (kind === 2) {
+      // crack
+      let cx = ox;
+      for (let j = 0; j < 7; j++) {
+        px(ctx, cx, oy + j, shade(dark, -0.15));
+        if (hash2(j, seed, 3) < 0.5) cx += 1;
+      }
+    } else if (kind === 3) {
+      // one slab sits a little lower
+      rect(ctx, x + 1, y + 9, 7, 6, shade(dark, 0.12));
+      hline(ctx, x + 1, y + 9, 7, shade(dark, -0.1));
+    }
   };
 }
 
@@ -431,7 +503,7 @@ def('tile_checker', tiles8('#e8e6e0', '#2a2730', '#9a968e', true));
 def('tile_beige', tiles8('#d8ccb4', '#d8ccb4', '#b4a68c', false));
 def('tile_blue', tiles8('#9cc6dc', '#9cc6dc', '#7aa4ba', false, 4));
 def('tile_kitchen', tiles8('#e9dcc0', '#c4704a', '#a89c84', true, 4));
-for (let i = 0; i < 4; i++) def(`carpet_casino${i}`, carpetPattern(P.carpetRed, P.carpetRedDark, P.goldDark, P.gold, i));
+for (let i = 0; i < 4; i++) def(`carpet_casino${i}`, carpetPattern(P.carpetRed, shade(P.carpetRed, -0.14), mix(P.goldDark, P.carpetRed, 0.35), mix(P.gold, P.carpetRed, 0.2), i));
 for (let i = 0; i < 4; i++) def(`carpet_vip${i}`, carpetPattern(P.carpetPurple, '#2a1238', P.goldDark, P.goldLight, i));
 def('carpet_blue', (ctx, x, y) => {
   rect(ctx, x, y, 16, 16, P.carpetBlue);
@@ -455,6 +527,27 @@ def('carpet_grey', (ctx, x, y) => {
 def('marble', marble('#e6e2da', '#b8b2a6', 101));
 def('marble2', marble('#e6e2da', '#c4beb2', 102));
 def('marble_dark', marble('#2a2730', '#5a5562', 103));
+// display variants (the maps keep the base names; see displayTile)
+for (let d = 0; d < 3; d++)
+  for (let p = 0; p < 4; p++) {
+    def(`marble~${d}${p}`, marbleSlab('#e6e2da', '#bcb6aa', d, p));
+    def(`marble2~${d}${p}`, marbleSlab('#e2ddd3', '#c4beb2', d + 5, p));
+    def(`marble_dark~${d}${p}`, marbleSlab('#2a2730', '#45414f', d + 9, p));
+  }
+for (let k = 1; k < 4; k++) {
+  def(`wood_light~${k}`, planks(P.woodPale, P.wood, shade(P.wood, -0.2), true, 81 + k * 17));
+  def(`wood_mid~${k}`, planks(P.woodLight, P.wood, P.woodDark, true, 82 + k * 17));
+  def(`wood_dark~${k}`, planks('#5a3a26', '#3a2416', '#2a1a10', true, 83 + k * 17));
+  def(`sidewalk~${k}`, worn(pavers(P.sidewalk, P.sidewalkDark, P.sidewalkLight, 8, 1), k, P.sidewalkDark, 140 + k));
+  def(`sidewalk2~${k}`, worn(pavers(P.sidewalk, P.sidewalkDark, P.sidewalkLight, 8, 2), k, P.sidewalkDark, 150 + k));
+  def(`plaza~${k}`, worn(pavers(P.plaza, P.plazaDark, P.plazaLight, 8, 11), k, P.plazaDark, 160 + k));
+  def(`road~${k}`, worn(asphalt(1 + k * 10), k, P.asphaltDark, 170 + k));
+  def(`concrete~${k}`, worn((ctx, x, y) => {
+    rect(ctx, x, y, 16, 16, '#8a8a88');
+    speckle(ctx, x, y, 16, 16, '#7a7a78', 0.18, 111 + k);
+    speckle(ctx, x, y, 16, 16, '#9a9a98', 0.08, 112 + k);
+  }, k, '#7a7a78', 180 + k));
+}
 def('concrete', (ctx, x, y) => {
   rect(ctx, x, y, 16, 16, '#8a8a88');
   speckle(ctx, x, y, 16, 16, '#7a7a78', 0.18, 111);
@@ -474,6 +567,37 @@ for (const s of WALL_STYLES) {
 }
 
 export const TILE_INDEX: Record<string, number> = Object.fromEntries(DEFS.map(([n], i) => [n, i]));
+
+/**
+ * Which tile to show for a map tile: the same floor drawn from a few variants
+ * so it does not repeat every 16 pixels. Marble is laid in 32 × 32 slabs.
+ * Purely visual; the map data keeps the base tile.
+ */
+const DISPLAY: Map<number, (x: number, y: number) => number> = new Map();
+for (const base of ['marble', 'marble2', 'marble_dark']) {
+  DISPLAY.set(TILE_INDEX[base], (x, y) => {
+    const d = Math.floor(hash2(Math.floor(x / 2), Math.floor(y / 2), 211) * 3);
+    return TILE_INDEX[`${base}~${d}${(x % 2) + (y % 2) * 2}`];
+  });
+}
+for (const base of ['wood_light', 'wood_mid', 'wood_dark']) {
+  DISPLAY.set(TILE_INDEX[base], (x, y) => {
+    const k = Math.floor(hash2(x, y, 223) * 4);
+    return k === 0 ? TILE_INDEX[base] : TILE_INDEX[`${base}~${k}`];
+  });
+}
+for (const base of ['sidewalk', 'sidewalk2', 'plaza', 'road', 'concrete']) {
+  DISPLAY.set(TILE_INDEX[base], (x, y) => {
+    const r = hash2(x, y, 229);
+    // mostly clean, now and then a worn slab
+    return r < 0.8 ? TILE_INDEX[base] : TILE_INDEX[`${base}~${1 + Math.floor(((r - 0.8) / 0.2) * 3)}`];
+  });
+}
+
+export function displayTile(index: number, x: number, y: number): number {
+  const f = DISPLAY.get(index);
+  return f ? f(x, y) : index;
+}
 
 export function tileIndex(name: string): number {
   const i = TILE_INDEX[name];

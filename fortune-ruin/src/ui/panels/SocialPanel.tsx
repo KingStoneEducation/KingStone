@@ -1,17 +1,47 @@
 import { useState } from 'react';
 import { store } from '../store';
 import { useCore } from '../hooks';
-import { GV, Modal, Portrait } from '../components';
+import { GV, Modal } from '../components';
+import { Bust, BACKDROPS } from '../Bust';
 import { NPCS, NPC_BY_ID } from '../../data/npcs';
+import { faceFor } from '../../data/faces';
+import { moodFrom } from '../../systems/DialogueEngine';
 import { DIM_NAMES, describeMemory } from '../../systems/SocialSystem';
 import { formatAgo } from '../../core/calendar';
 import { LOCATIONS } from '../../data/locations';
 import { HOMES } from '../../data/housing';
+import { JOBS } from '../../data/jobs';
 import type { RelDims } from '../../core/state';
 
 const DIMS: (keyof RelDims)[] = ['affection', 'trust', 'respect', 'familiarity', 'attraction', 'dependency', 'envy', 'fear'];
 const BIPOLAR = new Set<keyof RelDims>(['affection', 'trust', 'respect']);
 const SOURCE_NAMES = { witnessed: '亲眼所见', told: '你亲口说的', rumor: '听来的传闻', self: '亲身经历', inferred: '推测' } as const;
+/** what an NPC's estimate of your wealth is based on */
+const BASIS_NAMES: Record<string, string> = {
+  acquaintance: '平时的来往',
+  appearance: '你的穿着',
+  bank_records: '银行记录',
+  big_win: '你赢钱的事',
+  big_loss: '你输钱的事',
+  flashy_purchase: '你买的东西',
+  moved: '你的住处',
+  evicted: '你被赶出公寓',
+  fired: '你丢了工作',
+  promotion: '你升职了',
+  vip_upgrade: '你的会员等级',
+  admit_trouble: '你说手头紧',
+  claim: '你自己说的',
+  loan_default: '你欠债不还',
+  debt_unpaid: '你欠债不还',
+};
+
+/** An estimate is a guess: show it to three significant figures. */
+function rough(v: number): number {
+  const g = Math.abs(v) / 100;
+  if (g < 100) return Math.round(v / 100) * 100;
+  const step = 10 ** (Math.floor(Math.log10(g)) - 2);
+  return Math.round(g / step) * step * 100 * Math.sign(v);
+}
 
 function DimBar(props: { k: keyof RelDims; v: number }): JSX.Element {
   const bip = BIPOLAR.has(props.k);
@@ -58,7 +88,7 @@ export function SocialPanel(): JSX.Element {
               const r = core.social.rel(n.id);
               return (
                 <div key={n.id} className="item" style={{ cursor: 'pointer', borderColor: sel === n.id ? 'var(--gold)' : undefined, padding: '5px 8px' }} onClick={() => setSel(n.id)}>
-                  <Portrait look={n.look} scale={2} crop="bust" />
+                  <Bust look={n.look} face={faceFor(n.id, n.look)} crop="head" scale={1} still />
                   <div className="grow">
                     <div className="title" style={{ fontSize: 12 }}>
                       {r.knowsName ? n.name : '？'}
@@ -87,8 +117,8 @@ function Detail(props: { id: string }): JSX.Element {
   return (
     <div className="stack">
       <div className="row" style={{ alignItems: 'flex-start', gap: 14 }}>
-        <div className="portrait" style={{ width: 96, height: 120 }}>
-          <Portrait look={def.look} scale={5} crop="bust" />
+        <div className="portrait" style={{ width: 140, height: 172, flex: 'none' }}>
+          <Bust look={def.look} face={faceFor(def.id, def.look)} expr={moodFrom(0, core.social.disposition(def.id), def.traits.temper)} scale={2} bg={BACKDROPS.home} />
         </div>
         <div className="grow">
           <h3 style={{ margin: 0, color: 'var(--gold-light)' }}>
@@ -124,14 +154,14 @@ function Detail(props: { id: string }): JSX.Element {
               身家估计：
               {b?.wealth ? (
                 <>
-                  <GV v={b.wealth.estimate} />
-                  <span className="dim">（把握 {Math.round(b.wealth.confidence * 100)}% · 依据：{b.wealth.basis}）</span>
+                  约 <GV v={rough(b.wealth.estimate)} />
+                  <span className="dim">（把握 {Math.round(b.wealth.confidence * 100)}% · 依据：{BASIS_NAMES[b.wealth.basis] ?? '传闻'}）</span>
                 </>
               ) : (
                 <span className="dim">不清楚</span>
               )}
             </div>
-            <div>工作：{b?.knowsJob ?? <span className="dim">不知道</span>}</div>
+            <div>工作：{b?.knowsJob ? (JOBS[b.knowsJob]?.title ?? b.knowsJob) : <span className="dim">不知道</span>}</div>
             <div>住处：{b?.knowsHome ? HOMES[b.knowsHome]?.name ?? b.knowsHome : <span className="dim">不知道</span>}</div>
             <div>欠债：{b?.knowsDebt ? <span className="bad">知道你有债务</span> : <span className="dim">不知道</span>}</div>
             <div>赌博：{(b?.knowsGambling ?? 0) > 0 ? `知道你常去赌场（程度 ${Math.round(b!.knowsGambling)}）` : <span className="dim">不知道</span>}</div>

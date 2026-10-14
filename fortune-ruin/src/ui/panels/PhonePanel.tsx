@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { store } from '../store';
 import { useCore } from '../hooks';
-import { Portrait, Tabs, useFeedback } from '../components';
+import { Tabs, useFeedback } from '../components';
+import { Bust } from '../Bust';
+import { faceFor } from '../../data/faces';
 import { formatAgo, formatClock, formatDate, MINUTES_PER_DAY, toDate } from '../../core/calendar';
 import { NPC_BY_ID, NPCS } from '../../data/npcs';
 import { LOCATIONS } from '../../data/locations';
@@ -87,7 +89,7 @@ function Thread(props: { from: string; onBack: () => void }): JSX.Element {
         <button className="small ghost" onClick={props.onBack}>
           ← 返回
         </button>
-        {npc && <Portrait look={npc.look} scale={2} crop="bust" />}
+        {npc && <Bust look={npc.look} face={faceFor(npc.id, npc.look)} crop="head" scale={1} still />}
         <b>{msgs[msgs.length - 1]?.fromName}</b>
       </div>
       {msgs.slice(-30).map((m) => (
@@ -189,7 +191,7 @@ function Contacts(): JSX.Element {
         const can = core.social.canText(n.id);
         return (
           <div key={n.id} className="item" style={{ marginBottom: 6 }}>
-            <Portrait look={n.look} scale={2} crop="bust" />
+            <Bust look={n.look} face={faceFor(n.id, n.look)} crop="head" scale={1} still />
             <div className="grow">
               <div className="title">{n.name}</div>
               <div className="desc">

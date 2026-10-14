@@ -143,7 +143,7 @@ export function frameRef(name: string): { key: string; frame: string } {
 const charKeys = new Set<string>();
 
 function lookKey(look: CharacterLook): string {
-  return [look.skin, look.hair, look.hairColor, look.top, look.topShade, look.bottom, look.shoes, look.accent ?? '', look.style, look.glasses ? 1 : 0, look.beard ? 1 : 0, look.body].join('|');
+  return [look.skin, look.hair, look.hairColor, look.top, look.topShade, look.bottom, look.shoes, look.accent ?? '', look.style, look.glasses ? 1 : 0, look.beard ? 1 : 0, look.body, look.earrings ? 1 : 0, look.hat ?? ''].join('|');
 }
 
 /** Creates (once) a 16-frame spritesheet + walk animations for a look; returns the texture key. */

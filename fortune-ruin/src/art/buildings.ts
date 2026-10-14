@@ -102,6 +102,9 @@ function windowPane(ctx: Ctx, night: Ctx, x: number, y: number, w: number, h: nu
   rect(ctx, x, y + Math.floor(h / 2), w, Math.ceil(h / 2), shade(glass, -0.15));
   // reflection
   for (let i = 0; i < Math.min(w, h); i++) if (i < w - 1) px(ctx, x + 1 + i, y + h - 2 - i, shade(glass, 0.35));
+  // the pane sits back in the wall: the frame shades its top and left edge
+  hline(ctx, x, y, w, shade(glass, -0.32));
+  vline(ctx, x, y + 1, h - 1, shade(glass, -0.22));
   vline(ctx, x + Math.floor(w / 2), y, h, frame);
   hline(ctx, x - 1, y + h + 1, w + 2, shade(frame, -0.3));
   if (hash2(x, y, seed) < s.lit) {
@@ -282,7 +285,10 @@ function awning(ctx: Ctx, colors: [string, string], x: number, y: number, w: num
   for (let i = 0; i < w; i += 6) {
     rect(ctx, x + i + 1, y + 7, 4, 1, (i / 6) % 2 === 0 ? colors[0] : colors[1]);
   }
-  hline(ctx, x, y + 8, w, rgba('#000000', 0.25));
+  // shade under the canopy, fading down the wall
+  hline(ctx, x, y + 8, w, rgba('#000000', 0.28));
+  hline(ctx, x, y + 9, w, rgba('#000000', 0.16));
+  hline(ctx, x, y + 10, w, rgba('#000000', 0.07));
 }
 
 // ------------------------------------------------------------------ main
@@ -320,9 +326,15 @@ export function drawBuilding(b: BuildingDef): BuildingArt {
     const g = s.material === 'darkglass' ? '#253041' : s.wall;
     rect(ctx, 0, fy, W, facadeH, g);
   }
-  // cornice under the roof
+  // cornice under the roof, and the shade it throws on the wall below
   rect(ctx, 0, fy, W, 3, s.trim);
   hline(ctx, 0, fy + 3, W, shade(s.trim, -0.35));
+  rect(ctx, 0, fy + 4, W, 2, rgba('#140a1c', 0.18));
+  hline(ctx, 0, fy + 6, W, rgba('#140a1c', 0.08));
+  // the corner turns away from the light: lit left edge, shaded right edge
+  vline(ctx, 1, fy + 4, facadeH - 4, rgba('#ffffff', 0.1));
+  rect(ctx, W - 4, fy + 4, 3, facadeH - 4, rgba('#140a1c', 0.14));
+  vline(ctx, W - 2, fy + 4, facadeH - 4, rgba('#140a1c', 0.1));
 
   const groundH = 32;
   const upperTop = fy + 6;

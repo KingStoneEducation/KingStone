@@ -464,11 +464,20 @@ export function IntroModal(): JSX.Element {
               左上角会一直显示下一班的时间，点击它就能在地图上找到公司。迟到超过 10 分钟会被记下来；无故缺勤一天，{job.bossName}会发来警告，累计几次就会被辞退。工资每 {job.payEveryDays} 天打进银行账户。
             </div>
           </>
+        ) : core.state.player.flags.start === 'heir' ? (
+          <div>
+            你不用上班。账上有 {formatG(core.economy.balance('bank'))}，住在自己的{HOMES[core.state.housing.homeId].name}，楼下停着一辆跑车。顶层公寓的物业费和跑车的保养，每个月照样要交。
+          </div>
+        ) : core.state.player.flags.start === 'founder' ? (
+          <div>
+            公司刚卖掉，你暂时没有工作。账上有 {formatG(core.economy.balance('bank'))}，{HOMES[core.state.housing.homeId].name}的房子是自己的，投资顾问索菲亚替你管着一笔指数基金。
+          </div>
         ) : (
           <div>你眼下没有工作。家里的电脑上能看招聘信息。</div>
         )}
+        {core.state.player.flags.start === 'lottery' && <div>上周的彩票中了头奖，税后 800,000 G 已经存进银行。消息传得比你想的快。</div>}
         <div className="muted" style={{ fontSize: 12 }}>
-          钱包里有 {formatG(core.economy.balance('cash'))} 现金，银行里有 {formatG(core.economy.balance('bank'))}。房租和水电每月自动扣款。灰港大赌场在城北的赌场广场，二十四小时营业。
+          钱包里有 {formatG(core.economy.balance('cash'))} 现金，银行里有 {formatG(core.economy.balance('bank'))}。{core.state.housing.tenure === 'rent' ? '房租和水电' : '物业费和水电'}每月自动扣款。灰港大赌场在城北的赌场广场，二十四小时营业。
         </div>
       </div>
     </Modal>

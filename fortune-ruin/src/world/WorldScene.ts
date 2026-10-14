@@ -7,7 +7,8 @@ import { CASINO_TABLES, casinoArea, type CasinoArea } from './maps/casinoMap';
 import type { Door, Face, Interactable, InteractKind, MapData } from './maps/types';
 import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING } from './maps/cityLayout';
 import { PROPS, propFrameName, type PropDef } from '../art/props';
-import { tileIndex } from '../art/tiles';
+import { displayTile, tileIndex } from '../art/tiles';
+import { buildShading } from './shading';
 import type { CharDir } from '../art/characters';
 import { CharacterSprite, LABEL_DEPTH } from './CharacterSprite';
 import { Lighting, hexColor, type Emissive, type LightSource } from './Lighting';
@@ -152,6 +153,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private objects: Phaser.GameObjects.GameObject[] = [];
   private tilemaps: Phaser.Tilemaps.Tilemap[] = [];
   private ground: Phaser.Tilemaps.TilemapLayer | null = null;
+  /** floor shadows (see shading.ts) and the daylight part that fades at night */
+  private shadeImgs: Phaser.GameObjects.Image[] = [];
+  private sunShade: Phaser.GameObjects.Image | null = null;
   private props: PropView[] = [];
   private nights: NightView[] = [];
   private staticLights: LightSource[] = [];
@@ -285,6 +289,13 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     for (const t of this.tilemaps) t.destroy();
     this.tilemaps = [];
     this.ground = null;
+    for (const img of this.shadeImgs) {
+      const key = img.texture.key;
+      img.destroy();
+      if (this.textures.exists(key)) this.textures.remove(key);
+    }
+    this.shadeImgs = [];
+    this.sunShade = null;
     this.props = [];
     this.nights = [];
     this.staticLights = [];
@@ -300,6 +311,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const map = id === 'city' ? (this.cityCache ??= buildCityMap()) : interiorMap(id);
     this.map = map;
     this.buildTiles(map);
+    this.buildShade(map);
     this.buildProps(map);
     if (map.outdoor) this.buildBuildings(map);
     this.buildStaff(map);
@@ -347,7 +359,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       for (let y = 0; y < map.h; y++) out.push(src.slice(y * map.w, (y + 1) * map.w));
       return out;
     };
-    const tm = this.make.tilemap({ data: rows(map.ground), tileWidth: 16, tileHeight: 16 });
+    const shown = map.ground.map((t, i) => displayTile(t, i % map.w, Math.floor(i / map.w)));
+    const tm = this.make.tilemap({ data: rows(shown), tileWidth: 16, tileHeight: 16 });
     const ts = tm.addTilesetImage('tiles', 'tiles', 16, 16, 0, 0)!;
     this.ground = tm.createLayer(0, ts, 0, 0)!.setDepth(-1000);
     this.tilemaps.push(tm);
@@ -357,6 +370,21 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       tm2.createLayer(0, ts2, 0, 0)!.setDepth(-990);
       this.tilemaps.push(tm2);
     }
+  }
+
+  private shadeSeq = 0;
+
+  private buildShade(map: MapData): void {
+    const layers = buildShading(map);
+    const add = (canvas: HTMLCanvasElement, name: string) => {
+      const key = `shade:${name}:${map.id}:${++this.shadeSeq}`;
+      this.textures.addCanvas(key, canvas)!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+      const img = this.add.image(0, 0, key).setOrigin(0, 0).setDepth(-895);
+      this.shadeImgs.push(img);
+      return img;
+    };
+    add(layers.ao, 'ao');
+    if (layers.sun) this.sunShade = add(layers.sun, 'sun');
   }
 
   private buildProps(map: MapData): void {
@@ -630,6 +658,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const amb = m.ambient.night + (m.ambient.day - m.ambient.night) * dl;
     const darkness = 1 - amb;
     const night = this.nightFactor(t);
+    this.sunShade?.setAlpha(m.outdoor ? 1 - night : clamp01((dl - 0.3) / 0.45));
     const hour = toDate(Math.floor(t)).hour;
     const late = m.outdoor && hour >= 1 && hour < 6;
     for (const n of this.nights) {
