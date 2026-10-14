@@ -6,7 +6,8 @@ import { formatClock, formatDate, MINUTES_PER_DAY, toDate } from '../../core/cal
 import { G, formatG } from '../../core/money';
 import { ITEMS, OUTFITS } from '../../data/items';
 import { MEAL_BASIC, MEAL_FRESH } from '../../systems/InventorySystem';
-import type { ShiftReport } from '../../systems/CareerSystem';
+import type { CareerResult, ShiftReport } from '../../systems/CareerSystem';
+import { runSteps } from '../../core/steps';
 import type { EventPrompt } from '../../systems/EventManager';
 import { BUS_STOPS, locationAnchor, travelMinutes } from '../../world/maps/cityLayout';
 import { JOBS } from '../../data/jobs';
@@ -42,6 +43,11 @@ export function SleepModal(): JSX.Element {
   ];
   const sleep = (h: number) => {
     store.closeModal();
+    // in the world: into bed, the night going by, and up again
+    if (store.world) {
+      void store.world.sleep(h);
+      return;
+    }
     const before = core.now();
     core.sleep(h);
     const after = toDate(core.now());
@@ -268,16 +274,22 @@ export function WorkModal(props: { jobId: string }): JSX.Element {
   const est = career.estimateShiftPay(props.jobId);
   const s = core.state.player.stats;
   const start = () => {
-    const r = def.flexible ? career.workGig(props.jobId, gigHours) : career.workShift(props.jobId);
-    if (!r.ok) {
-      say(false, r.error);
+    const done = (r: CareerResult) => {
+      if (!r.ok) return;
+      if (r.report) store.openModal({ type: 'shift', report: r.report, title: `${def.employer} · 下班` });
+      else store.toast(r.message, 'good');
+    };
+    // the shift in steps: the first one here (it may refuse), the rest on the clock in the world
+    const steps = def.flexible ? career.gigSteps(props.jobId, gigHours, 12) : career.shiftSteps(props.jobId, undefined, 12);
+    const first = steps.next();
+    if (first.done && !first.value.ok) {
+      say(false, first.value.error);
       return;
     }
-    if (r.report) store.replaceModal({ type: 'shift', report: r.report, title: `${def.employer} · 下班` });
-    else {
-      store.closeModal();
-      store.toast(r.message, 'good');
-    }
+    store.closeModal();
+    if (first.done) done(first.value);
+    else if (store.world) void store.world.timelapse(steps, done);
+    else done(runSteps(steps));
   };
   return (
     <Modal title={`${career.title(job)} · ${def.employer}`} sub={`表现 ${job.performance}/100 · 已上 ${job.shifts} 个班`}>

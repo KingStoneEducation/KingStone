@@ -797,6 +797,27 @@ export function buildCharacterSheet(look: CharacterLook): HTMLCanvasElement {
   return canvas;
 }
 
+/** Asleep in bed: the head from the front view, cut at the chin (the blanket covers the rest), eyes shut. */
+export const SLEEPER_H = 14;
+export function drawSleepingHead(look: CharacterLook): HTMLCanvasElement {
+  const tmp = makeCanvas(CHAR_W, CHAR_H);
+  drawCharacterFrame(tmp.ctx, 0, 0, look, 'down', 'stand');
+  outline(tmp.ctx, 0, 0, CHAR_W, CHAR_H);
+  const top = 2;
+  const { canvas, ctx } = makeCanvas(CHAR_W, SLEEPER_H);
+  ctx.drawImage(tmp.canvas, 0, top, CHAR_W, SLEEPER_H, 0, 0, CHAR_W, SLEEPER_H);
+  const c = colorsFor(look);
+  // the eyes closed: skin over them, a short dark line where the lids meet
+  for (const x of [5, 10]) {
+    ctx.fillStyle = c.skin;
+    ctx.fillRect(x, 10 - top, 1, 2);
+  }
+  ctx.fillStyle = P.ink;
+  ctx.fillRect(4, 11 - top, 2, 1);
+  ctx.fillRect(10, 11 - top, 2, 1);
+  return canvas;
+}
+
 /** Deterministic random look for anonymous people (patrons, pedestrians). */
 export function randomLook(seed: number, opts: { fancy?: number } = {}): CharacterLook {
   let s = (seed * 2654435761) >>> 0;

@@ -223,6 +223,7 @@ export class InventorySystem {
       this.core.player.applyEffects(g.effects ?? {});
       this.core.state.player.lastMealAt = this.core.now();
       this.core.advance(g.useMinutes ?? 40, 'eating');
+      this.core.bus.emit('used', { itemId: id });
       return { ok: true, message: id === MEAL_FRESH ? '做了一顿健康的家常饭。' : '随便做了点吃的。' };
     }
     const def = d as ItemDef;
@@ -233,6 +234,7 @@ export class InventorySystem {
       const gain = this.core.player.addSkill(sk.id, sk.amount, sk.cap);
       this.core.advance(def.useMinutes ?? 120, 'reading');
       this.core.player.change('stress', -4);
+      this.core.bus.emit('used', { itemId: id });
       return { ok: true, message: gain > 0.05 ? `读完了${def.name}，有所收获。` : `重读了${def.name}，但已经没有新东西了。` };
     }
     if (!def.effects) return { ok: false, error: '这件物品不能直接使用' };
@@ -240,6 +242,7 @@ export class InventorySystem {
     this.core.player.applyEffects(def.effects);
     if (def.kind === 'food') this.core.state.player.lastMealAt = this.core.now();
     if (def.useMinutes) this.core.advance(def.useMinutes, 'eating');
+    this.core.bus.emit('used', { itemId: id });
     return { ok: true, message: `用掉了${def.name}。` };
   }
 

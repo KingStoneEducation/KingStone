@@ -9,7 +9,7 @@ import type { SpotAmbience } from './soundscape';
  * sparse, quiet spot sounds — no continuous noise beds.
  */
 
-export type SfxName = 'card' | 'chip' | 'chips' | 'win' | 'bigwin' | 'lose' | 'click' | 'door' | 'shuffle' | 'cash' | 'phone' | 'ball' | 'deny' | 'blackjack' | 'ding' | 'slide' | 'lift' | 'gavel' | 'paddle' | 'horn';
+export type SfxName = 'card' | 'chip' | 'chips' | 'win' | 'bigwin' | 'lose' | 'click' | 'door' | 'shuffle' | 'cash' | 'phone' | 'ball' | 'deny' | 'blackjack' | 'ding' | 'slide' | 'lift' | 'gavel' | 'paddle' | 'horn' | 'piano' | 'bounce' | 'page' | 'cook';
 
 interface Volumes {
   music: number;
@@ -361,6 +361,27 @@ class AudioEngine {
         // the car moving: a slow low swell
         this.tone(55, t, 1.5, 'sine', 0.08, b, 0.5);
         this.tone(82.5, t, 1.4, 'sine', 0.03, b, 0.5);
+        break;
+      case 'piano':
+        // a few bars at the keys: a broken chord climbing and settling (C, E, G, C', then A, F)
+        [523.3, 659.3, 784, 1046.5, 880, 698.5].forEach((f, i) => {
+          this.tone(f, t + i * 0.24, 0.9, 'triangle', 0.07, b, 0.004);
+          this.tone(f * 2, t + i * 0.24, 0.25, 'sine', 0.012, b, 0.004);
+        });
+        this.tone(130.8, t, 1.6, 'sine', 0.05, b, 0.01);
+        break;
+      case 'bounce':
+        // a basketball on the court: a short low thud
+        this.tone(118, t, 0.09, 'sine', 0.2, b, 0.002);
+        this.tone(236, t, 0.03, 'triangle', 0.04, b, 0.002);
+        break;
+      case 'page':
+        // a page turned: a quick soft upward flick
+        this.chirp(900, 1600, t, 0.05, 'sine', 0.03, b);
+        break;
+      case 'cook':
+        // the pan: small bright pops at their own pitches, not a hiss
+        for (let i = 0; i < 9; i++) this.tone(700 + ((i * 263) % 500), t + i * 0.09 + (i % 3) * 0.02, 0.04, 'sine', 0.03, b, 0.002);
         break;
     }
   }

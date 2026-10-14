@@ -36,6 +36,7 @@ import { nightMarketOpen } from '../systems/OldTownSystem';
 import { pieceCanvas } from '../art/artworks';
 import type { TripKind } from '../systems/MarinaSystem';
 import { FISHING, boatsIn, type FareClass } from '../systems/IsleSystem';
+import { Actions, type ActionHost, type PropBox } from './actions';
 
 const DIR_VEC: Record<CharDir, { x: number; y: number }> = {
   down: { x: 0, y: 1 },
@@ -191,6 +192,10 @@ export interface WorldApi {
   sail(kind: TripKind, method?: 'cash' | 'card'): Promise<void>;
   /** take the ferry across the bay */
   ferry(cls: FareClass, method?: 'cash' | 'card'): Promise<void>;
+  /** go to sleep for this many hours (in the bed you just used, if you are by it) */
+  sleep(hours: number): Promise<void>;
+  /** let a stepped stretch of time (a shift) run on the clock, then hand over its result */
+  timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void): Promise<void>;
 }
 
 export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
@@ -242,6 +247,10 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   /** temporary images of a lift ride in progress */
   private liftParts: Phaser.GameObjects.GameObject[] = [];
   private pendingLight: { darkness: number; color: number; lights: LightSource[]; glow: number; time: number } | null = null;
+  /** the small animations of everyday things (see actions.ts) */
+  private actions: Actions = new Actions(this.actionHost());
+  /** the bed the player last lay down on, to sleep in it */
+  private bed: Interactable | null = null;
 
   constructor() {
     super('world');
@@ -345,6 +354,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   // ------------------------------------------------------------------ map building
 
   private clearMap(): void {
+    this.actions.clear();
+    this.bed = null;
     this.npcDir?.clear();
     this.npcDir = null;
     this.city?.destroy();
@@ -1340,17 +1351,18 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const core = this.core;
     switch (it.interact.kind) {
       case 'bed':
+        this.bed = it;
         store.openModal({ type: 'sleep' });
         break;
       case 'kitchen':
-        store.openModal({ type: 'kitchen' });
+        void this.actions.kitchen(it, () => store.openModal({ type: 'kitchen' }));
         break;
       case 'wardrobe':
       case 'mirror':
-        store.openModal({ type: 'wardrobe' });
+        void this.actions.dressed(() => store.openModal({ type: 'wardrobe' }));
         break;
       case 'computer':
-        store.openModal({ type: 'computer' });
+        void this.actions.computer(it, () => store.openModal({ type: 'computer' }));
         break;
       case 'shop':
       case 'order': {
@@ -1360,20 +1372,21 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
           store.openModal({ type: 'text', title: it.interact.label, text: String(d.closed ?? '摊子用油布盖着，还没摆出来。夜市每天 18:00 开张，周五、周六开到凌晨两点。') });
           break;
         }
-        store.openModal({ type: 'shop', shopId: String(d.shop), consume: it.interact.kind === 'order' });
+        const consume = it.interact.kind === 'order';
+        void this.actions.served(it, consume, () => store.openModal({ type: 'shop', shopId: String(d.shop), consume }));
         break;
       }
       case 'table':
         this.sitAtTable(String(d.table));
         break;
       case 'cashier':
-        store.openModal({ type: 'cashier' });
+        void this.actions.cage(it, () => store.openModal({ type: 'cashier' }));
         break;
       case 'atm':
-        store.openModal({ type: 'atm', where: (String(d.where ?? 'street') as 'branch' | 'street' | 'casino') });
+        void this.actions.atm(it, () => store.openModal({ type: 'atm', where: (String(d.where ?? 'street') as 'branch' | 'street' | 'casino') }));
         break;
       case 'teller':
-        store.openModal({ type: 'bank', tab: d.loans ? 'loans' : 'account' });
+        void this.actions.greet(it, d.loans ? '请坐，贷款的事慢慢谈。' : '您好，请问办理什么业务？', () => store.openModal({ type: 'bank', tab: d.loans ? 'loans' : 'account' }));
         break;
       case 'work':
         store.openModal({ type: 'work', jobId: String(d.job) });
@@ -1382,13 +1395,19 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         store.openModal({ type: 'bus', stop: String(d.stop) });
         break;
       case 'read':
-        store.openModal({ type: 'read' });
+        void this.actions.read(() => store.openModal({ type: 'read' }));
         break;
       case 'tv':
       case 'piano':
       case 'exercise': {
-        const r = core.player.leisure(it.interact.kind);
-        store.toast(r.text, r.ok ? 'good' : 'warn');
+        const kind = it.interact.kind;
+        const r = core.player.leisure(kind);
+        if (!r.ok) {
+          store.toast(r.text, 'warn');
+          break;
+        }
+        const shown = kind === 'tv' ? this.actions.tv(it) : kind === 'piano' ? this.actions.piano(it) : this.actions.court();
+        void shown.then(() => store.toast(r.text, 'good'));
         break;
       }
       case 'bench':
@@ -1415,7 +1434,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         break;
       case 'view': {
         const r = core.player.leisure('view');
-        store.toast(r.text, r.ok ? 'good' : 'warn');
+        if (!r.ok) store.toast(r.text, 'warn');
+        else void this.actions.view(it).then(() => store.toast(r.text, 'good'));
         break;
       }
       case 'business':
@@ -1818,6 +1838,84 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
    * postcard of where you are going; then the other map, the ferry coming in
    * with you on deck, and you step off onto the pier.
    */
+  async sleep(hours: number): Promise<void> {
+    const p = this.player;
+    const bed = this.bed;
+    // lie down in the bed you just went to, if you are still by it
+    const near = !!p && !!bed && Math.abs(p.x - (bed.x + bed.w / 2) * 16) <= (bed.w / 2 + 1.5) * 16 && Math.abs(p.y - (bed.y + bed.h / 2) * 16) <= (bed.h / 2 + 1.5) * 16;
+    await this.actions.sleep(near ? bed : null, hours);
+  }
+
+  timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void): Promise<void> {
+    return this.actions.timelapse(steps, done);
+  }
+
+  private actionHost(): ActionHost {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const scene = this;
+    return {
+      scene: this,
+      get core() {
+        return scene.core;
+      },
+      player: () => scene.player,
+      playerLook: () => playerLook(scene.core),
+      boxOf: (it) => scene.propBox(it),
+      propNear: (id, x, y, r) => {
+        let best: PropBox | null = null;
+        let bd = r;
+        for (const v of scene.props) {
+          if (v.placed.id !== id) continue;
+          const d = Math.hypot(v.img.x + v.def.w / 2 - x, v.img.y + v.def.h / 2 - y);
+          if (d < bd) {
+            bd = d;
+            best = { x: v.img.x, y: v.img.y, w: v.def.w, h: v.def.h, id: v.placed.id, depth: v.img.depth };
+          }
+        }
+        return best;
+      },
+      clerkNear: (x, y, r) => {
+        let best: CharacterSprite | null = null;
+        let bd = r;
+        const look = (s: CharacterSprite) => {
+          const d = Math.hypot(s.x - x, s.y - 8 - y);
+          if (d < bd) {
+            bd = d;
+            best = s;
+          }
+        };
+        for (const st of scene.staff) if (st.sprite.sprite.visible) look(st.sprite);
+        // a named NPC working the counter (Ben at his bakery, the bartender on shift)
+        if (scene.npcDir) for (const [id, s] of scene.npcDir.sprites) if (scene.core.state.npcs[id]?.activity === 'work') look(s);
+        return best;
+      },
+      hold: (on) => {
+        if (on) {
+          if (scene.transitioning) return false;
+          scene.transitioning = true;
+          scene.core.paused.add('transition');
+          scene.setFocus(null);
+          scene.marker?.setVisible(false);
+          scene.player?.stop();
+          return true;
+        }
+        scene.core.paused.delete('transition');
+        scene.transitioning = false;
+        return true;
+      },
+      mapId: () => scene.map.id,
+      untilModalClosed: () => scene.untilModalClosed(),
+      toast: (text, kind) => store.toast(text, kind),
+    };
+  }
+
+  /** Where the picture of the prop behind an interactable sits (or its tiles, for areas like the court). */
+  private propBox(it: Interactable): PropBox {
+    const v = this.props.find((pv) => pv.placed.interact === it.interact);
+    if (v) return { x: v.img.x, y: v.img.y, w: v.def.w, h: v.def.h, id: v.placed.id, depth: v.img.depth };
+    return { x: it.x * 16, y: it.y * 16 - 8, w: it.w * 16, h: it.h * 16 + 8, id: null, depth: (it.y + it.h) * 16 - 1 };
+  }
+
   async ferry(cls: FareClass, method: 'cash' | 'card' = 'cash'): Promise<void> {
     if (this.transitioning || !this.player || (this.map.id !== 'city' && this.map.id !== 'isle')) return;
     const core = this.core;

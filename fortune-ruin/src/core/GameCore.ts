@@ -1,3 +1,4 @@
+import { runSteps } from './steps';
 import { EventBus } from './EventBus';
 import { Rng } from './rng';
 import { G, formatG, type Money } from './money';
@@ -75,6 +76,8 @@ export interface GameEvents {
   'world:teleport': { location: string; spawn: string | null };
   'player:collapse': { reason: 'sleep' | 'health'; text: string };
   'ui:open': { panel: string };
+  /** something used up: a meal cooked at home, a book read, a snack from the fridge */
+  used: { itemId: string };
   autosave: { reason: string };
 }
 
@@ -201,6 +204,25 @@ export class GameCore {
     while (this.acc >= ms && guard++ < 5) {
       this.acc -= ms;
       this.tickMinute(this.player.activity);
+    }
+  }
+
+  /**
+   * advance() in a few steps, yielding between them so a clock on screen can run
+   * through a long stretch (a night, a shift). A collapse on the way ends it there,
+   * exactly as it would have in one go.
+   */
+  *advanceSteps(minutes: number, activity: Activity, steps = 1): Generator<number, void, void> {
+    const total = Math.max(0, Math.round(minutes));
+    let done = 0;
+    for (let i = 1; i <= steps; i++) {
+      const upTo = Math.round((total * i) / steps);
+      const want = upTo - done;
+      const t0 = this.now();
+      this.advance(want, activity);
+      done = upTo;
+      if (this.now() - t0 !== want) return;
+      if (i < steps) yield this.now();
     }
   }
 
@@ -333,10 +355,17 @@ export class GameCore {
 
   /** Sleep until the given hour (next occurrence) or for N hours. */
   sleep(hours: number): string {
+    return runSteps(this.sleepSteps(hours));
+  }
+
+  /**
+   * The same night's sleep in a few steps, so the clock on screen can run through it while
+   * the world shows you asleep: it yields after each step and ends with what sleep() returns.
+   */
+  *sleepSteps(hours: number, steps = 1): Generator<number, string, void> {
     const err = this.canSleep();
     if (err) return err;
-    const minutes = Math.round(hours * 60);
-    this.advance(minutes, 'sleeping');
+    yield* this.advanceSteps(Math.round(hours * 60), 'sleeping', steps);
     this.state.player.lastSleepAt = this.now();
     this.state.player.awakeSince = this.now();
     this.bus.emit('autosave', { reason: 'sleep' });

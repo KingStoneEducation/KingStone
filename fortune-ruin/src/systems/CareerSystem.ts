@@ -3,6 +3,7 @@ import { formatG, mulRatio, type Money } from '../core/money';
 import { JOBS, type JobDef } from '../data/jobs';
 import type { JobState } from '../core/state';
 import { MINUTES_PER_DAY, formatClock, toDate } from '../core/calendar';
+import { runSteps } from '../core/steps';
 import { LOCATIONS } from '../data/locations';
 
 export interface ShiftInfo {
@@ -165,6 +166,11 @@ export class CareerSystem {
   }
 
   workShift(jobId: string, leaveEarlyAt?: number): CareerResult {
+    return runSteps(this.shiftSteps(jobId, leaveEarlyAt));
+  }
+
+  /** The same shift in a few steps, so the clock on screen can run through it (see GameCore.advanceSteps). */
+  *shiftSteps(jobId: string, leaveEarlyAt?: number, steps = 1): Generator<number, CareerResult, void> {
     const err = this.canWork(jobId);
     if (err) return { ok: false, error: err };
     const s = this.currentShift(jobId)!;
@@ -181,7 +187,7 @@ export class CareerSystem {
     // mark the shift before time passes, so the end-of-shift absence check sees it
     j.workedToday = Math.floor(s.start / MINUTES_PER_DAY);
     const t0 = this.core.now();
-    this.core.advance(minutes, 'working');
+    yield* this.core.advanceSteps(minutes, 'working', steps);
     const worked = Math.max(1, Math.min(minutes, this.core.now() - t0));
     const hours = worked / 60;
     const rate = this.hourlyRate(j);
@@ -233,6 +239,10 @@ export class CareerSystem {
 
   /** Flexible gig work (courier). */
   workGig(jobId: string, hours: number): CareerResult {
+    return runSteps(this.gigSteps(jobId, hours));
+  }
+
+  *gigSteps(jobId: string, hours: number, steps = 1): Generator<number, CareerResult, void> {
     const j = this.job(jobId);
     const d = this.def(jobId);
     if (!j || !d.flexible) return { ok: false, error: '没有这份零工' };
@@ -241,7 +251,7 @@ export class CareerSystem {
     if (this.core.state.player.stats.energy < 15) return { ok: false, error: '你太累了，骑不动车了' };
     if (this.core.state.player.stats.drunk >= 30) return { ok: false, error: '酒后不能骑车送单' };
     const eff = this.core.player.workEfficiency(d.skill);
-    this.core.advance(hours * 60, 'working');
+    yield* this.core.advanceSteps(hours * 60, 'working', steps);
     this.core.player.change('energy', -d.energyPerHour * hours);
     this.core.player.change('hunger', d.hungerPerHour * hours);
     this.core.player.change('stress', d.stressPerHour * hours);

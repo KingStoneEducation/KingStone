@@ -4,10 +4,12 @@ import { buildTileset } from '../art/tiles';
 import { buildPropImages, CAR_COLORS, carImage } from '../art/props';
 import { drawBuilding } from '../art/buildings';
 import { ALL_BUILDINGS } from './maps/cityLayout';
-import { buildCharacterSheet, CHAR_H, CHAR_W, DIRS, randomLook } from '../art/characters';
-import { circle, ellipse, makeCanvas, px, rect, strokeRect } from '../art/canvas';
+import { buildCharacterSheet, CHAR_H, CHAR_W, DIRS, drawSleepingHead, randomLook } from '../art/characters';
+import { itemIconCanvas } from '../art/itemIcons';
+import { circle, ellipse, hline, makeCanvas, px, rect, strokeRect, vline } from '../art/canvas';
 import { P } from '../art/palette';
 import { drawText } from '../art/font';
+import { FX, fxCanvas } from '../art/fx';
 import type { CharacterLook } from '../data/npcs';
 
 export const atlas = new AtlasBuilder('atlas');
@@ -20,7 +22,8 @@ export const WORLD_FONT = '"Fusion Pixel","PingFang SC","Microsoft YaHei","Noto 
 /** Vertical offset of each building image relative to its footprint. */
 export const BUILDING_OFFSET: Record<string, number> = {};
 
-export const EMOTES = ['!', '!!', '?', '♪', '…', '💢', '♥', '$', 'z', '★'] as const;
+/** Bubbles over people's heads: the last few say what they are doing (eating, a coffee, a drink, reading, shopping). */
+export const EMOTES = ['!', '!!', '?', '♪', '…', '💢', '♥', '$', 'z', '★', 'eat', 'coffee', 'drink', 'read', 'shop'] as const;
 
 function emoteCanvas(e: string): HTMLCanvasElement {
   const { canvas, ctx } = makeCanvas(13, 14);
@@ -71,6 +74,50 @@ function emoteCanvas(e: string): HTMLCanvasElement {
     case '★':
       drawText(ctx, '*', 4, 1, ink, '5x7');
       break;
+    case 'eat':
+      // a bowl of noodles and the chopsticks
+      for (let i = 0; i < 4; i++) px(ctx, 6 + i, 1 + i, '#8a5a36');
+      for (let i = 0; i < 4; i++) px(ctx, 8 + i, 1 + i, '#8a5a36');
+      hline(ctx, 3, 5, 7, '#f2d27a');
+      rect(ctx, 3, 6, 7, 2, '#c8483a');
+      rect(ctx, 4, 8, 5, 1, '#a8382a');
+      break;
+    case 'coffee':
+      // a cup and its steam
+      px(ctx, 5, 1, '#9a9aa2');
+      px(ctx, 6, 2, '#9a9aa2');
+      px(ctx, 7, 1, '#9a9aa2');
+      rect(ctx, 3, 4, 6, 5, '#8a5a36');
+      hline(ctx, 3, 4, 6, '#5a3a24');
+      vline(ctx, 9, 5, 2, '#8a5a36');
+      hline(ctx, 2, 9, 8, '#c8c2b0');
+      break;
+    case 'drink':
+      // a glass of beer with its head
+      rect(ctx, 4, 2, 5, 2, '#d8d2c4');
+      rect(ctx, 4, 4, 5, 5, '#e0b13e');
+      vline(ctx, 9, 4, 3, '#a8803a');
+      px(ctx, 5, 5, '#f4e0a0');
+      hline(ctx, 4, 9, 5, '#a8803a');
+      break;
+    case 'read':
+      // an open book
+      rect(ctx, 2, 3, 9, 6, '#8a3a2a');
+      rect(ctx, 3, 2, 3, 6, '#ffffff');
+      rect(ctx, 7, 2, 3, 6, '#e8e2d4');
+      for (const y of [3, 5]) {
+        hline(ctx, 3, y, 2, '#8a8a92');
+        hline(ctx, 8, y, 2, '#8a8a92');
+      }
+      break;
+    case 'shop':
+      // a paper shopping bag
+      rect(ctx, 3, 4, 7, 5, '#c8a070');
+      hline(ctx, 3, 4, 7, '#a8804a');
+      vline(ctx, 4, 2, 2, '#5a3a24');
+      vline(ctx, 8, 2, 2, '#5a3a24');
+      hline(ctx, 4, 2, 5, '#5a3a24');
+      break;
   }
   strokeRect(ctx, 0, 0, 0, 0, '#000');
   return canvas;
@@ -107,6 +154,7 @@ export function registerTextures(scene: Phaser.Scene): void {
     }
   });
   for (const e of EMOTES) atlas.add(`emote:${e}`, emoteCanvas(e));
+  for (const name of Object.keys(FX)) atlas.add(`fx:${name}`, fxCanvas(name));
   atlas.draw('shadow', 14, 6, (ctx) => ellipse(ctx, 7, 3, 6, 2, 'rgba(10,6,20,0.32)'));
   atlas.draw('pixel', 2, 2, (ctx) => rect(ctx, 0, 0, 2, 2, '#ffffff'));
   atlas.draw('marker', 10, 8, (ctx) => {
@@ -166,6 +214,20 @@ export function ensureCharacter(scene: Phaser.Scene, look: CharacterLook): strin
     }
   });
   charKeys.add(key);
+  return key;
+}
+
+/** The head on the pillow for this look (see drawSleepingHead). */
+export function ensureSleeper(scene: Phaser.Scene, look: CharacterLook): string {
+  const key = `sleeper:${lookKey(look)}`;
+  if (!scene.textures.exists(key)) scene.textures.addCanvas(key, drawSleepingHead(look))!.setFilter(Phaser.Textures.FilterMode.NEAREST);
+  return key;
+}
+
+/** An item's 16 × 16 icon as a texture, for the moment it is handed over in the world. */
+export function ensureItemIcon(scene: Phaser.Scene, id: string): string {
+  const key = `item:${id}`;
+  if (!scene.textures.exists(key)) scene.textures.addCanvas(key, itemIconCanvas(id))!.setFilter(Phaser.Textures.FilterMode.NEAREST);
   return key;
 }
 

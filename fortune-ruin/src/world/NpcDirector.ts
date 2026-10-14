@@ -423,8 +423,12 @@ export class NpcDirector {
     const next = this.idleAt.get(id) ?? 0;
     if (now < next) return;
     this.idleAt.set(id, now + 3500 + (hashString(id + now) % 4000));
+    const roll = hashString(id + now);
     if (activity === 'busk') s.showEmote('♪', 1800, now);
-    else if (activity === 'drink' && hashString(id + now) % 3 === 0) s.showEmote('♪', 1200, now);
+    else if (activity === 'drink' && roll % 3 === 0) s.showEmote(roll % 2 ? 'drink' : '♪', 1300, now);
+    // what people are doing shows over their heads now and then: a meal, a coffee, a shopping bag
+    else if (activity === 'eat' && roll % 3 === 0) s.showEmote(this.host.map.id === 'cafe' || this.host.map.id === 'hotel' ? 'coffee' : 'eat', 1500, now);
+    else if (activity === 'shop' && roll % 4 === 0) s.showEmote('shop', 1300, now);
     else if (activity === 'work' && hashString(id + now) % 5 === 0) s.face((['down', 'left', 'right'] as CharDir[])[hashString(id + String(now)) % 3]);
     else if (activity === 'exercise' && !s.sitting) {
       const tx = Math.floor(s.x / 16) + ((hashString(id + now) % 5) - 2);
