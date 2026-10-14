@@ -1,5 +1,5 @@
 import { P } from './palette';
-import { makeCanvas, shade, type Ctx } from './canvas';
+import { makeCanvas, mix, shade, type Ctx } from './canvas';
 import type { CharacterLook } from '../data/npcs';
 
 export type CharDir = 'down' | 'left' | 'right' | 'up';
@@ -225,11 +225,14 @@ function headFront(p: Painter, c: Colors, look: CharacterLook): void {
   p.r(10, 10, 1, 2, P.ink);
   p.p(5, 10, '#3a3050');
   p.p(10, 10, '#3a3050');
-  // mouth & cheeks
+  // mouth & cheeks; women: lashes at the outer corners, rosy lips, a soft blush
   p.r(7, 13, 2, 1, shade(c.skin, -0.3));
   if (look.body === 'f') {
-    p.p(4, 12, '#e8a0a0');
-    p.p(11, 12, '#e8a0a0');
+    p.p(4, 10, P.ink);
+    p.p(11, 10, P.ink);
+    p.r(7, 13, 2, 1, mix(c.skin, '#c4485a', 0.55));
+    p.p(4, 12, mix(c.skin, '#e8808a', 0.55));
+    p.p(11, 12, mix(c.skin, '#e8808a', 0.55));
   }
   if (look.beard) {
     p.r(4, 12, 8, 3, c.hairShade);
@@ -543,6 +546,11 @@ function headSide(p: Painter, c: Colors, look: CharacterLook): void {
   p.r(7, 16, 3, 1, c.skinShade);
   p.r(5, 10, 1, 2, P.ink);
   p.r(4, 13, 2, 1, shade(c.skin, -0.3));
+  if (look.body === 'f') {
+    p.p(6, 10, P.ink);
+    p.r(4, 13, 2, 1, mix(c.skin, '#c4485a', 0.55));
+    p.p(6, 12, mix(c.skin, '#e8808a', 0.5));
+  }
   p.p(9, 10, c.skinShade);
   p.p(9, 11, c.skinShade);
   if (look.beard) {

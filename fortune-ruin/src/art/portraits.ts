@@ -266,7 +266,7 @@ function geometry(look: CharacterLook, face: FaceSpec): Geo {
     square: { k: 3.2, chinHalf: 5.4 },
     narrow: { k: 1.35, chinHalf: 2.8 },
   }[face.jaw];
-  return { fem, R: fem ? 11.6 : 12.3, chin: 47, chinHalf: jaw.chinHalf + (fem ? 0 : 0.4), k: jaw.k, NW: fem ? 5.2 : 6.3, neckBase: fem ? 52 : 51.5 };
+  return { fem, R: fem ? 11.6 : 12.3, chin: 47, chinHalf: jaw.chinHalf + (fem ? -0.35 : 0.4), k: jaw.k * (fem ? 0.92 : 1), NW: fem ? 5.2 : 6.3, neckBase: fem ? 52 : 51.5 };
 }
 
 /** half width of the head at row-centre y */
@@ -379,8 +379,11 @@ function hairShape(style: number, g: Geo): HairShape {
                 [R - 2.5, 21],
                 [R + 0.9, 21],
                 [R + 1.5, 30],
-                [R + 0.7, 40],
-                [R - 0.6, 41.6],
+                [R + 1.3, 38],
+                [R + 2.2, 44],
+                [R + 2.4, 47],
+                [R - 1.9, 47],
+                [R - 1.6, 42],
                 [R - 1.5, 36],
                 [R - 2.3, 28],
               ] as Pt[]
@@ -390,8 +393,8 @@ function hairShape(style: number, g: Geo): HairShape {
       const extra = new Mask().poly(
         (
           [
-            [9, 45],
-            [14.2, 45.6],
+            [9.4, 44],
+            [14.2, 44.6],
             [16.9, 52],
             [17.3, 60],
             [15.7, 68],
@@ -479,6 +482,7 @@ interface Pal {
 
 function palette(look: CharacterLook, face: FaceSpec): Pal {
   const base = P.skin[Math.max(0, Math.min(P.skin.length - 1, look.skin))];
+  const fem = look.body === 'f';
   const dark = look.skin >= 4;
   const skin = {
     hi: shade(base, dark ? 0.15 : 0.12),
@@ -497,14 +501,15 @@ function palette(look: CharacterLook, face: FaceSpec): Pal {
     sh: shade(hc, hl > 0.6 ? -0.2 : -0.26),
     dk: shade(hc, hl > 0.6 ? -0.36 : -0.46),
   };
-  const lip = face.lips ?? mix(base, '#b0484e', dark ? 0.3 : 0.4);
+  const lip = face.lips ?? (fem ? mix(base, '#c4485a', dark ? 0.36 : 0.5) : mix(base, '#b0484e', dark ? 0.3 : 0.4));
   return {
     skin,
     hair,
     brow: hl > 0.55 ? shade(hc, -0.38) : shade(hc, -0.4),
     lashes: mix(shade(hc, -0.6), '#1a1016', 0.55),
     lip,
-    lipLine: face.lips ? shade(face.lips, -0.38) : mix(shade(base, -0.48), '#5a1a26', 0.35),
+    // a woman's closed mouth is a soft line between the lips, not a dark stroke
+    lipLine: face.lips ? shade(face.lips, -0.38) : fem ? shade(lip, -0.34) : mix(shade(base, -0.48), '#5a1a26', 0.35),
   };
 }
 
@@ -543,6 +548,8 @@ function eyeMode(expr: Expression, blink: boolean): EyeMode {
 export function eyeGrid(face: FaceSpec, mode: EyeMode, fem: boolean): { rows: string[]; top: number } {
   const w = EYE_W[face.eyes];
   let h: number = EYE_H[face.eyes];
+  // women's eyes a row taller (round eyes are already open wide, narrow ones stay narrow)
+  if (fem && (face.eyes === 'almond' || face.eyes === 'droopy')) h += 1;
   if (mode === 'wide') h += 1;
   if (mode === 'narrowed' && h > 1) h -= 1;
   const cols = w + 2;
@@ -574,7 +581,8 @@ export function eyeGrid(face: FaceSpec, mode: EyeMode, fem: boolean): { rows: st
   for (let r = 0; r < h; r++) {
     let a = c0;
     let b = c1;
-    if (h >= 3 && (r === 0 || r === h - 1)) {
+    // rounded corners; a woman's lash line covers the top corners instead
+    if (h >= 3 && ((r === 0 && !fem) || r === h - 1)) {
       a += 1;
       b -= 1;
     }
@@ -590,15 +598,24 @@ export function eyeGrid(face: FaceSpec, mode: EyeMode, fem: boolean): { rows: st
     for (let c = a; c <= b; c++) {
       const isIris = c >= ia && c <= ib && !(mode === 'wide' && (row === top + 1 || row === top + h) && c !== ir);
       if (isIris) grid[row][c] = row === top + h && h > 1 ? 'i' : 'I';
-      else grid[row][c] = row === top + 1 ? 'w' : 'W';
+      else grid[row][c] = row === top + 1 && !(fem && h >= 3) ? 'w' : 'W';
       if (c === a && row === top + 1 && h < 3) grid[row][c] = 'L';
     }
   }
-  // pupil and highlight
-  for (const [row] of open) if (grid[row][ir] === 'I' || grid[row][ir] === 'i') grid[row][ir] = 'D';
+  // pupil and highlight (a woman's tall eye has a round pupil in the middle row only)
+  const roundPupil = fem && h >= 3;
+  for (const [row] of open) if ((grid[row][ir] === 'I' || grid[row][ir] === 'i') && (!roundPupil || row === top + 2)) grid[row][ir] = 'D';
   const hr = top + 1;
   if (grid[hr][ia] === 'I' || grid[hr][ia] === 'D') grid[hr][ia] = 'H';
   else if (grid[hr][ir] === 'D') grid[hr][ir] = 'H';
+  if (fem && h >= 3) {
+    // the lid shades the top of the iris; a small second catchlight low on the other side
+    for (let c = ia; c <= ib; c++) if (grid[hr][c] === 'I') grid[hr][c] = 'j';
+    const lowRow = top + h;
+    if (grid[lowRow][ib] === 'I' || grid[lowRow][ib] === 'i') grid[lowRow][ib] = 'h';
+    // the outer corner of the lash line is thicker, like a touch of liner
+    grid[hr][c0] = 'L';
+  }
   // lid tilt for moods
   if (mode === 'sad' || face.eyes === 'droopy') grid[top + 1][c0 + 1] = 'L';
   if (face.eyes === 'narrow' && h >= 2) {
@@ -637,7 +654,9 @@ function drawEyes(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression, 
   const mode = eyeMode(expr, blink);
   const { rows } = eyeGrid(face, mode, g.fem);
   const w = EYE_W[face.eyes];
-  const lidY = face.eyes === 'round' ? 28 : 29;
+  const tall = g.fem && (face.eyes === 'almond' || face.eyes === 'droopy');
+  // a taller eye grows upwards so its lower lid stays where it was
+  const lidY = face.eyes === 'round' || tall ? 28 : 29;
   // grid column 0 sits one left of the outer corner
   const iris = face.eyeColor;
   const pal2: Record<string, string> = {
@@ -646,8 +665,10 @@ function drawEyes(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression, 
     w: mix('#f3eee6', pal.skin.sh, 0.45),
     I: iris,
     i: shade(iris, 0.22),
+    j: shade(iris, -0.22),
     D: shade(iris, -0.55),
     H: '#ffffff',
+    h: mix(shade(iris, 0.45), '#ffffff', 0.5),
     S: pal.skin.sh,
     K: face.eyeshadow ?? pal.skin.sh,
   };
@@ -658,20 +679,28 @@ function drawEyes(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression, 
   if (expr === 'smirk' && !blink) other = eyeGrid(face, 'happy', g.fem).rows;
   const mr = mirrorRows(other);
   buf.stamp(W - ox - mr[0].length, lidY, mr, pal2, T.feat);
-  // eyeshadow above the lid
-  if (face.eyeshadow && mode !== 'closed') {
-    for (let c = 2; c < w; c++) {
-      buf.put(ox + c, lidY - 1, face.eyeshadow, T.feat);
-      buf.put(W - 1 - (ox + c), lidY - 1, face.eyeshadow, T.feat);
-    }
+  const open = mode !== 'closed' && mode !== 'arc';
+  const both = (x: number, y: number, c: string) => {
+    buf.put(x, y, c, T.feat);
+    buf.put(W - 1 - x, y, c, T.feat);
+  };
+  // eyeshadow above the lid; women get a faint rosy lid even without make-up
+  const lid = face.eyeshadow ?? (g.fem ? mix(pal.skin.sh, '#a8606e', 0.24) : null);
+  if (lid && open) for (let c = 2; c < w; c++) both(ox + c, lidY - 1, lid);
+  if (g.fem && open) {
+    // the lash line flicks up and out at the outer corner, a dark dot under it
+    both(ox - 1, lidY - 1, pal.lashes);
+    const h = EYE_H[face.eyes] + (tall ? 1 : 0) + (mode === 'wide' ? 1 : 0);
+    both(ox + 1, lidY + h + 1, mix(pal.lashes, pal.skin.sh, 0.45));
   }
 }
 
-function drawBrows(buf: Buf, face: FaceSpec, pal: Pal, expr: Expression): void {
-  const base = 26;
+function drawBrows(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression): void {
+  const tall = g.fem && (face.eyes === 'almond' || face.eyes === 'droopy');
+  const base = tall || (g.fem && face.eyes === 'round') ? 25 : 26;
   let lift = 0;
   let inner = 0;
-  let arch = face.brows === 'arched' ? 1 : 0;
+  let arch = face.brows === 'arched' || (g.fem && face.brows !== 'thin') ? 1 : 0;
   switch (expr) {
     case 'surprised':
       lift = -2;
@@ -699,12 +728,16 @@ function drawBrows(buf: Buf, face: FaceSpec, pal: Pal, expr: Expression): void {
     const outer: Pt = [21.5, base + 1 + lift + extraLift];
     const peak: Pt = [24.5, base - arch + lift + extraLift];
     const end: Pt = [28.4, base + 0.4 + inner + lift + extraLift];
+    // women: a fine line that is fullest at the inner end and fades towards the temple
+    const tail = mix(pal.brow, pal.skin.mid, 0.45);
     const paint = (x: number, y: number) => {
-      for (let t = 0; t < thick; t++) buf.put(X(x), y + t, pal.brow, T.feat);
+      const t0 = g.fem ? (x >= 26 && thick > 1 ? 2 : 1) : thick;
+      const c = g.fem && x < 22.5 ? tail : pal.brow;
+      for (let t = 0; t < t0; t++) buf.put(X(x), y + t, c, T.feat);
     };
     line(outer[0], outer[1], peak[0], peak[1], paint);
     line(peak[0], peak[1], end[0], end[1], paint);
-    if (face.brows === 'normal') buf.put(X(Math.round(end[0])), Math.round(end[1]) + 1, pal.brow, T.feat);
+    if (face.brows === 'normal' && !g.fem) buf.put(X(Math.round(end[0])), Math.round(end[1]) + 1, pal.brow, T.feat);
   };
   draw(false, 0);
   draw(true, expr === 'smirk' ? -1 : 0);
@@ -718,8 +751,16 @@ const NOSES: Record<FaceSpec['nose'], string[]> = {
   long: ['...s..', '...s..', '...hs.', '...hs.', '..hhs.', '.dsssd'],
 };
 
-function drawNose(buf: Buf, face: FaceSpec, pal: Pal): void {
-  buf.stamp(29, 31, NOSES[face.nose], { h: pal.skin.hi, s: pal.skin.sh, d: pal.skin.dk }, T.feat);
+/** finer noses for women: no dark nostrils, the bridge only hinted */
+const NOSES_F: Record<FaceSpec['nose'], string[]> = {
+  small: ['......', '......', '......', '...hs.', '....s.', '......'],
+  button: ['......', '......', '....s.', '..h.s.', '...ss.', '......'],
+  straight: ['......', '....s.', '...hs.', '...h..', '..h.s.', '...ss.'],
+  long: ['....s.', '....s.', '...hs.', '...hs.', '..h.s.', '..sss.'],
+};
+
+function drawNose(buf: Buf, g: Geo, face: FaceSpec, pal: Pal): void {
+  buf.stamp(29, 31, (g.fem ? NOSES_F : NOSES)[face.nose], { h: pal.skin.hi, s: pal.skin.sh, d: pal.skin.dk }, T.feat);
 }
 
 function drawMouth(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression, talk: boolean): void {
@@ -741,6 +782,18 @@ function drawMouth(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression,
       for (let x = from + 1; x <= to - 1; x++) put(x, yy, pal.skin.sh);
     }
   };
+  // women: an upper lip with a soft dip in the middle, and a shadow under the lower lip
+  const full = g.fem;
+  const upperLip = (from: number, to: number) => {
+    if (!full) return;
+    const up = shade(lip, -0.1);
+    for (let x = from; x <= to; x++) put(x, y - 1, Math.abs(x + 0.5 - CX) < 1 ? mix(up, L, 0.22) : up);
+  };
+  const underLip = () => {
+    if (!full) return;
+    put(CX - 1, y + 2, pal.skin.sh);
+    put(CX, y + 2, pal.skin.sh);
+  };
   let e = expr;
   if (talk) e = e === 'smile' || e === 'grin' ? 'grin' : e === 'surprised' ? 'surprised' : 'neutral';
   switch (e) {
@@ -748,7 +801,9 @@ function drawMouth(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression,
       for (let x = a + 1; x <= b - 1; x++) put(x, y, L);
       put(a, y - 1, L);
       put(b, y - 1, L);
-      lowerLip(y + 1, a + 2, b - 2);
+      upperLip(a + 1, b - 1);
+      lowerLip(y + 1, full ? a + 1 : a + 2, full ? b - 1 : b - 2);
+      underLip();
       put(a - 1, y - 1, pal.skin.sh);
       put(b + 1, y - 1, pal.skin.sh);
       break;
@@ -766,12 +821,15 @@ function drawMouth(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression,
       for (let x = a; x <= b - 1; x++) put(x, y, L);
       put(b, y - 1, L);
       put(b + 1, y - 2, pal.skin.sh);
+      upperLip(a + 1, b - 2);
       lowerLip(y + 1, a + 1, b - 2);
+      underLip();
       break;
     case 'frown':
       for (let x = a + 1; x <= b - 1; x++) put(x, y, L);
       put(a, y + 1, L);
       put(b, y + 1, L);
+      upperLip(a + 1, b - 1);
       lowerLip(y + 1, a + 2, b - 2);
       break;
     case 'sad':
@@ -819,10 +877,13 @@ function drawMouth(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression,
         for (let x = a + 1; x <= b - 1; x++) put(x, y + 1, inside);
         put(a + 1, y + 1, L);
         put(b - 1, y + 1, L);
+        upperLip(a + 1, b - 1);
         lowerLip(y + 2, a + 2, b - 2);
       } else {
         for (let x = a; x <= b; x++) put(x, y, L);
+        upperLip(a + 1, b - 1);
         lowerLip(y + 1);
+        underLip();
       }
   }
 }
@@ -830,6 +891,17 @@ function drawMouth(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression,
 function drawCheeks(buf: Buf, g: Geo, face: FaceSpec, pal: Pal, expr: Expression, flushed: boolean): void {
   const skinAt = (x: number, y: number) => buf.tag(x, y) === T.skin;
   const blush = flushed || face.blush || expr === 'grin' || (g.fem && expr === 'smile');
+  if (g.fem && !blush) {
+    const soft = mix(pal.skin.mid, pal.skin.blush, 0.5);
+    for (const [x, y] of [
+      [22, 34],
+      [23, 34],
+      [23, 35],
+    ] as Pt[]) {
+      if (skinAt(x, y)) buf.put(x, y, soft, T.feat);
+      if (skinAt(W - 1 - x, y)) buf.put(W - 1 - x, y, soft, T.feat);
+    }
+  }
   if (blush) {
     for (const [x, y] of [
       [21, 34],
@@ -1458,10 +1530,10 @@ export function portraitPixels(look: CharacterLook, face: FaceSpec, opts: Portra
   // 6 features
   drawCheeks(buf, g, face, pal, expr, !!opts.blush);
   drawBeard(buf, g, face, pal, fm);
-  drawNose(buf, face, pal);
+  drawNose(buf, g, face, pal);
   drawMouth(buf, g, face, pal, expr, !!opts.talk);
   drawEyes(buf, g, face, pal, expr, !!opts.blink);
-  drawBrows(buf, face, pal, expr);
+  drawBrows(buf, g, face, pal, expr);
   // 7 hair in front
   paintHair(buf, shape.front, shape, pal, 'front', strands);
   if (shape.extra) paintHair(buf, shape.extra, shape, pal, 'front', strands);
