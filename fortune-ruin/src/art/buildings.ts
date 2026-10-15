@@ -1,5 +1,5 @@
 import { P } from './palette';
-import { circle, dither, ellipse, hash2, hline, makeCanvas, px, rect, rgba, shade, speckle, strokeRect, vline, type Ctx } from './canvas';
+import { circle, dither, ellipse, hash2, hline, makeCanvas, mix, px, rect, rgba, shade, speckle, strokeRect, vline, type Ctx } from './canvas';
 import { drawText, measureText } from './font';
 import type { BuildingDef, BuildingStyle } from '../world/maps/cityLayout';
 
@@ -128,35 +128,281 @@ function windowPane(ctx: Ctx, night: Ctx, x: number, y: number, w: number, h: nu
 
 const ROOF_TONES = ['#4b505d', '#565b66', '#3f4652', '#5a5550', '#4a5248', '#45404c', '#5d6470'];
 
+/** What a flat roof is made of and used for, by the kind of building under it. */
+type RoofUse = 'membrane' | 'metal' | 'gravel' | 'terrace' | 'garden';
+
+function roofUse(style: BuildingStyle): RoofUse {
+  switch (style) {
+    case 'warehouse':
+    case 'motors':
+    case 'ferry_hall':
+      return 'metal';
+    case 'shop':
+    case 'pharmacy':
+    case 'bakery':
+    case 'kitchen':
+    case 'pawn':
+    case 'bar':
+    case 'cafe':
+    case 'restaurant':
+      return 'gravel';
+    case 'hotel':
+    case 'resort':
+    case 'finedining':
+    case 'luxury':
+      return 'terrace';
+    case 'apartment':
+    case 'lofts':
+    case 'river_tower':
+      return 'garden';
+    default:
+      return 'membrane';
+  }
+}
+
+type Box = [number, number, number, number];
+const overlaps = (placed: Box[], b: Box, pad = 3) => placed.some(([a, c, d, e]) => b[0] < a + d + pad && a < b[0] + b[2] + pad && b[1] < c + e + pad && c < b[1] + b[3] + pad);
+
+/** A parasol seen from above: eight panels in two shades, a darker rim away from the light, its shadow to the lower right. */
+function parasol(ctx: Ctx, cx: number, cy: number, r: number, color: string): void {
+  circle(ctx, cx + 2, cy + 3, r, rgba('#000000', 0.28));
+  const dark = shade(color, -0.16);
+  for (let j = -r; j <= r; j++) {
+    const half = Math.round(r * Math.sqrt(Math.max(0, 1 - (j * j) / (r * r + 0.0001))));
+    for (let i = -half; i <= half; i++) {
+      const seg = Math.floor(((Math.atan2(j, i) + Math.PI) / (Math.PI * 2)) * 8) % 8;
+      const rim = (i === half || j === r || (i === half - 1 && j > r - 3)) && i + j > 0;
+      px(ctx, cx + i, cy + j, rim ? shade(color, -0.32) : seg % 2 ? dark : color);
+    }
+  }
+  px(ctx, cx, cy, shade(color, -0.5));
+  px(ctx, cx - 1, cy - 1, shade(color, 0.3));
+}
+
+/** What grows in a raised bed: leaf, shadow, highlight, and a flower or fruit (or none). */
+const CROPS: [string, string, string, string | null][] = [
+  ['#5fa24c', '#3f7a38', '#8ad06a', null], // lettuces
+  ['#4f8a3c', '#2f6a2c', '#7ab85a', '#e0483a'], // tomatoes
+  ['#5a9a48', '#3a7034', '#86c06a', '#f2c94c'], // courgettes in flower
+  ['#6aa85a', '#4a8040', '#9ad07a', '#c87ad8'], // herbs, flowering
+];
+
+/** A raised timber bed of soil with three rows of something growing in it. */
+function raisedBed(ctx: Ctx, gx: number, gy: number, bw: number, bh: number, crop: number, seed: number): void {
+  const [leaf, dark, light, fruit] = CROPS[crop % CROPS.length];
+  rect(ctx, gx, gy, bw, bh, '#7a5634');
+  hline(ctx, gx, gy, bw, '#a07a50');
+  hline(ctx, gx, gy + bh - 1, bw, '#4e3420');
+  rect(ctx, gx + 2, gy + 2, bw - 4, bh - 4, '#4e3424');
+  speckle(ctx, gx + 2, gy + 2, bw - 4, bh - 4, '#3a2618', 0.3, seed);
+  for (let r = 0; r < 3; r++)
+    for (let c = 0; c < Math.floor((bw - 6) / 4); c++) {
+      const cx = gx + 4 + c * 4 + (r % 2);
+      const cy = gy + 4 + r * Math.floor((bh - 6) / 3);
+      px(ctx, cx, cy, leaf);
+      px(ctx, cx - 1, cy, leaf);
+      px(ctx, cx + 1, cy, dark);
+      px(ctx, cx, cy + 1, dark);
+      px(ctx, cx, cy - 1, light);
+      if (fruit && hash2(cx, cy, seed) < 0.45) px(ctx, cx + 1, cy - 1, fruit);
+    }
+}
+
 function flatRoof(ctx: Ctx, s: Spec, x: number, y: number, w: number, h: number, seed: number, style: BuildingStyle): void {
-  const base = style === 'casino' ? s.roofColor : ROOF_TONES[Math.floor(hash2(seed, 3, 9) * ROOF_TONES.length)];
-  rect(ctx, x, y, w, h, base);
-  // membrane panels with seams and a little gravel
-  const seam = shade(base, -0.14);
-  for (let i = 16; i < w; i += 24) vline(ctx, x + i, y + 4, h - 6, seam);
-  for (let j = 18; j < h; j += 20) hline(ctx, x + 4, y + j, w - 8, seam);
-  speckle(ctx, x, y, w, h, shade(base, 0.12), 0.025, seed + 3);
-  speckle(ctx, x, y, w, h, shade(base, -0.2), 0.02, seed + 4);
-  // parapet: lit north/west edges, shaded south/east
+  const use = style === 'casino' ? 'membrane' : roofUse(style);
+  // the resort's roof is the sand-coloured stone of the island; everywhere else it is the city's greys
+  const base = style === 'casino' || style === 'resort' ? s.roofColor : ROOF_TONES[Math.floor(hash2(seed, 3, 9) * ROOF_TONES.length)];
+  rect(ctx, x, y, w, h, use === 'metal' ? shade(base, 0.08) : base);
+  // what is already on the roof, so that nothing is put down on top of it
+  const placed: Box[] = [];
+  if (use === 'terrace') {
+    // paving slabs, a few a shade off, the joints between them
+    const stone = mix(base, '#c9bfae', style === 'resort' ? 0.35 : 0.5);
+    const slab = 10;
+    rect(ctx, x, y, w, h, stone);
+    for (let j = y + 4; j < y + h; j += slab)
+      for (let i = x + 3; i < x + w; i += slab) {
+        const v = hash2(i, j, seed + 11);
+        if (v < 0.3) rect(ctx, i + 1, j + 1, slab - 1, slab - 1, shade(stone, v < 0.15 ? 0.05 : -0.05));
+      }
+    for (let j = y + 4; j < y + h; j += slab) hline(ctx, x + 3, j, w - 6, shade(stone, -0.14));
+    for (let i = x + 3; i < x + w; i += slab) vline(ctx, i, y + 4, h - 6, shade(stone, -0.14));
+  } else if (use === 'metal') {
+    // corrugated sheets: ribs every few pixels, and the joints between sheets
+    for (let i = 2; i < w; i += 4) {
+      vline(ctx, x + i, y + 4, h - 6, shade(base, 0.24));
+      vline(ctx, x + i + 1, y + 4, h - 6, shade(base, -0.12));
+    }
+    for (let j = 22; j < h; j += 22) hline(ctx, x + 3, y + j, w - 6, shade(base, -0.28));
+  } else if (use === 'gravel') {
+    // ballast gravel, and a row of pavers to walk on
+    speckle(ctx, x, y, w, h, shade(base, 0.18), 0.12, seed + 5);
+    speckle(ctx, x, y, w, h, shade(base, -0.22), 0.1, seed + 6);
+    const py = y + h - 12;
+    for (let i = x + 6; i + 6 < x + w - 6; i += 8) {
+      rect(ctx, i, py, 7, 6, shade(base, 0.28));
+      hline(ctx, i, py + 6, 7, shade(base, -0.25));
+    }
+    placed.push([x + 6, py, w - 12, 6]);
+  } else {
+    // membrane panels with seams and a little gravel
+    const seam = shade(base, -0.14);
+    for (let i = 16; i < w; i += 24) vline(ctx, x + i, y + 4, h - 6, seam);
+    for (let j = 18; j < h; j += 20) hline(ctx, x + 4, y + j, w - 8, seam);
+    speckle(ctx, x, y, w, h, shade(base, 0.12), 0.025, seed + 3);
+    speckle(ctx, x, y, w, h, shade(base, -0.2), 0.02, seed + 4);
+  }
+  // where rain sits and dries: a few darker patches on the old roofs
+  if (use === 'membrane' || use === 'gravel') {
+    const stain = shade(base, -0.08);
+    const n = 1 + Math.floor(hash2(seed, 5, 5) * 3);
+    for (let k = 0; k < n && w > 40 && h > 26; k++) {
+      const sx = x + 12 + Math.floor(hash2(k, seed, 31) * (w - 34));
+      const sy = y + 10 + Math.floor(hash2(seed, k, 32) * (h - 22));
+      const rx = 6 + Math.floor(hash2(k, seed, 33) * 8);
+      const ry = 3 + Math.floor(hash2(k, seed, 34) * 3);
+      for (let j = -ry; j <= ry; j++)
+        for (let i = -rx; i <= rx; i++) {
+          const d = (i * i) / (rx * rx) + (j * j) / (ry * ry);
+          if (d <= 1 && (d < 0.5 || (i + j) % 2 === 0) && hash2(sx + i, sy + j, seed) < 0.85) px(ctx, sx + i, sy + j, stain);
+        }
+    }
+  }
+  // the parapet's shadow on the roof (the light comes from the upper left)
+  rect(ctx, x + 3, y + 5, w - 6, 2, rgba('#000000', 0.16));
+  hline(ctx, x + 3, y + 7, w - 6, rgba('#000000', 0.07));
+  rect(ctx, x + 3, y + 7, 2, h - 9, rgba('#000000', 0.1));
+  // parapet with coping stones: lit north/west edges, shaded south/east
   rect(ctx, x, y, w, 4, shade(base, 0.32));
+  for (let i = 0; i < w; i += 8) vline(ctx, x + i, y, 4, shade(base, 0.12));
   hline(ctx, x, y + 4, w, shade(base, -0.3));
   rect(ctx, x, y, 3, h, shade(base, 0.22));
   rect(ctx, x + w - 3, y, 3, h, shade(base, -0.12));
   rect(ctx, x, y + h - 2, w, 2, shade(base, -0.25));
+  // a drain outlet in the corner, its stain down the parapet
+  if (h >= 18) {
+    rect(ctx, x + w - 9, y + h - 6, 4, 3, shade(base, -0.4));
+    px(ctx, x + w - 8, y + h - 5, '#1a1a1e');
+  }
   if (h < 18) return;
+  const shadowUnder = (ix: number, iy: number, iw: number, ih: number) => rect(ctx, ix + 2, iy + ih, iw, 2, rgba('#000000', 0.25));
+
+  // the big pieces first: a plant room, a pool deck, garden plots
+  const big = w >= 112 && h >= 44;
+  if (use === 'terrace') {
+    // a hedge in long planters along the parapet
+    const hy = y + 6;
+    for (let i = x + 6; i + 20 <= x + w - 6; i += 24) {
+      rect(ctx, i, hy, 20, 5, '#6a4a32');
+      hline(ctx, i, hy + 4, 20, '#4e3420');
+      rect(ctx, i + 1, hy - 1, 18, 4, '#3f7a38');
+      speckle(ctx, i + 1, hy - 1, 18, 4, '#5fa24c', 0.45, seed + i);
+      speckle(ctx, i + 1, hy - 1, 18, 2, '#8ad06a', 0.2, seed + i + 1);
+      hline(ctx, i + 1, hy + 5, 20, rgba('#000000', 0.22));
+    }
+    placed.push([x, hy - 1, w, 7]);
+  }
+  if (use === 'terrace' && big) {
+    // a timber deck with a pool on it (the hotel, the resort) or a terrace with parasols
+    const dw = Math.min(w - 24, 96);
+    const dh = Math.min(h - 24, 40);
+    const dx = x + Math.round((w - dw) / 2);
+    const dy = y + 14;
+    shadowUnder(dx, dy, dw, dh);
+    rect(ctx, dx, dy, dw, dh, '#9a6a3e');
+    // boards, their ends staggered
+    for (let j = dy, row = 0; j < dy + dh; j += 4, row++) {
+      hline(ctx, dx, j + 3, dw, '#7a4e2a');
+      hline(ctx, dx, j, dw, '#a87a4a');
+      for (let i = dx + (row % 2 ? 8 : 16); i < dx + dw - 1; i += 24) vline(ctx, i, j, 3, '#7a4e2a');
+    }
+    strokeRect(ctx, dx, dy, dw, dh, '#5a3a20');
+    if (style === 'hotel' || style === 'resort') {
+      const pw = dw - 24;
+      const ph = Math.max(10, dh - 16);
+      rect(ctx, dx + 12, dy + 7, pw, ph, '#e8eef2');
+      rect(ctx, dx + 14, dy + 9, pw - 4, ph - 4, '#4ab0d8');
+      hline(ctx, dx + 14, dy + 9, pw - 4, '#2f8ab4');
+      vline(ctx, dx + 14, dy + 9, ph - 4, '#2f8ab4');
+      for (let k = 0; k < 4; k++) hline(ctx, dx + 17 + k * 9, dy + 13 + (k % 2) * 4, 5, '#9ae0f4');
+      // a ladder, loungers along the pool, and a parasol at each end
+      vline(ctx, dx + pw + 8, dy + 9, 4, '#c4c9d0');
+      vline(ctx, dx + pw + 10, dy + 9, 4, '#c4c9d0');
+      for (let k = 0; k < 3; k++) {
+        rect(ctx, dx + 20 + k * 16, dy + dh - 6, 10, 4, '#f4f1ea');
+        hline(ctx, dx + 20 + k * 16, dy + dh - 3, 10, '#c8c0b0');
+        hline(ctx, dx + 20 + k * 16, dy + dh - 2, 10, rgba('#000000', 0.25));
+      }
+      parasol(ctx, dx + 7, dy + dh - 8, 5, '#f4f1ea');
+      parasol(ctx, dx + dw - 8, dy + dh - 8, 5, '#2a7a9a');
+    } else {
+      // tables under parasols, two chairs at each
+      const n = Math.floor(dw / 30);
+      for (let k = 0; k < n; k++) {
+        const cx = dx + Math.round(dw / (n * 2)) + k * Math.round(dw / n);
+        const cy = dy + Math.round(dh / 2);
+        for (const [ox, oy] of [[-14, -3], [10, 0]]) {
+          rect(ctx, cx + ox, cy + oy, 4, 5, '#4a4a52');
+          hline(ctx, cx + ox, cy + oy, 4, '#24242a');
+          px(ctx, cx + ox + 1, cy + oy + 2, '#74747e');
+          hline(ctx, cx + ox, cy + oy + 5, 4, rgba('#000000', 0.25));
+        }
+        parasol(ctx, cx, cy, 7, k % 2 ? '#c8483a' : '#f4f1ea');
+      }
+    }
+    placed.push([dx, dy, dw, dh]);
+  } else if (use === 'garden' && big) {
+    // raised beds for the people living below, each growing something different
+    const plots = Math.min(4, Math.floor((w - 24) / 34));
+    for (let k = 0; k < plots; k++) {
+      const gx = x + 10 + k * 34;
+      const gy = y + 11;
+      shadowUnder(gx, gy, 28, 18);
+      raisedBed(ctx, gx, gy, 28, 18, Math.floor(hash2(k, seed, 41) * CROPS.length), seed + k);
+      placed.push([gx, gy, 28, 18]);
+    }
+  }
+  if (big && use !== 'terrace') {
+    // the plant room, with its louvres and door, and ducts running out to the units
+    const pw = 30;
+    const ph = 18;
+    const px0 = x + w - pw - 10 - Math.floor(hash2(seed, 9, 4) * 20);
+    const py0 = y + h - ph - (use === 'gravel' ? 16 : 10);
+    if (!overlaps(placed, [px0, py0, pw, ph])) {
+      rect(ctx, px0, py0, pw, ph, shade(base, 0.24));
+      rect(ctx, px0, py0, pw, 3, shade(base, 0.4));
+      for (let j = py0 + 5; j < py0 + ph - 3; j += 2) hline(ctx, px0 + 3, j, 12, shade(base, -0.1));
+      rect(ctx, px0 + 19, py0 + 6, 7, 11, '#4a5058');
+      px(ctx, px0 + 24, py0 + 11, '#c8c8c8');
+      strokeRect(ctx, px0, py0, pw, ph, P.outline);
+      shadowUnder(px0, py0, pw, ph);
+      placed.push([px0, py0, pw, ph]);
+      // a duct along the roof to the left of it
+      const duct = Math.max(12, Math.floor(w / 3));
+      rect(ctx, px0 - duct, py0 + 6, duct, 4, '#9aa0a8');
+      hline(ctx, px0 - duct, py0 + 6, duct, '#c4c9d0');
+      hline(ctx, px0 - duct, py0 + 10, duct, rgba('#000000', 0.25));
+      for (let i = px0 - duct; i < px0; i += 10) vline(ctx, i, py0 + 6, 4, '#7a8088');
+      placed.push([px0 - duct, py0 + 6, duct, 4]);
+    }
+  }
+
+  // and the small things scattered between
   const area = (w - 12) * (h - 14);
-  const items = Math.max(1, Math.min(7, Math.floor(area / 1500)));
-  const placed: [number, number, number, number][] = [];
-  for (let i = 0; i < items * 3 && placed.length < items; i++) {
-    const kind = Math.floor(hash2(i, seed, 21) * 7);
-    const iw = [14, 18, 16, 14, 22, 20, 14][kind];
-    const ih = [10, 10, 6, 13, 14, 12, 12][kind];
+  const items = Math.max(1, Math.min(12, Math.floor(area / 900)));
+  const homes = style === 'apartment' || style === 'shared' || style === 'lofts';
+  const kinds = homes ? [0, 1, 2, 3, 5, 7, 8, 9, 9] : use === 'metal' ? [0, 2, 2, 8, 10, 1] : use === 'terrace' ? [0, 1, 5, 5, 6, 8] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 10];
+  let count = 0;
+  for (let i = 0; i < items * 4 && count < items; i++) {
+    const kind = kinds[Math.floor(hash2(i, seed, 21) * kinds.length)];
+    const iw = [14, 18, 16, 14, 22, 20, 14, 10, 10, 26, 9][kind];
+    const ih = [10, 10, 6, 13, 14, 12, 12, 10, 8, 10, 12][kind];
     const ix = x + 6 + Math.floor(hash2(i, seed, 1) * Math.max(1, w - iw - 12));
     const iy = y + 8 + Math.floor(hash2(seed, i, 2) * Math.max(1, h - ih - 14));
-    if (placed.some(([a, b, c, d]) => ix < a + c + 3 && a < ix + iw + 3 && iy < b + d + 3 && b < iy + ih + 3)) continue;
+    if (overlaps(placed, [ix, iy, iw, ih])) continue;
     placed.push([ix, iy, iw, ih]);
-    // drop shadow
-    rect(ctx, ix + 2, iy + ih, iw, 2, rgba('#000000', 0.25));
+    count++;
+    if (kind !== 9) shadowUnder(ix, iy, iw, ih);
     switch (kind) {
       case 0: // AC unit
         rect(ctx, ix, iy, iw, ih, '#a3a9b1');
@@ -207,6 +453,38 @@ function flatRoof(ctx: Ctx, s: Spec, x: number, y: number, w: number, h: number,
         rect(ctx, ix, iy, iw, 3, shade(base, 0.35));
         rect(ctx, ix + 4, iy + 5, 6, 7, '#5a4030');
         strokeRect(ctx, ix, iy, iw, ih, P.outline);
+        break;
+      case 7: // satellite dish on its stand
+        ellipse(ctx, ix + 5, iy + 4, 5, 4, '#d8dce2');
+        ellipse(ctx, ix + 5, iy + 4, 3, 2, '#b4bac4');
+        px(ctx, ix + 5, iy + 4, '#5a6068');
+        vline(ctx, ix + 5, iy + 7, 3, '#5a6068');
+        hline(ctx, ix + 3, iy + 9, 5, '#5a6068');
+        break;
+      case 8: // roof hatch
+        rect(ctx, ix, iy, iw, ih, '#6a7078');
+        rect(ctx, ix + 1, iy + 1, iw - 2, ih - 2, '#8a9098');
+        hline(ctx, ix + 1, iy + 1, iw - 2, '#b4bac4');
+        px(ctx, ix + iw - 3, iy + 4, '#3a3f46');
+        strokeRect(ctx, ix, iy, iw, ih, P.outline);
+        break;
+      case 9: {
+        // a washing line between two poles, the week's washing on it
+        vline(ctx, ix, iy, ih, '#5a5048');
+        vline(ctx, ix + iw - 1, iy, ih, '#5a5048');
+        hline(ctx, ix, iy + 1, iw, '#c8c0b0');
+        const colors = ['#f4f1ea', '#4f7fbf', '#c8483a', '#e8b44c', '#6f9a52'];
+        for (let k = 0; k < 5; k++) rect(ctx, ix + 3 + k * 4, iy + 2, 3, 4 + (k % 2) * 2, colors[(k + seed) % colors.length]);
+        break;
+      }
+      case 10: // a TV aerial: the boom with its elements on a short mast, bolted to a plate
+        hline(ctx, ix, iy + 3, iw, '#8a9098');
+        vline(ctx, ix + 1, iy, 7, '#a3a9b1');
+        vline(ctx, ix + 3, iy + 1, 5, '#a3a9b1');
+        vline(ctx, ix + 5, iy + 2, 3, '#a3a9b1');
+        vline(ctx, ix + 7, iy + 2, 3, '#a3a9b1');
+        vline(ctx, ix + 4, iy + 4, ih - 6, '#7a8088');
+        rect(ctx, ix + 2, iy + ih - 2, 5, 2, '#5a6068');
         break;
     }
   }
