@@ -61,7 +61,8 @@ function casinoNight(core: GameCore, h: Habits): void {
   const bring = Math.floor((liquid * h.casinoShare) / G(10)) * G(10);
   if (bring < G(50)) return;
   goTo(core, 'casino');
-  const fromCash = Math.min(bring, core.economy.balance('cash'));
+  // chips come in whole G only: take what whole G the wallet holds, the rest from the card
+  const fromCash = Math.floor(Math.min(bring, core.economy.balance('cash')) / G(1)) * G(1);
   if (fromCash > 0) core.economy.buyChips(fromCash, 'cash');
   if (bring - fromCash > 0) core.economy.buyChips(bring - fromCash, 'bank');
   const table = 'bj2';

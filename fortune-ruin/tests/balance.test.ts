@@ -23,11 +23,15 @@ describe('long-term balance (4 game months)', () => {
     expect(r.evicted).toBe(false);
   }, 60000);
 
-  it('weekend blackjack costs money but a working player still saves', () => {
+  // (the simulated gambler hits until 17 and never doubles or splits: a house edge of about 6%)
+  it('weekend blackjack eats most of what a working player would save, but the job and the flat survive it', () => {
     const r = (results.weekend = run('weekend'));
     expect(r.conserved).toBe(true);
-    expect(r.end).toBeGreaterThan(r.start);
-    expect(r.end).toBeLessThan((results.diligent ?? run('diligent')).end + G(2000));
+    expect(r.casinoNet).toBeLessThan(0);
+    expect(r.end).toBeLessThan((results.diligent ?? run('diligent')).end - G(3000));
+    expect(r.end).toBeGreaterThan(r.start - G(5000));
+    expect(r.job).toBe('active');
+    expect(r.evicted).toBe(false);
   }, 60000);
 
   it('nightly heavy gambling drains a working player', () => {
@@ -35,7 +39,7 @@ describe('long-term balance (4 game months)', () => {
     expect(r.conserved).toBe(true);
     expect(r.casinoNet).toBeLessThan(0);
     expect(r.end).toBeLessThan((results.weekend ?? run('weekend')).end);
-    expect(r.end).toBeLessThan(r.start);
+    expect(r.end).toBeLessThan(r.start - G(10000));
   }, 60000);
 
   it('without work, savings run down month by month', () => {
