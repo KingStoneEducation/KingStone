@@ -132,6 +132,10 @@ export class EncounterSystem {
     let a = tx.sociability >= ty.sociability ? xId : yId;
     let b = a === xId ? yId : xId;
     let kind: EncounterKind = 'chat';
+    let about: 'money' | undefined;
+    // a loan between them that is late: the lender brings it up, and the temper decides how
+    const loan = this.core.lending.between(xId, yId);
+    const late = !!loan && this.core.lending.overdue(loan, Math.floor(t / MINUTES_PER_DAY));
     // a fresh story about the player is the best conversation starter of all
     const storyX = social.storyFor(xId, yId);
     const storyY = social.storyFor(yId, xId);
@@ -140,6 +144,10 @@ export class EncounterSystem {
     if (forced) {
       kind = forced;
       if (forced === 'gossip' && teller) a = teller;
+    } else if (late && roll(`${seed}|m`) < 0.75) {
+      a = loan!.lender;
+      about = 'money';
+      kind = roll(`${seed}|mt`) < 0.25 + NPC_BY_ID[loan!.lender].traits.temper * 0.6 ? 'argue' : 'chat';
     } else if (teller && roll(`${seed}|g`) < NPC_BY_ID[teller].traits.gossip * 0.9) {
       kind = 'gossip';
       a = teller;
@@ -162,7 +170,7 @@ export class EncounterSystem {
     b = a === xId ? yId : xId;
     const [lo, hi] = DURATION[kind];
     const minutes = lo + Math.floor(roll(`${seed}|d`) * (hi - lo + 1));
-    const e: Encounter = { id: ++this.s.encSeq, a, b, kind, location, start: t, end: t + minutes };
+    const e: Encounter = { id: ++this.s.encSeq, a, b, kind, location, start: t, end: t + minutes, ...(about ? { about } : {}) };
     this.s.pairDay[key] = Math.floor(t / MINUTES_PER_DAY);
     const ra = this.core.state.npcs[a];
     const rb = this.core.state.npcs[b];
@@ -226,7 +234,12 @@ export class EncounterSystem {
     const prev = seen[key];
     seen[key] = { day: Math.floor(e.start / MINUTES_PER_DAY), kind: e.kind, by: e.a, location: e.location, tie: this.core.social.tie(e.a, e.b), times: (prev?.times ?? 0) + 1 };
     const log = (this.s.pairLog ??= []);
-    log.push({ a: e.a, b: e.b, kind: e.kind, t: e.start, location: e.location });
+    log.push({ a: e.a, b: e.b, kind: e.kind, t: e.start, location: e.location, ...(e.about ? { about: e.about } : {}) });
+    // the player saw them argue about it: now they know about the loan
+    if (e.about === 'money') {
+      const l = this.core.lending.between(e.a, e.b);
+      if (l) l.known = true;
+    }
     if (log.length > PAIR_LOG_MAX) log.splice(0, log.length - PAIR_LOG_MAX);
   }
 

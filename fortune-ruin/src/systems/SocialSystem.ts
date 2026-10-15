@@ -128,6 +128,8 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   fishing_labor: () => '在白石湾跟渔船出海打零工',
   yacht_trip: () => '请我坐游艇出海',
   outbid_me: (m) => `在拍卖会上抢走了我想要的${m.data.item ?? '拍品'}`,
+  covered_debt: (m) => `替我把欠${NPC_BY_ID[String(m.data.npc)]?.name ?? '朋友'}的 ${formatG(Number(m.data.amount ?? 0))} 还上了`,
+  paid_for_friend: (m) => `替${NPC_BY_ID[String(m.data.npc)]?.name ?? '朋友'}把欠我的 ${formatG(Number(m.data.amount ?? 0))} 还了`,
   casino_night: (m) => `和我一起去了赌场${Number(m.data.net ?? 0) ? `（我${Number(m.data.net) > 0 ? '赢' : '输'}了 ${formatG(Math.abs(Number(m.data.net)))}）` : ''}`,
 };
 
@@ -384,9 +386,10 @@ export interface WebEdge {
 }
 
 /** One line for something the player saw happen between two people. */
-export function momentText(m: { a: string; b: string; kind: EncounterKind }, name: (id: string) => string): string {
+export function momentText(m: { a: string; b: string; kind: EncounterKind; about?: 'money' }, name: (id: string) => string): string {
   const a = name(m.a);
   const b = name(m.b);
+  if (m.about === 'money') return m.kind === 'argue' ? `${a}和${b}为了借钱的事吵了一架` : `${a}跟${b}提起了借给对方的钱`;
   switch (m.kind) {
     case 'gossip':
       return `${a}跟${b}说起了别人的事`;

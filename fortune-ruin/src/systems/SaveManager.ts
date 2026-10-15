@@ -73,6 +73,8 @@ export function migrate(state: GameState): GameState {
   s.housing.storage ??= [];
   s.social.seenPairs ??= {};
   s.social.pairLog ??= [];
+  s.social.npcLoans ??= [];
+  s.social.npcLoanSeq ??= 0;
   s.stories ??= { active: [], done: [], ended: {} };
   s.economy.stakes ??= [];
   s.oldtown ??= emptyOldTown();

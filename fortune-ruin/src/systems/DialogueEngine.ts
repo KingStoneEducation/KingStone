@@ -191,6 +191,14 @@ export class DialogueEngine {
       const sl = this.core.casino.npcPokerTable(npcId) ? (this.pick(npcId, POKER_TALK[npcId] ?? []) ?? null) : this.stateLine(npcId);
       if (sl) lines.push(sl);
     }
+    // money between them and a friend that weighs on them (once a day)
+    if (!fact && r.flags.loanTalkDay !== this.core.today()) {
+      const money = this.core.lending.mention(npcId);
+      if (money) {
+        lines.push(money);
+        r.flags.loanTalkDay = this.core.today();
+      }
+    }
     // Upcoming shared plans
     const plan = this.core.events.upcoming().find((e) => e.npc === npcId && e.status === 'accepted' && e.at - this.core.now() < 18 * 60);
     if (plan) lines.push(`别忘了${toDate(plan.at).hour}点的约哦。`);
@@ -391,6 +399,12 @@ export class DialogueEngine {
     else if (r.familiarity >= 30) opts.push({ id: 'menu_borrow', label: '向对方借钱…', tone: 'money' });
     const receivable = this.core.state.economy.receivables.find((x) => x.npc === id && x.status === 'open');
     if (receivable) opts.push({ id: 'ask_repay', label: `提起借给对方的 ${fmt(receivable.amount - receivable.repaid)}`, tone: 'money' });
+    // a friend's debt you know about: you could pay it
+    const loan = this.core.lending.knownLoanOf(id);
+    if (loan) {
+      const left = this.core.lending.remaining(loan);
+      opts.push({ id: `cover_debt:${loan.id}`, label: `替${NPC_BY_ID[loan.borrower].name}把欠${NPC_BY_ID[loan.lender].name}的 ${fmt(left)} 还上`, tone: 'money', disabled: this.core.economy.canPay(left) ? undefined : '你的钱不够' });
+    }
     const negative = this.core.social.recall(id, ['angry_at_me', 'rude', 'missed_party', 'lied', 'refused_help', 'debt_unpaid'], 30);
     if (negative && !negative.data.apologized) opts.push({ id: 'apologize', label: '为之前的事道歉', tone: 'warm' });
     if (st.stress >= 62 || st.impulsivity >= 66 || st.drunk >= 45) opts.push({ id: 'lash_out', label: '（烦躁）冲对方发脾气', tone: 'risky' });
@@ -527,6 +541,15 @@ export class DialogueEngine {
         s.menu = 'borrow';
         lines.push('（你斟酌着怎么开口……）');
         break;
+      case 'cover_debt': {
+        const loan = this.core.lending.open().find((l) => l.id === Number(arg));
+        const res = this.core.lending.cover(Number(arg));
+        if (!res.ok) lines.push(`（${res.error}）`);
+        else if (loan?.borrower === id) lines.push(this.pick(id, ['你……你替我还了？我不知道该说什么。谢谢你。', '这份情我记下了。真的，谢谢。']) ?? '');
+        else lines.push(this.pick(id, ['你替TA还了？……好吧，那这事就算过去了。谢谢你。', '没想到是你来还。行，我们两清了。']) ?? '');
+        s.menu = 'main';
+        break;
+      }
       case 'menu_romance':
         s.menu = 'romance';
         lines.push(stage(this.core, id) === 'partner' ? this.pick(id, ['嗯？', '怎么了？']) ?? '' : '（你犹豫着该怎么开口……）');

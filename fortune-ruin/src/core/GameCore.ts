@@ -31,6 +31,7 @@ import { AuctionSystem } from '../systems/AuctionSystem';
 import { MarinaSystem } from '../systems/MarinaSystem';
 import { IsleSystem, onIsle } from '../systems/IsleSystem';
 import { WeatherSystem } from '../systems/WeatherSystem';
+import { NpcLendingSystem } from '../systems/NpcLendingSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -125,6 +126,7 @@ export class GameCore {
   marina: MarinaSystem;
   isle: IsleSystem;
   weather: WeatherSystem;
+  lending: NpcLendingSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -157,6 +159,7 @@ export class GameCore {
     this.marina = new MarinaSystem(this);
     this.isle = new IsleSystem(this);
     this.weather = new WeatherSystem(this);
+    this.lending = new NpcLendingSystem(this);
   }
 
   now(): number {
@@ -307,6 +310,7 @@ export class GameCore {
     this.economy.processLoans();
     this.market.dailyUpdate(day);
     this.npcs.dailyUpdate(day);
+    this.lending.daily(day);
     this.social.dailyDrift(day);
     this.social.spreadRumors();
     this.casino.dailyUpdate();

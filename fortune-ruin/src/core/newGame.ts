@@ -205,7 +205,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
       sky: { suiteFrom: -1, suiteUntil: -1, suiteCompWeek: -1, spaFreeDay: -1, nights: 0, treatments: 0, limoRides: 0, redeemed: 0 },
     },
     npcs: Object.fromEntries(NPCS.map((d) => [d.id, initialNpcRuntime(d)])),
-    social: { rel: {}, memories: [], memSeq: 0, beliefs: {}, ties: initialTies(), encounters: [], encSeq: 0, pairDay: {}, seenPairs: {}, pairLog: [] },
+    social: { rel: {}, memories: [], memSeq: 0, beliefs: {}, ties: initialTies(), encounters: [], encSeq: 0, pairDay: {}, seenPairs: {}, pairLog: [], npcLoans: [], npcLoanSeq: 0 },
     events: { cooldown: {}, count: {}, scheduled: [], seq: 0, lastDailyCheck: -1, marketShock: 0 },
     phone: { messages: [], seq: 0 },
     journal: { entries: [], seq: 0 },

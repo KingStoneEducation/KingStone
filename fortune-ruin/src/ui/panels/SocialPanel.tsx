@@ -8,6 +8,7 @@ import { faceFor } from '../../data/faces';
 import { moodFrom } from '../../systems/DialogueEngine';
 import { DIM_NAMES, TIE_BAND_NAMES, describeMemory, momentText, type TieBand, type WebEdge } from '../../systems/SocialSystem';
 import { formatAgo } from '../../core/calendar';
+import { formatG } from '../../core/money';
 import { LOCATIONS } from '../../data/locations';
 import { HOMES } from '../../data/housing';
 import { JOBS } from '../../data/jobs';
@@ -369,14 +370,16 @@ function SocialWeb(props: { onOpen: (id: string) => void }): JSX.Element {
   );
 }
 
-/** In someone's details: the people you have seen them with. */
+/** In someone's details: the people you have seen them with, and money between them and others that you know of. */
 function PeopleAround(props: { id: string }): JSX.Element | null {
   const core = useCore();
   const edges = core.social
     .knownWeb()
     .edges.filter((e) => e.a === props.id || e.b === props.id)
     .sort((x, y) => y.tie - x.tie);
-  if (edges.length === 0) return null;
+  const day = core.today();
+  const loans = core.lending.open().filter((l) => l.known && (l.lender === props.id || l.borrower === props.id));
+  if (edges.length === 0 && loans.length === 0) return null;
   return (
     <div className="card">
       <h3>你见过 TA 和谁在一起</h3>
@@ -384,6 +387,16 @@ function PeopleAround(props: { id: string }): JSX.Element | null {
         {edges.map((e) => (
           <EdgeLine key={`${e.a}|${e.b}`} e={e} from={props.id} />
         ))}
+        {loans.map((l) => {
+          const late = day - l.due;
+          const left = formatG(core.lending.remaining(l));
+          return (
+            <div key={l.id} className={late > 0 ? 'bad' : undefined}>
+              {l.borrower === props.id ? `欠${nameOf(core, l.lender)} ${left}` : `借给${nameOf(core, l.borrower)}的 ${left} 还没还`}
+              {late > 0 ? `（过了还钱的日子 ${late} 天）` : `（${l.due - day} 天后到期）`}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

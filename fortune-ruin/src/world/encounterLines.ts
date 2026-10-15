@@ -44,6 +44,23 @@ export function encounterLines(e: Encounter, core: GameCore): EncounterBeat[] {
   const B = NPC_BY_ID[e.b];
   const s = (k: string) => `${e.id}|${e.a}|${k}`;
   const tie = core.social.tie(e.a, e.b);
+  if (e.about === 'money') {
+    // a loan that is late
+    return e.kind === 'argue'
+      ? [
+          { who: 'a', text: pick(['你说好上个月还我的！', '那笔钱到底什么时候还？', '我也要过日子的！'], s('m1')) },
+          { who: 'b', text: pick(['我真的没钱……', '再宽限几天好不好？', '你非要在这儿说吗？'], s('m2')) },
+          { who: 'a', emote: '💢' },
+          { who: 'a', text: pick(['别再找借口了。', '我算是看透你了。', '下次别来找我。'], s('m3')) },
+          { who: 'b', text: pick(['……对不起。', '你就这么不信我？', '我会还的！'], s('m4')) },
+        ]
+      : [
+          { who: 'a', text: pick(['对了，上次那笔钱……', '那个……借你的钱，方便的时候还我吧。'], s('m1')) },
+          { who: 'b', text: pick(['我记着呢，下个月一定还。', '再给我一点时间。', '哎，我知道，我知道。'], s('m2')) },
+          { who: 'a', text: pick(['嗯，不急。', '好吧……别忘了就行。'], s('m3')) },
+          { who: 'b', emote: '…' },
+        ];
+  }
   switch (e.kind) {
     case 'gossip': {
       const kind = core.state.social.memories.find((m) => m.id === e.memory)?.kind;

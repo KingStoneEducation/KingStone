@@ -500,6 +500,8 @@ export interface Encounter {
   memory?: number;
   /** the player was close enough to hear it */
   overheard?: boolean;
+  /** money between them: the lender bringing up a loan that is late */
+  about?: 'money';
 }
 
 export interface SocialState {
@@ -518,6 +520,24 @@ export interface SocialState {
   seenPairs?: Record<string, SeenPair>;
   /** the NPC↔NPC moments the player saw, oldest first (the last PAIR_LOG_MAX) */
   pairLog?: PairMoment[];
+  /** money lent between NPCs (absent in old saves) */
+  npcLoans?: NpcLoan[];
+  npcLoanSeq?: number;
+}
+
+export interface NpcLoan {
+  id: number;
+  lender: NpcId;
+  borrower: NpcId;
+  amount: Money;
+  repaid: Money;
+  /** the day it was lent, and the day it was meant to come back by */
+  day: number;
+  due: number;
+  status: 'open' | 'repaid' | 'forgiven' | 'covered';
+  closed?: number;
+  /** the player has heard about it */
+  known?: boolean;
 }
 
 export interface SeenPair {
@@ -538,6 +558,8 @@ export interface PairMoment {
   kind: EncounterKind;
   t: number;
   location: LocationId;
+  /** what it was about, when it was about money between them */
+  about?: 'money';
 }
 
 // ------------------------------------------------------------------ events / phone / journal / stats
