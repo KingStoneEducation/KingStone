@@ -40,6 +40,7 @@ import { nightMarketOpen } from '../systems/OldTownSystem';
 import { pieceCanvas } from '../art/artworks';
 import type { TripKind } from '../systems/MarinaSystem';
 import { FISHING, type FareClass } from '../systems/IsleSystem';
+import type { ActionResult } from '../systems/InventorySystem';
 import { Actions, type ActionHost, type Pose, type PoseName, type PropBox } from './actions';
 
 const DIR_VEC: Record<CharDir, { x: number; y: number }> = {
@@ -1502,8 +1503,12 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       }
       case 'business':
         if (d.action === 'work') {
-          const r = core.business.workShift();
-          store.toast(r.ok ? r.message : r.error, r.ok ? 'good' : 'warn');
+          // four hours behind the counter, on the clock
+          const g = core.business.workShiftSteps(16);
+          const first = g.next();
+          const show = (r: ActionResult) => store.toast(r.ok ? r.message : r.error, r.ok ? 'good' : 'warn');
+          if (first.done) show(first.value);
+          else void this.timelapse(g, show, 'counter');
         } else store.openPanel('business');
         break;
       case 'pawn':
@@ -2107,6 +2112,40 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const p = this.player;
     if (!pose || !p) return null;
     if (pose === 'away') return { kind: 'away' };
+    if (pose === 'ladle' || pose === 'counter') {
+      // the far side of the counter you are at (the kitchen's hatch, your shop's till), clear of the staff
+      const it =
+        this.map.interactables.find((i) => (pose === 'ladle' ? i.interact.kind === 'charity' && i.interact.data?.tab === 'volunteer' : i.interact.kind === 'business' && i.interact.data?.action === 'work')) ?? null;
+      let at: Pt | undefined;
+      if (it) {
+        const staffAt = new Set(this.map.staff.map((s) => `${s.x},${s.y}`));
+        for (const dx of [0, 1, -1, 2, -2]) {
+          const tx = it.x + dx;
+          const ty = it.y - 1;
+          if (tx < 0 || ty < 0 || this.map.blocked[ty * this.map.w + tx] || staffAt.has(`${tx},${ty}`)) continue;
+          at = { x: tx * 16 + 8, y: ty * 16 + 14 };
+          break;
+        }
+      }
+      return { kind: 'serve', item: pose === 'ladle' ? 'plate' : 'bag', at };
+    }
+    if (pose === 'haul') {
+      // along the quay to whichever side has room, four or five tiles, and back
+      const tx = Math.floor(p.x / 16);
+      const ty = Math.floor((p.y - 2) / 16);
+      const free = (x: number) => x >= 0 && x < this.map.w && !this.map.blocked[ty * this.map.w + x];
+      const reach = (d: number) => {
+        let n = 0;
+        while (n < 5 && free(tx + d * (n + 1))) n++;
+        return n;
+      };
+      const r = reach(1);
+      const l = reach(-1);
+      const d = r >= l ? 1 : -1;
+      const n = Math.max(r, l);
+      if (n < 2) return null;
+      return { kind: 'haul', from: { x: p.x, y: p.y }, to: { x: p.x + d * n * 16, y: p.y } };
+    }
     if (pose === 'lie') {
       let best: PropBox | null = null;
       let bd = 140;

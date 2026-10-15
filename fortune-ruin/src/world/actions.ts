@@ -22,11 +22,25 @@ export interface PropBox {
   depth: number;
 }
 
-/** How the interface asks for a pose: on the nearest lounger, in the sea, in the pool, or away. */
-export type PoseName = 'lie' | 'sea' | 'pool' | 'away';
+/**
+ * How the interface asks for a pose: on the nearest lounger, in the sea, in the pool, away,
+ * carrying crates (the docks), ladling out meals (the community kitchen) or at the shop counter.
+ */
+export type PoseName = 'lie' | 'sea' | 'pool' | 'away' | 'haul' | 'ladle' | 'counter';
 
-/** What you are seen doing while a stretch of time runs: lying on a lounger, swimming, or away (at sea). */
-export type Pose = { kind: 'lie'; at: PropBox } | { kind: 'swim'; x: number; y: number; lane: number } | { kind: 'away' } | null;
+type Pt = { x: number; y: number };
+
+/**
+ * What you are seen doing while a stretch of time runs: lying on a lounger, swimming, away (at
+ * sea), carrying a crate from one place to another and back, or handing things over a counter.
+ */
+export type Pose =
+  | { kind: 'lie'; at: PropBox }
+  | { kind: 'swim'; x: number; y: number; lane: number }
+  | { kind: 'away' }
+  | { kind: 'haul'; from: Pt; to: Pt }
+  | { kind: 'serve'; item: string; at?: Pt }
+  | null;
 
 /** What the scene lends the actions while they play. */
 export interface ActionHost {
@@ -597,6 +611,9 @@ export class Actions {
         cam.fadeOut(600, 6, 8, 22);
         await this.wait(650);
       }
+      // the work itself goes on while the clock runs
+      const stop = { v: false };
+      const busy = pose?.kind === 'haul' ? this.haul(p, pose, stop) : pose?.kind === 'serve' ? this.serve(p, pose, stop) : null;
       let i = 0;
       for (r = steps.next(); !r.done; r = steps.next()) {
         this.h.core.touch();
@@ -605,6 +622,8 @@ export class Actions {
         i++;
         await this.wait(150);
       }
+      stop.v = true;
+      if (busy) await busy;
       this.h.core.touch();
     } finally {
       if (swimmer) {
@@ -632,6 +651,67 @@ export class Actions {
       this.h.hold(false);
     }
     done(r.value);
+  }
+
+  /** Walk the player to a point (tweened), carrying something over the head if given. */
+  private async walk(p: CharacterSprite, to: Pt, carry: Phaser.GameObjects.Image | null, ms: number): Promise<void> {
+    const from = { x: p.x, y: p.y };
+    const horiz = Math.abs(to.x - from.x) >= Math.abs(to.y - from.y);
+    const dir = horiz ? (to.x > from.x ? 'right' : 'left') : to.y > from.y ? 'down' : 'up';
+    p.setMoving(true, dir);
+    const k = { t: 0 };
+    await new Promise<void>((res) =>
+      this.s.tweens.add({
+        targets: k,
+        t: 1,
+        duration: ms,
+        ease: 'Linear',
+        onUpdate: () => {
+          p.setPos(from.x + (to.x - from.x) * k.t, from.y + (to.y - from.y) * k.t);
+          carry?.setPosition(Math.round(p.x), Math.round(p.y) - 31).setDepth(p.y + 1);
+        },
+        onComplete: () => res(),
+      }),
+    );
+    p.setMoving(false, dir);
+  }
+
+  /** Back and forth with a crate on your shoulders: picked up at one end, set down at the other. */
+  private async haul(p: CharacterSprite, pose: { from: Pt; to: Pt }, stop: { v: boolean }): Promise<void> {
+    const crate = this.fx('crate', p.x, p.y - 31, p.y + 1);
+    try {
+      while (!stop.v) {
+        crate.setVisible(true);
+        await this.walk(p, pose.to, crate, 650);
+        crate.setVisible(false);
+        sfx('slide');
+        if (stop.v) break;
+        await this.walk(p, pose.from, null, 500);
+      }
+    } finally {
+      this.drop(crate);
+    }
+  }
+
+  /** Behind the counter: something handed over every little while (a bowl of soup, a bag of shopping). */
+  private async serve(p: CharacterSprite, pose: { item: string; at?: Pt }, stop: { v: boolean }): Promise<void> {
+    // behind the counter, facing the people on the other side
+    if (pose.at) {
+      p.setPos(pose.at.x, pose.at.y);
+      p.face('down');
+    }
+    const v = p.dir === 'left' ? { x: -1, y: 0 } : p.dir === 'right' ? { x: 1, y: 0 } : p.dir === 'up' ? { x: 0, y: -1 } : { x: 0, y: 1 };
+    const front = { x: p.x + v.x * 12, y: p.y - 12 + v.y * 14 };
+    const depth = this.front(p) + 40;
+    let k = 0;
+    while (!stop.v) {
+      await this.wait(250);
+      if (stop.v) break;
+      const thing = this.fx(pose.item, front.x + ((k++ % 3) - 1) * 6, front.y, depth);
+      await this.tw(thing, { y: front.y + v.y * 10 + (v.y ? 0 : 0), x: thing.x + v.x * 12, alpha: 0 }, 550);
+      this.drop(thing);
+      if (k % 3 === 0) p.showEmote('♪', 600, this.s.time.now);
+    }
   }
 
   // ------------------------------------------------------------ bed

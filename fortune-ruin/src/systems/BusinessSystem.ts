@@ -1,4 +1,5 @@
 import type { GameCore } from '../core/GameCore';
+import { runSteps } from '../core/steps';
 import { G, formatG, mulRatio, type Money } from '../core/money';
 import { DAYS_PER_MONTH, MINUTES_PER_DAY, toDate } from '../core/calendar';
 import type { BusinessState } from '../core/state';
@@ -230,13 +231,18 @@ export class BusinessSystem {
 
   /** Work the counter for four hours: the place runs better and serves more people that day. */
   workShift(): ActionResult {
+    return runSteps(this.workShiftSteps());
+  }
+
+  /** The same, in steps (the four hours behind the counter run on the clock). */
+  *workShiftSteps(steps = 1): Generator<number, ActionResult, void> {
     const b = this.b;
     if (!b || b.phase !== 'open') return { ok: false, error: '店还没开业' };
     if (this.core.state.world.location !== 'own_shop') return { ok: false, error: '要在店里才行' };
     if (b.shiftDay === this.core.today()) return { ok: false, error: '今天已经在店里帮过忙了' };
     if (this.core.state.player.stats.energy < 25) return { ok: false, error: '你太累了' };
     b.shiftDay = this.core.today();
-    this.core.advance(240, 'working');
+    yield* this.core.advanceSteps(240, 'working', steps);
     this.core.player.change('energy', -12);
     this.core.player.addSkill('work', 0.4, 60);
     return { ok: true, message: '你在柜台后面忙了四个小时。客人走的时候都说了谢谢。' };

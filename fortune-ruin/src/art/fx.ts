@@ -129,6 +129,18 @@ export const FX: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void
       hline(c, 3, 4, 12, 'rgba(244,241,234,0.45)');
     },
   },
+  crate: {
+    w: 10,
+    h: 9,
+    draw: (c) => {
+      rect(c, 0, 0, 10, 9, '#5a3a20');
+      rect(c, 1, 1, 8, 7, '#a8784a');
+      hline(c, 1, 4, 8, '#8a5a32');
+      vline(c, 3, 1, 7, '#8a5a32');
+      vline(c, 6, 1, 7, '#8a5a32');
+      hline(c, 1, 1, 8, '#c8986a');
+    },
+  },
   rain: {
     w: 1,
     h: 7,

@@ -5,6 +5,7 @@ import type { OldTownState } from '../core/state';
 import { isOpen, LOCATIONS, type OpenHours } from '../data/locations';
 import { ITEMS } from '../data/items';
 import type { ActionResult } from './InventorySystem';
+import { runSteps } from '../core/steps';
 
 export function emptyOldTown(): OldTownState {
   return { tickets: [], seq: 0, stock: [], stockWeek: -1, mealDay: -1, volunteerDay: -1, laborDay: -1, fortuneDay: -1, meals: 0, volunteerShifts: 0, laborShifts: 0, laborEarned: 0, donated: 0 };
@@ -100,6 +101,11 @@ export class OldTownSystem {
   }
 
   volunteer(): ActionResult {
+    return runSteps(this.volunteerSteps());
+  }
+
+  /** The same, in steps (so the clock on screen can run through the two hours; see GameCore.advanceSteps). */
+  *volunteerSteps(steps = 1): Generator<number, ActionResult, void> {
     if (!this.at('community_kitchen')) return { ok: false, error: '要在社区食堂里' };
     if (!this.serving()) return { ok: false, error: '开饭的时候才需要人手（11:00–14:00，17:00–20:00）' };
     if (this.s.volunteerDay === this.core.today()) return { ok: false, error: '今天已经帮过忙了，谢谢你' };
@@ -110,7 +116,7 @@ export class OldTownSystem {
     this.s.volunteerShifts++;
     // whoever is in the hall when you put the apron on sees it
     this.core.social.witness({ kind: 'volunteered', facets: { kindness: 0.7, generosity: 0.2, diligence: 0.2 }, importance: 16 });
-    this.core.advance(VOLUNTEER_HOURS * 60, 'working');
+    yield* this.core.advanceSteps(VOLUNTEER_HOURS * 60, 'working', steps);
     const pl = this.core.player;
     pl.change('energy', -10);
     pl.change('stress', -8);
@@ -170,11 +176,16 @@ export class OldTownSystem {
   }
 
   doLabor(): ActionResult {
+    return runSteps(this.laborSteps());
+  }
+
+  /** The same, in steps (the eight hours of unloading run on the clock while you carry crates). */
+  *laborSteps(steps = 1): Generator<number, ActionResult, void> {
     const o = this.laborOffer();
     if (!o.ok) return { ok: false, error: o.reason ?? '' };
     this.s.laborDay = this.core.today();
     this.core.social.witness({ kind: 'day_labor', facets: { diligence: 0.5, crisis: 0.15 }, importance: 10 });
-    this.core.advance(LABOR.hours * 60, 'working');
+    yield* this.core.advanceSteps(LABOR.hours * 60, 'working', steps);
     const pl = this.core.player;
     pl.change('energy', -25);
     pl.change('hunger', 10);

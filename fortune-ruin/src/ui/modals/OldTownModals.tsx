@@ -9,6 +9,8 @@ import { itemDef } from '../../data/items';
 import { PAWN_FEE_BP, PAWN_GRACE, PAWN_PERIOD, PAWN_TERM } from '../../systems/PawnSystem';
 import { FORTUNE_PRICE, LABOR, VOLUNTEER_HOURS } from '../../systems/OldTownSystem';
 import { effectText } from './ShopModal';
+import { runSteps } from '../../core/steps';
+import type { ActionResult } from '../../systems/InventorySystem';
 
 type Pay = 'cash' | 'card';
 
@@ -343,8 +345,14 @@ function VolunteerTab(): JSX.Element {
           className="primary"
           disabled={done || !core.oldtown.serving()}
           onClick={() => {
-            const r = core.oldtown.volunteer();
-            say(r.ok, r.ok ? r.message : r.error);
+            // two hours at the serving hatch, on the clock
+            const g = core.oldtown.volunteerSteps(16);
+            const first = g.next();
+            if (first.done) return say(first.value.ok, first.value.ok ? first.value.message : first.value.error);
+            store.closeModal();
+            const show = (r: ActionResult) => (r.ok ? store.openModal({ type: 'eventResult', title: '帮完忙了', text: r.message }) : store.toast(r.error, 'warn'));
+            if (store.world) void store.world.timelapse(g, show, 'ladle');
+            else show(runSteps(g));
           }}
         >
           {done ? '今天帮过忙了' : `帮忙 ${VOLUNTEER_HOURS} 小时`}
@@ -435,11 +443,20 @@ export function LaborModal(): JSX.Element {
           className="primary"
           disabled={!o.ok}
           onClick={() => {
-            const r = core.oldtown.doLabor();
-            if (r.ok) {
-              store.closeModal();
-              store.openModal({ type: 'eventResult', title: '下工了', text: r.message });
-            } else say(false, r.error);
+            // eight hours of crates along the quay, on the clock
+            const g = core.oldtown.laborSteps(24);
+            const first = g.next();
+            if (first.done) {
+              if (first.value.ok) {
+                store.closeModal();
+                store.openModal({ type: 'eventResult', title: '下工了', text: first.value.message });
+              } else say(false, first.value.error);
+              return;
+            }
+            store.closeModal();
+            const show = (r: ActionResult) => (r.ok ? store.openModal({ type: 'eventResult', title: '下工了', text: r.message }) : store.toast(r.error, 'warn'));
+            if (store.world) void store.world.timelapse(g, show, 'haul');
+            else show(runSteps(g));
           }}
         >
           报名开工（{LABOR.hours} 小时）

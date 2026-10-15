@@ -108,6 +108,44 @@ describe('what the animations are told', () => {
     }
   });
 
+  it('a day on the docks and a turn at the soup kitchen in steps end exactly as they would in one go', () => {
+    const run = (g: Generator<number, unknown, void>) => {
+      let n = 0;
+      for (let r = g.next(); !r.done; r = g.next()) n++;
+      return n;
+    };
+    const same = (c: ReturnType<typeof newCore>) => JSON.stringify({ ...c.state, meta: { ...c.state.meta, createdReal: 0 } });
+    const pair = (loc: string, h: number, m: number) => {
+      const a = newCore(32);
+      const b = newCore(32);
+      for (const c of [a, b]) {
+        c.state.world.location = loc;
+        c.state.time.minutes = MINUTES_PER_DAY + hm(h, m);
+        c.state.player.stats.energy = 90;
+        c.state.player.stats.sleep = 90;
+      }
+      return [a, b] as const;
+    };
+    {
+      const [a, b] = pair('city', 6, 0);
+      expect(a.oldtown.doLabor().ok).toBe(true);
+      expect(run(b.oldtown.laborSteps(12))).toBe(11);
+      expect(same(b)).toBe(same(a));
+    }
+    {
+      const [a, b] = pair('community_kitchen', 11, 30);
+      expect(a.oldtown.volunteer().ok).toBe(true);
+      expect(run(b.oldtown.volunteerSteps(12))).toBe(11);
+      expect(same(b)).toBe(same(a));
+    }
+    // refused before any time passes
+    const c = newCore(32);
+    const t0 = c.now();
+    expect(c.oldtown.volunteerSteps(12).next().done).toBe(true);
+    expect(c.business.workShiftSteps(12).next().done).toBe(true);
+    expect(c.now()).toBe(t0);
+  });
+
   it('a shift that cannot start refuses before any time passes', () => {
     const c = newCore(9);
     const t0 = c.now();
