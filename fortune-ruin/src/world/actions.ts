@@ -328,6 +328,30 @@ export class Actions {
     });
   }
 
+  /** On the treadmill: up on the belt, running in place for a while, the display ticking over, and off again. */
+  async treadmill(it: Interactable): Promise<void> {
+    const p = this.h.player();
+    if (!p) return;
+    const b = this.h.boxOf(it);
+    await this.play(async () => {
+      const x0 = p.x;
+      const y0 = p.y;
+      p.setPos(b.x + b.w / 2, b.y + b.h - 4);
+      p.fixedDepth = b.depth + 0.5;
+      p.setMoving(true, 'up');
+      for (let i = 0; i < 12; i++) {
+        p.bob = i % 2 ? -1 : 0;
+        p.sync();
+        await this.wait(170);
+      }
+      p.bob = 0;
+      p.setMoving(false, 'up');
+      p.fixedDepth = null;
+      p.setPos(x0, y0);
+      p.face('up');
+    });
+  }
+
   /** A few bounces on the court, then a shot at the nearest hoop. */
   async court(): Promise<void> {
     const p = this.h.player();

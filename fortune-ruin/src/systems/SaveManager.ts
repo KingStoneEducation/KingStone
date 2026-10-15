@@ -69,6 +69,8 @@ export function migrate(state: GameState): GameState {
   s.social.encounters ??= [];
   s.social.encSeq ??= 0;
   s.social.pairDay ??= {};
+  s.housing.placed ??= {};
+  s.housing.storage ??= [];
   s.social.seenPairs ??= {};
   s.social.pairLog ??= [];
   s.stories ??= { active: [], done: [], ended: {} };

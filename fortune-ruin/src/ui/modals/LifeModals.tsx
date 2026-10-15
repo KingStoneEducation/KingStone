@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { store } from '../store';
 import { useCore } from '../hooks';
-import { GV, Modal, Portrait, useFeedback } from '../components';
+import { GV, ItemIcon, Modal, Portrait, useFeedback } from '../components';
 import { formatClock, formatDate, MINUTES_PER_DAY, toDate } from '../../core/calendar';
 import { G, formatG } from '../../core/money';
 import { ITEMS, OUTFITS } from '../../data/items';
@@ -17,6 +17,7 @@ import { lookFor } from '../../world/looks';
 import { LOCATIONS } from '../../data/locations';
 import { SKILL_NAMES } from '../../systems/PlayerSystem';
 import { Icon } from '../Icon';
+import { FURNISHINGS } from '../../world/furnish';
 
 // ------------------------------------------------------------------ sleep
 
@@ -184,6 +185,112 @@ export function WardrobeModal(): JSX.Element {
         })}
       </div>
       {fb}
+    </Modal>
+  );
+}
+
+// ------------------------------------------------------------------ furniture
+
+/** Your furniture: what stands where at home, what is still to be put down, what is in storage. */
+export function FurnishModal(): JSX.Element {
+  const core = useCore();
+  const [fb, say] = useFeedback();
+  const h = core.housing;
+  const home = h.current();
+  const atHome = core.isAtHome();
+  const placed = new Set(h.placed().map((p) => p.item));
+  const loose = new Set(h.unplaced());
+  const mine = h.furniture();
+  const stored = h.stored();
+  const place = (id: string) => {
+    store.closeModal();
+    store.world?.placeFurniture(id);
+  };
+  return (
+    <Modal title="家具" sub={`${home.name} · 家具位 ${mine.length}/${home.furnitureSlots}`}>
+      <div className="stack">
+        {!atHome && <div className="note">回到家里才能摆放家具。</div>}
+        {mine.length === 0 && stored.length === 0 && <div className="note">家里还没有添置家具。电脑上的家居商城可以下单，送货上门。</div>}
+        <div className="list">
+          {mine.map((id) => {
+            const d = ITEMS[id];
+            const floor = !!FURNISHINGS[id];
+            return (
+              <div className="item" key={id}>
+                <ItemIcon id={id} />
+                <div className="grow">
+                  <div className="title">
+                    {d?.name ?? id}{' '}
+                    {floor ? loose.has(id) ? <span className="tag warn">还没摆</span> : placed.has(id) ? <span className="tag good">摆在家里</span> : null : <span className="tag">{id === 'furn_art' ? '挂在墙上' : '用在床上'}</span>}
+                  </div>
+                  <div className="desc">{d?.desc}</div>
+                </div>
+                {floor && (
+                  <button className="small" disabled={!atHome} onClick={() => place(id)}>
+                    {loose.has(id) ? '摆放' : '挪个位置'}
+                  </button>
+                )}
+                {floor && placed.has(id) && !loose.has(id) && (
+                  <button
+                    className="small ghost"
+                    disabled={!atHome}
+                    onClick={() => {
+                      h.pickUp(id);
+                      store.world?.refreshHome();
+                      say(true, `${d?.name ?? id}先收到一边。`);
+                    }}
+                  >
+                    收起
+                  </button>
+                )}
+                <button
+                  className="small ghost"
+                  onClick={() => {
+                    const r = h.toStorage(id);
+                    if (r.ok && atHome) store.world?.refreshHome();
+                    say(r.ok, r.ok ? r.message : r.error);
+                  }}
+                >
+                  放进储藏室
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        {stored.length > 0 && (
+          <>
+            <div className="title">储藏室</div>
+            <div className="muted" style={{ fontSize: 12 }}>
+              搬家时新家放不下的家具在这里，不算在家里的舒适度和体面里。家里有空位就能搬回去。
+            </div>
+            <div className="list">
+              {stored.map((id) => (
+                <div className="item" key={id}>
+                  <ItemIcon id={id} />
+                  <div className="grow">
+                    <div className="title">{ITEMS[id]?.name ?? id}</div>
+                  </div>
+                  <button
+                    className="small"
+                    disabled={mine.length >= home.furnitureSlots}
+                    onClick={() => {
+                      const r = h.fromStorage(id);
+                      if (r.ok && atHome) store.world?.refreshHome();
+                      say(r.ok, r.ok ? r.message : r.error);
+                    }}
+                  >
+                    搬回家里
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        <div className="muted" style={{ fontSize: 12 }}>
+          摆放时用方向键或鼠标移动，E 或点击放下，Esc 或右键取消。不能挡住门、床边和别的东西。电视、钢琴和跑步机摆好后可以直接用。
+        </div>
+        {fb}
+      </div>
     </Modal>
   );
 }

@@ -152,6 +152,7 @@ export class InventorySystem {
     if (item.kind === 'furniture') {
       const owned = this.core.housing.furniture();
       if (owned.includes(itemId)) return { ok: false, error: '家里已经有这件家具了' };
+      if (this.core.housing.stored().includes(itemId)) return { ok: false, error: '你的储藏室里已经有一件了' };
       if (owned.length >= this.core.housing.current().furnitureSlots) return { ok: false, error: '家里放不下了，换个大点的房子吧' };
     }
     // a promised freebie covers one of them

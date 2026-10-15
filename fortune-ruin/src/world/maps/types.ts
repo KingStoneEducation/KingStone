@@ -19,6 +19,7 @@ export type InteractKind =
   | 'read'
   | 'tv'
   | 'exercise'
+  | 'treadmill'
   | 'bench'
   | 'sign'
   | 'gate'

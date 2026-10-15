@@ -4,7 +4,7 @@ import { daylight } from '../core/calendar';
 
 export type Activity = 'idle' | 'walking' | 'gambling' | 'working' | 'sleeping' | 'talking' | 'exercising' | 'eating' | 'reading';
 
-export type LeisureKind = 'tv' | 'piano' | 'exercise' | 'bench' | 'view';
+export type LeisureKind = 'tv' | 'piano' | 'exercise' | 'treadmill' | 'bench' | 'view';
 
 export const STAT_NAMES: Record<keyof PlayerStats, string> = {
   energy: '体力',
@@ -263,6 +263,17 @@ export class PlayerSystem {
         this.change('health', 2);
         this.addMoodBuff('exercise', 5, 300, '运动后的畅快');
         return { ok: true, text: `运动了 45 分钟，出了一身汗。体能 +${gain.toFixed(1)}` };
+      }
+      case 'treadmill': {
+        // the treadmill at home: rain or shine
+        if (s.energy < 20) return { ok: false, text: '你太累了，现在跑不动。' };
+        if (s.hunger > 80) return { ok: false, text: '饿着肚子跑步容易头晕，先吃点东西吧。' };
+        core.advance(40, 'exercising');
+        const gain = this.addSkill('fitness', 1, 60);
+        this.change('health', 2);
+        this.change('stress', -4);
+        this.addMoodBuff('exercise', 4, 300, '跑完步的畅快');
+        return { ok: true, text: `在跑步机上跑了 40 分钟。体能 +${gain.toFixed(1)}` };
       }
       case 'bench': {
         core.advance(20, 'idle');

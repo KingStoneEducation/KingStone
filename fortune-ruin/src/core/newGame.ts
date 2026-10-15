@@ -141,6 +141,8 @@ export function createNewGameState(opts: NewGameOptions): GameState {
       leaseStartDay: day - 200,
       owned: [],
       furniture: { home_basic: [] },
+      placed: {},
+      storage: [],
       pendingRent: null,
       overdueDays: 0,
       evictionNoticeDay: null,

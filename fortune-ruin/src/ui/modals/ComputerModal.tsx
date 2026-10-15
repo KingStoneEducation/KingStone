@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { store } from '../store';
+import { FURNISHINGS } from '../../world/furnish';
 import { useCore } from '../hooks';
 import { AmountInput, GV, ItemIcon, Modal, useFeedback } from '../components';
 import { HOMES, HOME_ORDER } from '../../data/housing';
@@ -240,12 +241,14 @@ export function FurnitureTab(): JSX.Element {
               const d = ITEMS[id];
               if (!d) return null;
               const owned = core.housing.furniture().includes(id);
+              const stored = core.housing.stored().includes(id);
               return (
                 <div className="item" key={id}>
                   <ItemIcon id={id} />
                   <div className="grow">
                     <div className="title">
                       {d.name} {owned && <span className="tag good">家里已有</span>}
+                      {stored && <span className="tag">在储藏室</span>}
                     </div>
                     <div className="desc">
                       {d.desc} {effectText(d)}
@@ -254,10 +257,12 @@ export function FurnitureTab(): JSX.Element {
                   <GV v={d.price} />
                   <button
                     className="small"
-                    disabled={owned}
+                    disabled={owned || stored}
                     onClick={() => {
                       const r = core.inventory.buy('furniture', id, 'card');
-                      say(r.ok, r.ok ? r.message : r.error);
+                      // the bed and the painting go in by themselves; the rest waits to be put somewhere
+                      if (r.ok && !FURNISHINGS[id]) store.world?.refreshHome();
+                      say(r.ok, r.ok ? `${r.message}${FURNISHINGS[id] ? ' 已经送到家，点「摆放家具」把它放到想放的地方。' : ''}` : r.error);
                     }}
                   >
                     下单
@@ -266,8 +271,13 @@ export function FurnitureTab(): JSX.Element {
               );
             })}
           </div>
-          <div className="muted" style={{ fontSize: 12 }}>
-            家具位：{core.housing.furniture().length}/{core.housing.current().furnitureSlots}（搬家时家具跟着你走）
+          <div className="row between">
+            <span className="muted" style={{ fontSize: 12 }}>
+              家具位：{core.housing.furniture().length}/{core.housing.current().furnitureSlots}（搬家时家具跟着你走，新家放不下的进储藏室）
+            </span>
+            <button className="small" onClick={() => store.openModal({ type: 'furnish' })}>
+              摆放家具
+            </button>
           </div>
         </div>
       )}

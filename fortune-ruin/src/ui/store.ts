@@ -33,6 +33,7 @@ export type Modal =
   | { type: 'shift'; report: ShiftReport; title: string }
   | { type: 'bus'; stop: string }
   | { type: 'read' }
+  | { type: 'furnish' }
   | { type: 'text'; title: string; text: string; tone?: 'info' | 'warn' | 'bad' }
   | { type: 'event'; prompt: EventPrompt }
   | { type: 'eventResult'; title: string; text: string }

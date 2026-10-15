@@ -3,6 +3,9 @@ import { G, formatG, mulRatio, type Money } from '../core/money';
 import { HOMES, HOME_ORDER, type HomeDef } from '../data/housing';
 import { ITEMS } from '../data/items';
 import { DAYS_PER_MONTH } from '../core/calendar';
+import { FURNISHINGS, furnish, misplaced, placementError, type Placement } from '../world/furnish';
+import { interiorMap } from '../world/maps/interiors';
+import type { MapData } from '../world/maps/types';
 
 export type HousingResult = { ok: true; message: string } | { ok: false; error: string };
 
@@ -31,6 +34,93 @@ export class HousingSystem {
     const list = this.h.furniture[this.h.homeId] ?? (this.h.furniture[this.h.homeId] = []);
     if (!list.includes(id)) list.push(id);
     this.core.touch();
+  }
+
+  // ------------------------------------------------------------ where the furniture stands
+
+  /** Where your furniture stands in a home (this one by default). */
+  placed(homeId = this.h.homeId): Placement[] {
+    return this.h.placed?.[homeId] ?? [];
+  }
+
+  /** The current home's room with everything you have put in it. */
+  room(): MapData {
+    return furnish(interiorMap(this.current().location), this.furniture(), this.placed());
+  }
+
+  /** Pieces in this home that stand on the floor but are not standing anywhere yet (just delivered, or their place is taken). */
+  unplaced(): string[] {
+    const lost = new Set(misplaced(interiorMap(this.current().location), this.furniture(), this.placed()));
+    const on = new Set(this.placed().map((p) => p.item));
+    return this.furniture().filter((f) => FURNISHINGS[f] && (!on.has(f) || lost.has(f)));
+  }
+
+  /** Why this piece cannot be put at (x, y), or null. Moving a piece: its old place does not count. */
+  placeError(item: string, x: number, y: number): string | null {
+    if (!this.furniture().includes(item)) return '家里没有这件家具';
+    const f = FURNISHINGS[item];
+    if (!f) return '这件不用摆放';
+    const others = this.placed().filter((p) => p.item !== item);
+    return placementError(furnish(interiorMap(this.current().location), this.furniture(), others), f.prop, x, y);
+  }
+
+  /** Put a piece down (or move it) at (x, y) in the current home. */
+  place(item: string, x: number, y: number): HousingResult {
+    const err = this.placeError(item, x, y);
+    if (err) return { ok: false, error: err };
+    const all = (this.h.placed ??= {});
+    const list = (all[this.h.homeId] = this.placed().filter((p) => p.item !== item));
+    list.push({ item, x, y });
+    this.core.touch();
+    return { ok: true, message: `${ITEMS[item]?.name ?? item}摆好了。` };
+  }
+
+  /** Take a piece off the floor (it stays in the home, and still counts). */
+  pickUp(item: string): void {
+    const all = (this.h.placed ??= {});
+    all[this.h.homeId] = this.placed().filter((p) => p.item !== item);
+    this.core.touch();
+  }
+
+  /** Furniture in the storage room: it did not fit into the home you moved to. */
+  stored(): string[] {
+    return this.h.storage ?? [];
+  }
+
+  /** Put a piece away in storage (it no longer counts for the home, and frees a place). */
+  toStorage(item: string): HousingResult {
+    const list = this.h.furniture[this.h.homeId] ?? [];
+    if (!list.includes(item)) return { ok: false, error: '家里没有这件家具' };
+    this.pickUp(item);
+    this.h.furniture[this.h.homeId] = list.filter((f) => f !== item);
+    (this.h.storage ??= []).push(item);
+    this.core.touch();
+    return { ok: true, message: `${ITEMS[item]?.name ?? item}放进了储藏室。` };
+  }
+
+  /** Bring a piece back from storage, if the home has room for it. */
+  fromStorage(item: string): HousingResult {
+    const st = this.stored();
+    if (!st.includes(item)) return { ok: false, error: '储藏室里没有这件' };
+    if (this.furniture().length >= this.current().furnitureSlots) return { ok: false, error: '家里放不下了' };
+    this.h.storage = st.filter((f) => f !== item);
+    this.addFurniture(item);
+    return { ok: true, message: `${ITEMS[item]?.name ?? item}搬回了家里。` };
+  }
+
+  /**
+   * Moving: the furniture comes along. What does not fit into the new home (it has fewer places
+   * for furniture) goes into storage, and comes back out when there is room again.
+   */
+  private carryFurniture(to: string): void {
+    const from = this.h.homeId;
+    if (from === to) return;
+    const all = [...new Set([...(this.h.furniture[from] ?? []), ...(this.h.furniture[to] ?? []), ...this.stored()])];
+    const slots = HOMES[to].furnitureSlots;
+    this.h.furniture[to] = all.slice(0, slots);
+    this.h.storage = all.slice(slots);
+    delete this.h.furniture[from];
+    if (this.h.placed) delete this.h.placed[from];
   }
 
   /** Sleep comfort bonus from home tier and furniture. */
@@ -131,6 +221,7 @@ export class HousingSystem {
   /** Eviction moves the player into the cheapest shared room; the arrears stay as debt. */
   evict(): void {
     const from = this.current();
+    this.carryFurniture('home_shared');
     this.h.homeId = 'home_shared';
     this.h.tenure = 'rent';
     this.h.rent = HOMES.home_shared.rent!;
@@ -167,6 +258,7 @@ export class HousingSystem {
     const r = this.core.economy.spend('bank', upfront, 'rent', `${d.name}押金 + 首月房租`, `landlord:${homeId}`);
     if (!r.ok) return { ok: false, error: `需要 ${formatG(upfront)}（押一付一），${r.error}` };
     this.leaveCurrentRental();
+    this.carryFurniture(homeId);
     this.h.homeId = homeId;
     this.h.tenure = 'rent';
     this.h.rent = d.rent!;
@@ -217,6 +309,7 @@ export class HousingSystem {
     if (!r.ok) return { ok: false, error: r.error };
     eco.spend('bank', closing, 'fees', `${d.name}交易税费`, 'registry');
     this.leaveCurrentRental();
+    this.carryFurniture(homeId);
     this.h.owned.push(homeId);
     this.h.homeId = homeId;
     this.h.tenure = 'own';
@@ -231,6 +324,7 @@ export class HousingSystem {
     if (!this.h.owned.includes(homeId)) return { ok: false, error: '你不拥有这处房产' };
     if (homeId === this.h.homeId) return { ok: false, error: '你已经住在这里了' };
     this.leaveCurrentRental();
+    this.carryFurniture(homeId);
     this.h.homeId = homeId;
     this.h.tenure = 'own';
     this.h.rent = 0;

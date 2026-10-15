@@ -19,6 +19,7 @@ import { Lighting, hexColor, type Emissive, type LightSource } from './Lighting'
 import { NpcDirector, type WorldHost } from './NpcDirector';
 import { CityLife } from './CityLife';
 import { WeatherFx, type Exposure } from './WeatherFx';
+import { FURNISHINGS } from './furnish';
 import { CasinoFloor, seatPosition } from './CasinoFloor';
 import { findPath, type Pt } from './pathfinding';
 import { entryRefusal } from './access';
@@ -30,6 +31,7 @@ import { daylight, toDate } from '../core/calendar';
 import { LOCATIONS, hoursText, isOpen } from '../data/locations';
 import { HOMES } from '../data/housing';
 import { NPC_BY_ID } from '../data/npcs';
+import { ITEMS } from '../data/items';
 import { TABLE_BY_ID, type TableConfig } from '../casino/tables';
 import { formatG } from '../core/money';
 import { patronLine, pedestrianLine, staffLine } from './ambientLines';
@@ -64,6 +66,7 @@ const VERBS: Record<InteractKind, string> = {
   read: '看书',
   tv: '看电视',
   exercise: '运动',
+  treadmill: '跑步',
   bench: '坐一会儿',
   sign: '查看',
   gate: '通过',
@@ -206,6 +209,10 @@ export interface WorldApi {
   timelapse<T>(steps: Generator<number, T, void>, done: (r: T) => void, pose?: PoseName): Promise<void>;
   /** into a taxi, your car or the bus, and out of it at the destination (run pays and spends the time) */
   ride(mode: 'taxi' | 'drive' | 'bus', run: () => { ok: true; message: string } | { ok: false; error: string }, dest: Pt): Promise<void>;
+  /** put a piece of furniture down at home (or move it): arrow keys or the mouse, E to set it down, Esc to stop */
+  placeFurniture(item: string): void;
+  /** draw the home again after furniture was taken off the floor or brought in */
+  refreshHome(): void;
 }
 
 export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
@@ -232,6 +239,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private lighting!: Lighting;
   /** rain, fog and lightning over the map (none on the title screen) */
   private wx: WeatherFx | null = null;
+  /** putting furniture down: a ghost of the piece over the floor */
+  private placing: { item: string; prop: string; x: number; y: number; ghost: Phaser.GameObjects.Image; err: string | null } | null = null;
   private npcDir: NpcDirector | null = null;
   private city: CityLife | null = null;
   private floor: CasinoFloor | null = null;
@@ -279,6 +288,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.keys = this.input.keyboard!.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SHIFT', false) as WorldScene['keys'];
     this.input.keyboard!.on('keydown', this.onKey, this);
     this.input.on('pointerdown', this.onPointer, this);
+    this.input.on('pointermove', this.onPointerMove);
     this.scale.on('resize', this.layoutCamera, this);
     this.cameras.main.on(Phaser.Cameras.Scene2D.Events.FOLLOW_UPDATE, this.flushLighting);
     this.events.once('shutdown', () => this.shutdown());
@@ -321,6 +331,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.lighting?.destroy();
     this.input.keyboard?.off('keydown', this.onKey, this);
     this.input.off('pointerdown', this.onPointer, this);
+    this.input.off('pointermove', this.onPointerMove);
     this.scale.off('resize', this.layoutCamera, this);
     this.cameras.main?.off(Phaser.Cameras.Scene2D.Events.FOLLOW_UPDATE, this.flushLighting);
     if (store.world === this) store.world = null;
@@ -366,6 +377,12 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   // ------------------------------------------------------------------ map building
 
   private clearMap(): void {
+    // leaving the room in the middle of putting something down: it stays aside
+    if (this.placing) {
+      this.placing.ghost.destroy();
+      this.placing = null;
+      this.core?.paused.delete('placing');
+    }
     this.actions.clear();
     this.bed = null;
     this.npcDir?.clear();
@@ -406,7 +423,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   private loadMap(id: string, spawn: string | null, tile?: Pt, face?: Face): void {
     this.clearMap();
-    const map =
+    let map =
       id === 'city'
         ? (this.cityCache ??= buildCityMap())
         : id === 'isle'
@@ -414,6 +431,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
           : id === 'own_shop'
             ? ownShopMap(this.core?.state.business ?? null)
             : interiorMap(id);
+    // your own home, with your furniture where you put it
+    if (!this.attract && this.core && id === HOMES[this.core.state.housing.homeId]?.location) map = this.core.housing.room();
     this.map = map;
     this.buildTiles(map);
     this.buildShade(map);
@@ -550,7 +569,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   /** The paintings the player owns hang on the walls at home, where there is room between the windows. */
   private hangCollection(map: MapData): void {
-    const pieces = (this.core.state.auction?.collection ?? []).filter((p) => p.kind === 'painting' && p.consigned === undefined);
+    const pieces: Parameters<typeof pieceCanvas>[0][] = (this.core.state.auction?.collection ?? []).filter((p) => p.kind === 'painting' && p.consigned === undefined);
+    // the contemporary piece from the furniture shop hangs with the rest
+    if (this.core.housing.furniture().includes('furn_art')) pieces.unshift({ kind: 'painting', genre: 'abstract', tier: 'established', seed: hashString(`furn_art|${this.core.state.meta.seed}`) });
     if (!pieces.length) return;
     const walls = new Set(Object.entries(TILE_INDEX).filter(([n]) => n.startsWith('wall_')).map(([, i]) => i));
     const wall = (x: number, y: number) => walls.has(map.ground[y * map.w + x]);
@@ -686,7 +707,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     }
     if (!this.core || !this.player) return;
     const core = this.core;
-    if (!this.transitioning && !this.tableKey) this.updatePlayer(dt);
+    if (!this.transitioning && !this.tableKey && !this.placing) this.updatePlayer(dt);
     this.player.update(dt, time);
     if (this.map.regions && !this.transitioning && (this.region()?.id ?? null) !== this.regionId) this.layoutCamera();
     if (this.player.path.length > 0) this.checkDoor(this.player.dir);
@@ -703,7 +724,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       this.updateStaffVisibility();
       this.refreshEasels();
     }
-    if (!this.tableKey) this.updateFocus(time);
+    if (!this.tableKey && !this.placing) this.updateFocus(time);
     this.updateLighting(time, core.nowFloat());
     this.wx?.update(dt, time, sky, this.pendingLight?.darkness ?? 0);
     this.syncState();
@@ -1320,6 +1341,10 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   }
 
   private onKey(ev: KeyboardEvent): void {
+    if (this.placing) {
+      this.placingKey(ev);
+      return;
+    }
     if (this.attract || !this.player || this.transitioning || this.tableKey) return;
     if (store.blocking() || inputFocused() || this.core.paused.has('dialogue')) return;
     if (ev.repeat) return;
@@ -1435,6 +1460,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         break;
       case 'tv':
       case 'piano':
+      case 'treadmill':
       case 'exercise': {
         const kind = it.interact.kind;
         const r = core.player.leisure(kind);
@@ -1442,7 +1468,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
           store.toast(r.text, 'warn');
           break;
         }
-        const shown = kind === 'tv' ? this.actions.tv(it) : kind === 'piano' ? this.actions.piano(it) : this.actions.court();
+        const shown = kind === 'tv' ? this.actions.tv(it) : kind === 'piano' ? this.actions.piano(it) : kind === 'treadmill' ? this.actions.treadmill(it) : this.actions.court();
         void shown.then(() => store.toast(r.text, 'good'));
         break;
       }
@@ -1951,6 +1977,107 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     }
   }
 
+  // ------------------------------------------------------------------ furniture
+
+  /** Put a piece of furniture down at home (or move it): its ghost follows the arrow keys or the mouse. */
+  placeFurniture(item: string): void {
+    const f = FURNISHINGS[item];
+    const p = this.player;
+    if (!f || !p || this.placing || !this.core.isAtHome() || this.map.id !== this.core.state.world.location) return;
+    store.closeAll();
+    // the room without the piece itself (when moving it)
+    if (this.core.housing.placed().some((x) => x.item === item)) {
+      this.core.housing.pickUp(item);
+      this.reloadHome();
+    }
+    this.core.paused.add('placing');
+    const v = DIR_VEC[this.player!.dir];
+    const tx = Math.floor(this.player!.x / 16) + v.x;
+    const ty = Math.floor((this.player!.y - 2) / 16) + v.y;
+    const ref = frameRef(propFrameName(f.prop, 0));
+    const ghost = this.add.image(0, 0, ref.key, ref.frame).setOrigin(0, 0).setDepth(LABEL_DEPTH - 10).setAlpha(0.75);
+    this.placing = { item, prop: f.prop, x: tx, y: ty, ghost, err: null };
+    this.movePlacing(0, 0);
+  }
+
+  refreshHome(): void {
+    if (this.attract || !this.core.isAtHome() || this.map?.id !== this.core.state.world.location || this.transitioning) return;
+    this.reloadHome();
+  }
+
+  /** The room again from the map and what stands in it (after a piece is put down or picked up). */
+  private reloadHome(): void {
+    const p = this.player;
+    const tile = p ? { x: Math.floor(p.x / 16), y: Math.floor((p.y - 2) / 16) } : undefined;
+    const dir = p?.dir ?? 'down';
+    this.loadMap(this.map.id, null, tile, dir);
+  }
+
+  private movePlacing(dx: number, dy: number): void {
+    const pl = this.placing;
+    if (!pl) return;
+    const d = PROPS[pl.prop];
+    pl.x = Math.max(0, Math.min(this.map.w - Math.max(1, d.foot.w), pl.x + dx));
+    pl.y = Math.max(Math.max(1, d.foot.h) - 1, Math.min(this.map.h - 1, pl.y + dy));
+    pl.err = this.core.housing.placeError(pl.item, pl.x, pl.y);
+    const x = Math.round(pl.x * 16 + (Math.max(1, d.foot.w) * 16 - d.w) / 2);
+    const y = Math.round((pl.y + 1) * 16 - d.h + (d.dy ?? 0));
+    pl.ghost.setPosition(x, y).setTint(pl.err ? 0xff8a80 : 0xb8f5b0);
+    const name = ITEMS[pl.item]?.name ?? '';
+    store.setPrompt({ verb: pl.err ? `${name}：${pl.err}` : `把${name}放在这里`, label: '方向键或鼠标移动，Esc 取消' });
+  }
+
+  /** The ghost under the mouse: the piece's footprint centred on the tile pointed at. */
+  private placingAt(pointer: Phaser.Input.Pointer): void {
+    const pl = this.placing;
+    if (!pl) return;
+    const d = PROPS[pl.prop];
+    const tx = Math.floor(pointer.worldX / 16) - Math.floor((Math.max(1, d.foot.w) - 1) / 2);
+    const ty = Math.floor(pointer.worldY / 16) + Math.floor((Math.max(1, d.foot.h) - 1) / 2);
+    if (tx !== pl.x || ty !== pl.y) this.movePlacing(tx - pl.x, ty - pl.y);
+  }
+
+  private onPointerMove = (pointer: Phaser.Input.Pointer): void => {
+    if (this.placing) this.placingAt(pointer);
+  };
+
+  private placingKey(ev: KeyboardEvent): void {
+    const pl = this.placing;
+    if (!pl) return;
+    const step: Record<string, [number, number]> = { ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0], ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1] };
+    const s = step[ev.code];
+    if (s) {
+      ev.preventDefault();
+      this.movePlacing(s[0], s[1]);
+    } else if (ev.code === 'KeyE' || ev.code === 'Enter' || ev.code === 'NumpadEnter' || ev.code === 'Space') this.confirmPlacing();
+    else if (ev.code === 'Escape') this.endPlacing(false);
+  }
+
+  private confirmPlacing(): void {
+    const pl = this.placing;
+    if (!pl) return;
+    const r = this.core.housing.place(pl.item, pl.x, pl.y);
+    if (!r.ok) {
+      sfx('deny');
+      store.toast(r.error, 'warn');
+      return;
+    }
+    sfx('slide');
+    this.endPlacing(true);
+    store.toast(r.message, 'good');
+  }
+
+  private endPlacing(placed: boolean): void {
+    const pl = this.placing;
+    if (!pl) return;
+    pl.ghost.destroy();
+    this.placing = null;
+    this.core.paused.delete('placing');
+    store.setPrompt(null);
+    if (placed) this.reloadHome();
+    else store.toast(`${ITEMS[pl.item]?.name ?? ''}先放在一边，还没有摆。`, 'info');
+  }
+
   /** The street lane nearest a point (where a taxi or the bus pulls in), within a few tiles. */
   private laneNear(x: number, y: number): Lane | null {
     const lanes = (this.map as CityMap).lanes ?? [];
@@ -2247,6 +2374,15 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   // ------------------------------------------------------------------ mouse
 
   private onPointer(pointer: Phaser.Input.Pointer): void {
+    if (this.placing) {
+      // right click puts it aside, a click sets it down where the ghost is
+      if (pointer.rightButtonDown()) this.endPlacing(false);
+      else {
+        this.placingAt(pointer);
+        this.confirmPlacing();
+      }
+      return;
+    }
     if (this.attract || !this.player || this.transitioning || this.tableKey) return;
     if (store.blocking() || this.core.paused.has('dialogue')) return;
     if (pointer.rightButtonDown()) return;

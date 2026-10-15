@@ -4,7 +4,7 @@ import { MainMenu } from './MainMenu';
 import { CharacterCreate } from './CharacterCreate';
 import { Hud, Toasts } from './Hud';
 import { DialogueModal } from './modals/DialogueModal';
-import { BusModal, CollapseModal, EventModal, EventResultModal, IntroModal, KitchenModal, ReadModal, ShiftModal, SleepModal, TextModal, WardrobeModal, WorkModal } from './modals/LifeModals';
+import { BusModal, CollapseModal, EventModal, EventResultModal, FurnishModal, IntroModal, KitchenModal, ReadModal, ShiftModal, SleepModal, TextModal, WardrobeModal, WorkModal } from './modals/LifeModals';
 import { ShopModal } from './modals/ShopModal';
 import { AtmModal, BankModal, CashierModal } from './modals/MoneyModals';
 import { CasinoMemberModal } from './modals/ComputerModal';
@@ -85,6 +85,8 @@ function ModalHost(): JSX.Element | null {
       return <CharityModal tab={m.tab} />;
     case 'labor':
       return <LaborModal />;
+    case 'furnish':
+      return <FurnishModal />;
     case 'fortune':
       return <FortuneModal />;
     case 'auction':

@@ -16,6 +16,22 @@ export function InventoryPanel(): JSX.Element {
   return (
     <Modal title="物品" sub={`衣着：${inv.currentOutfit().name} · 外在体面度 ${inv.appearancePrestige().toFixed(1)}`} wide onClose={() => store.closePanel()}>
       <div className="stack">
+        {(core.housing.furniture().length > 0 || core.housing.stored().length > 0) && (
+          <div className="row between">
+            <span className="muted" style={{ fontSize: 12 }}>
+              家里有 {core.housing.furniture().length} 件家具{core.housing.unplaced().length > 0 ? `，${core.housing.unplaced().length} 件还没摆` : ''}{core.housing.stored().length > 0 ? `，储藏室里 ${core.housing.stored().length} 件` : ''}。
+            </span>
+            <button
+              className="small"
+              onClick={() => {
+                store.closePanel();
+                store.openModal({ type: 'furnish' });
+              }}
+            >
+              家具{atHome ? ' · 摆放' : ''}
+            </button>
+          </div>
+        )}
         {vehicle && (
           <div className="item">
             <ItemIcon id={vehicle.id} />

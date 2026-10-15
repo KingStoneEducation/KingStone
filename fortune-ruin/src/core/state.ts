@@ -260,6 +260,10 @@ export interface HousingState {
   leaseStartDay: number;
   owned: string[];
   furniture: Record<string, ItemId[]>;
+  /** where each piece stands in each home (absent in old saves) */
+  placed?: Record<string, { item: ItemId; x: number; y: number }[]>;
+  /** furniture that did not fit into the home you moved to (absent in old saves) */
+  storage?: ItemId[];
   pendingRent: { amount: Money; effectiveDay: number } | null;
   overdueDays: number;
   evictionNoticeDay: number | null;
