@@ -210,7 +210,7 @@ export function buildCityMap(): CityMap {
   b.prop('statue', 70, 51);
   b.prop('bench', 64, 50);
   b.prop('bench', 86, 50);
-  b.prop('bench', 92, 53);
+  b.prop('bench', 92, 47);
   for (const [x, y] of [[62, 48], [90, 48], [98, 48], [62, 54], [98, 54], [86, 54]] as [number, number][]) b.prop('tree_round', x, y);
   b.prop('atm_street', 70, 45, { kind: 'atm', label: '街边 ATM', data: { where: 'street' } });
   b.prop('trash', 73, 46);

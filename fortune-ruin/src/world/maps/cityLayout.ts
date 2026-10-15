@@ -92,6 +92,8 @@ export const BUILDINGS: BuildingDef[] = [
   // ---------------------------------------------------------------- Downtown south
   { id: 'bank', name: '灰港储蓄信托银行', sign: 'SAVINGS & TRUST', style: 'bank', x: 61, y: 35, w: 12, h: 10, door: { x: 66, y: 44, w: 2 }, target: 'bank' },
   { id: 'central_lofts', name: '中央阁楼公寓', sign: 'CENTRAL LOFTS', style: 'lofts', x: 75, y: 34, w: 11, h: 13, door: { x: 80, y: 46 }, target: 'home_downtown', extraHeight: 3 },
+  // a shop unit to let on the south side of Union Square
+  { id: 'union_shop', name: '联合广场 3 号', sign: 'NO.3 UNION SQ', style: 'shop', x: 88, y: 49, w: 8, h: 7, door: { x: 91, y: 55, w: 2 }, target: 'own_shop_union', closedText: '「联合广场 3 号」的橱窗上贴着：旺铺招租，联合广场置业。（家里的电脑上可以查看招租信息）' },
   { id: 'grand_hotel', name: '灰港大酒店', sign: 'GRAND HOTEL', style: 'hotel', x: 88, y: 34, w: 15, h: 12, door: { x: 94, y: 45, w: 3 }, target: 'hotel', extraHeight: 4 },
 
   // ---------------------------------------------------------------- Old Town
@@ -104,6 +106,8 @@ export const BUILDINGS: BuildingDef[] = [
   { id: 'warehouse_2', name: '旧仓库', sign: 'PIER 8', style: 'warehouse', x: 17, y: 79, w: 12, h: 7 },
 
   // ---------------------------------------------------------------- Riverside
+  // the little building by the park path, to let
+  { id: 'park_pavilion', name: '河畔公园 1 号亭', sign: 'PARK PAVILION', style: 'diner', x: 78, y: 69, w: 8, h: 7, door: { x: 80, y: 75 }, target: 'own_shop_park', closedText: '「河畔公园 1 号亭」门上挂着牌子：铺面招租，河畔公园管理处。（家里的电脑上可以查看招租信息）' },
   { id: 'riverside_towers', name: '河畔塔楼', sign: 'RIVERSIDE', style: 'river_tower', x: 92, y: 64, w: 12, h: 15, door: { x: 97, y: 78, w: 2 }, target: 'home_river', extraHeight: 5 },
 ];
 

@@ -78,6 +78,9 @@ export function migrate(state: GameState): GameState {
   s.casino.tourney ??= null;
   s.casino.tourneyLog ??= [];
   s.casino.tourneySeq ??= 0;
+  // one shop became a list of them
+  if (!Array.isArray(s.businesses)) s.businesses = s.business ? [s.business as GameState['businesses'][number]] : [];
+  delete s.business;
   s.stories ??= { active: [], done: [], ended: {} };
   s.economy.stakes ??= [];
   s.oldtown ??= emptyOldTown();

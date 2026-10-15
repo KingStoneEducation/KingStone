@@ -215,6 +215,7 @@ export function createNewGameState(opts: NewGameOptions): GameState {
     stats: { days: [], peakNetWorth: G(20000), lowestNetWorth: G(20000), milestones: {}, lifeEvents: [] },
     market: initialMarket(rng.nextU32()),
     stories: { active: [], done: [], ended: {} },
+    businesses: [],
     oldtown: emptyOldTown(),
     auction: emptyAuction(),
     marina: emptyMarina(),

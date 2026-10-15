@@ -2,6 +2,8 @@ import type { GameCore } from '../core/GameCore';
 import { toDate } from '../core/calendar';
 import { LOCATIONS, hoursText, isOpen } from '../data/locations';
 import { HOMES } from '../data/housing';
+import { premiseAt } from '../data/business';
+import { BUILDING_BY_ID } from './maps/cityLayout';
 
 /** Whether the player may enter a location right now; returns a reason when not. */
 export function entryRefusal(core: GameCore, loc: string): string | null {
@@ -16,10 +18,9 @@ export function entryRefusal(core: GameCore, loc: string): string | null {
     if (h.homeId === home.id || h.owned.includes(home.id)) return null;
     return home.id === 'home_basic' ? '这里已经不是你的家了。' : `这是${home.name}。门禁卡刷不开——你不住这里。（可以在手机或电脑上查看房源）`;
   }
-  if (loc === 'own_shop') {
-    const b = core.state.business;
-    return b && b.premise === 'bakery_unit' ? null : '「晨光面包房」门上贴着告示：店铺转让，感谢街坊三十年的照顾。（家里的电脑上可以查看招租信息）';
-  }
+  // a shop unit: yours to walk into once you have signed for it, otherwise the notice on the door
+  const unit = premiseAt(loc);
+  if (unit) return core.business.at(unit.id) ? null : (BUILDING_BY_ID[unit.building]?.closedText ?? '铺面招租中。');
   // working there lets you in outside opening hours
   const worksHere = core.career.activeJobs().some((j) => core.career.def(j.jobId).location === loc);
   if (!worksHere && !isOpen(def, d.weekday, d.minuteOfDay)) return `${def.name}已经打烊了。营业时间：${hoursText(def)}`;

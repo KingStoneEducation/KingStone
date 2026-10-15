@@ -61,15 +61,15 @@ export function patronLine(p: Patron, core: GameCore): string {
 /** Generic staff by role. */
 export function staffLine(role: string, core: GameCore): string {
   const r = rot(core);
-  const b = core.state.business;
-  if (core.state.world.location === 'own_shop' && b) {
+  const b = core.business.here();
+  if (b) {
     // your own employees and customers
     const last = b.days[b.days.length - 1];
     if (role === 'patron') return pick(b.price === 'high' ? ['东西不错，就是贵了点。', '这家店挺有格调的。'] : b.price === 'low' ? ['这么便宜，我下次还来。', '划算。'] : ['这家店不错。', '我是看朋友推荐来的。'], r);
     return pick(
       [
         last ? `老板，昨天来了 ${last.customers} 位客人。` : '老板好。',
-        b.staff < core.business.staffNeeded() ? '人手有点紧，忙的时候顾不过来。' : '今天一切正常。',
+        b.staff < core.business.staffNeeded(b) ? '人手有点紧，忙的时候顾不过来。' : '今天一切正常。',
         b.supplies === 'premium' ? '新到的货客人都说好。' : '有客人说东西还可以再好一点。',
       ],
       r,

@@ -6,7 +6,7 @@ import { buildIsleMap } from './maps/isle';
 import { ISLE_DISTRICTS } from './maps/isleLayout';
 import { interiorMap } from './maps/interiors';
 import { ownShopMap } from './maps/ownShop';
-import { BIZ_TYPES } from '../data/business';
+import { BIZ_TYPES, premiseAt } from '../data/business';
 import { CASINO_TABLES, casinoArea, type CasinoArea } from './maps/casinoMap';
 import { regionAt, type Door, type Face, type Interactable, type InteractKind, type MapData, type MapRegion, type PlacedProp, type StaffWhen } from './maps/types';
 import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING, MARINA, type BuildingDef } from './maps/cityLayout';
@@ -435,8 +435,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
         ? (this.cityCache ??= buildCityMap())
         : id === 'isle'
           ? (this.isleCache ??= buildIsleMap())
-          : id === 'own_shop'
-            ? ownShopMap(this.core?.state.business ?? null)
+          : premiseAt(id)
+            ? ownShopMap(premiseAt(id)!, this.core?.business.at(premiseAt(id)!.id) ?? null)
             : interiorMap(id);
     // your own home, with your furniture where you put it
     if (!this.attract && this.core && id === HOMES[this.core.state.housing.homeId]?.location) map = this.core.housing.room();
@@ -1255,7 +1255,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       const home = to === 'isle' ? '白石湾 · Whitestone Bay' : '灰港 · Greyhaven';
       store.banner(this.district || (to === 'isle' ? '白石湾' : '灰港'), from && from !== 'city' && from !== 'isle' ? `离开${LOCATIONS[from]?.name ?? ''}` : home);
     } else if (loc) {
-      const biz = to === 'own_shop' ? this.core?.state.business : null;
+      const unit = premiseAt(to);
+      const biz = unit ? this.core?.business.at(unit.id) : null;
       const sub = biz ? (biz.phase === 'open' ? `你的${BIZ_TYPES[biz.type].name}` : '装修中') : loc.hours ? `营业时间 ${hoursText(loc)}` : loc.desc.slice(0, 26);
       store.banner(loc.name, sub);
     }

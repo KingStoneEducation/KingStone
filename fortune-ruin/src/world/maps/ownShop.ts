@@ -1,5 +1,5 @@
 import type { BusinessState } from '../../core/state';
-import { BIZ_TYPES, type BizType } from '../../data/business';
+import { BIZ_TYPES, type BizType, type PremiseDef } from '../../data/business';
 import { fromAscii } from './interiors';
 import type { MapData } from './types';
 
@@ -29,16 +29,19 @@ const MANAGE = { kind: 'business' as const, label: '店铺管理', data: { actio
 const WORK = { kind: 'business' as const, label: '帮忙看店（4 小时）', data: { action: 'work' } };
 
 /**
- * The player's shop, furnished for whatever it currently is. Rebuilt on every
- * visit: staff behind the counter follow the number employed, and how full
- * the room is follows yesterday's customers.
+ * One of the shop units, furnished for whatever the player's shop there currently is
+ * (bare while it is to let or being fitted out). Rebuilt on every visit: staff behind the
+ * counter follow the number employed, and how full the room is follows yesterday's
+ * customers. The units differ in their windows: tall ones on the square, a third one on
+ * the park.
  */
-export function ownShopMap(b: BusinessState | null): MapData {
+export function ownShopMap(premise: PremiseDef, b: BusinessState | null): MapData {
   const type: BizType = b?.type ?? 'bakery';
   const [floor, back, wall] = b ? FLOORS[type] : ['concrete', 'concrete', 'white'];
-  const m = fromAscii('own_shop', PLAN, { '.': floor, ';': back }, wall);
-  m.prop('window', 4, 1, undefined, { oy: -2 });
-  m.prop('window', 9, 1, undefined, { oy: -2 });
+  const m = fromAscii(premise.location, PLAN, { '.': floor, ';': back }, wall);
+  for (const x of [4, 9]) m.prop(premise.id === 'union_unit' ? 'window_tall' : 'window', x, 1, undefined, { oy: premise.id === 'union_unit' ? -10 : -2 });
+  // (the boutique's mirror hangs where the park unit's third window would be)
+  if (premise.id === 'park_unit' && b?.type !== 'boutique') m.prop('window', 11, 1, undefined, { oy: -2 });
   if (!b || b.phase === 'renovating') {
     // bare walls, crates and cones while the fitters work
     for (const [x, y] of [

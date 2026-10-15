@@ -69,10 +69,12 @@ function updateSoundscape(): void {
   const inGame = store.screen === 'game' && !!core;
   const loc = inGame ? core!.state.world.location : null;
   const table = store.table ? TABLE_BY_ID[store.table.tableId] : null;
+  // in your own shop, once it is open, the music follows whatever the shop is
+  const shop = inGame ? core!.business.here() : undefined;
   const ctx: SoundContext = {
     screen: inGame ? 'game' : store.screen === 'game' ? 'menu' : store.screen,
     location: loc,
-    ambience: loc === 'own_shop' && core!.state.business?.phase === 'open' ? BIZ_TYPES[core!.state.business.type].ambience : loc ? (LOCATIONS[loc]?.ambience ?? null) : null,
+    ambience: shop?.phase === 'open' ? BIZ_TYPES[shop.type].ambience : loc ? (LOCATIONS[loc]?.ambience ?? null) : null,
     hour: inGame ? toDate(core!.now()).hour : 21,
     night: inGame ? daylight(core!.now()) < 0.35 : true,
     casinoArea: inGame ? (store.world?.casinoArea() ?? null) : null,

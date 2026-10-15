@@ -122,11 +122,21 @@ export interface PremiseDef {
   id: string;
   /** the city building it is in */
   building: string;
+  /** the interior you walk into (its own map) */
+  location: string;
   address: string;
+  /** who the rent goes to, as they sign their messages */
+  landlord: string;
   /** monthly rent */
   rent: Money;
   /** passers-by compared with the busiest streets (1 = an ordinary shopping street) */
   footfall: number;
+  /** how many more (or fewer) come by at the weekend, before each kind of shop's own weekend */
+  weekend: number;
+  /** how well each kind of shop suits the street (1 = as anywhere) */
+  suits: Partial<Record<BizType, number>>;
+  /** what the neighbourhood is like, for the listing */
+  crowd: string;
   desc: string;
 }
 
@@ -134,12 +144,53 @@ export const PREMISES: Record<string, PremiseDef> = {
   bakery_unit: {
     id: 'bakery_unit',
     building: 'bakery',
+    location: 'own_shop',
     address: '集市街 12 号（原晨光面包房）',
+    landlord: '集市街物业',
     rent: G(3200),
     footfall: 1,
+    weekend: 1,
+    // old town: its pubs do well, its people do not buy designer clothes
+    suits: { bar: 1.2, bakery: 1.1, boutique: 0.7 },
+    crowd: '普通商业街，街坊和赶公交的人，晚上老城的酒客多',
     desc: '老城区集市街的临街铺面，旁边是药房和公交站。原来的面包房开了三十年，上个月关门。',
   },
+  union_unit: {
+    id: 'union_unit',
+    building: 'union_shop',
+    location: 'own_shop_union',
+    address: '联合广场 3 号',
+    landlord: '联合广场置业',
+    rent: G(7800),
+    footfall: 1.6,
+    // the office crowd goes home at the weekend
+    weekend: 0.7,
+    suits: { cafe: 1.15, boutique: 1.3, bar: 0.8, bakery: 0.9 },
+    crowd: '市中心，工作日人很多：上班族、银行和酒店的客人；周末少三成',
+    desc: '市中心联合广场南侧的临街铺面，正对喷泉，银行和大酒店都在附近。租金是集市街的两倍多。',
+  },
+  park_unit: {
+    id: 'park_unit',
+    building: 'park_pavilion',
+    location: 'own_shop_park',
+    address: '河畔公园 1 号亭',
+    landlord: '河畔公园管理处',
+    rent: G(2600),
+    footfall: 0.8,
+    // a quiet path on weekdays, full of families and joggers at the weekend
+    weekend: 1.6,
+    suits: { cafe: 1.35, bakery: 1.35, bar: 0.7, boutique: 0.6 },
+    crowd: '公园步道边，工作日安静，周末遛弯、跑步、带孩子的人很多',
+    desc: '河畔公园步道旁的一栋小楼，门前就是公园的长椅和篮球场。工作日很安静。',
+  },
 };
+
+export const PREMISE_ORDER = ['bakery_unit', 'union_unit', 'park_unit'];
+
+/** The premise whose interior this location is, if it is one of them. */
+export function premiseAt(location: string | null | undefined): PremiseDef | undefined {
+  return location ? Object.values(PREMISES).find((p) => p.location === location) : undefined;
+}
 
 export const PRICE_LEVELS: Record<PriceLevel, { name: string; factor: number }> = {
   low: { name: '实惠', factor: 0.85 },

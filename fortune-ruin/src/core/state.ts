@@ -742,8 +742,8 @@ export interface GameState {
   stats: StatsState;
   market: MarketState;
   stories: StoriesState;
-  /** the player's own shop; absent in old saves */
-  business?: BusinessState | null;
+  /** the player's own shops, one per premise (older saves had one, as `business`; see migrate) */
+  businesses: BusinessState[];
   /** the pawn shop, the community kitchen and the docks; absent in old saves */
   oldtown?: OldTownState;
   /** the Sunday art sale at the Grand Hotel and the player's collection; absent in old saves */

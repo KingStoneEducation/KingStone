@@ -219,7 +219,7 @@ function QuickBar(): JSX.Element {
   const unread = core.phone.unread();
   const overdue = core.economy.overdueBills().length;
   // the shop gets a button once you have one
-  const items = core.state.business ? [...QUICK.slice(0, -1), { panel: 'business' as const, label: '生意', key: 'B' }, QUICK[QUICK.length - 1]] : QUICK;
+  const items = core.business.list().length ? [...QUICK.slice(0, -1), { panel: 'business' as const, label: '生意', key: 'B' }, QUICK[QUICK.length - 1]] : QUICK;
   return (
     <div className="hud-br">
       {items.map((q) => (
