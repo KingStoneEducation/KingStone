@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GameCore } from '../src/core/GameCore';
 import { deserialize, serialize } from '../src/systems/SaveManager';
 import { DAYS_PER_YEAR, GAME_START_MINUTES, MINUTES_PER_DAY, hm, seasonOfMonth, toDate, type Season } from '../src/core/calendar';
-import { SEASON_ODDS, SOAK_MINUTES, conditionsAt, dayWeather, describeNow, forecastLine, type Sky } from '../src/systems/WeatherSystem';
+import { SEASON_ODDS, SOAK_MINUTES, conditionsAt, dayWeather, describeNow, forecastLine, type Sky, type Conditions } from '../src/systems/WeatherSystem';
 import { FERRY, FISHING } from '../src/systems/IsleSystem';
 import { SLOTS } from '../src/systems/MarinaSystem';
 import { LABOR, nightMarketOpen } from '../src/systems/OldTownSystem';
@@ -13,6 +13,10 @@ import { ITEMS, SHOPS } from '../src/data/items';
 import { NPCS } from '../src/data/npcs';
 import { FERRY_PIER } from '../src/world/maps/cityLayout';
 import { ISLE_PIER, onIsle } from '../src/world/maps/isleLayout';
+import { PUDDLE_ODDS, puddleSpots, snowKind, tileName } from '../src/world/groundWeather';
+import { buildCityMap } from '../src/world/maps/city';
+import { buildIsleMap } from '../src/world/maps/isle';
+import { interiorMap } from '../src/world/maps/interiors';
 import { newCore } from './helpers';
 
 /** A game with its real weather (the test helper pins it to clear days). */
@@ -47,7 +51,7 @@ describe('the weather of a day', () => {
 
   it('follows the season: storms come in summer, fog in winter; and the first morning is clear', () => {
     const count: Record<Season, Record<Sky, number>> = {} as Record<Season, Record<Sky, number>>;
-    for (const s of ['spring', 'summer', 'autumn', 'winter'] as Season[]) count[s] = { clear: 0, cloudy: 0, rain: 0, storm: 0, fog: 0 };
+    for (const s of ['spring', 'summer', 'autumn', 'winter'] as Season[]) count[s] = { clear: 0, cloudy: 0, rain: 0, storm: 0, fog: 0, snow: 0 };
     let n = 0;
     for (let seed = 1; seed <= 12; seed++)
       for (let d = 0; d < DAYS_PER_YEAR * 2; d++) {
@@ -120,10 +124,12 @@ describe('the weather of a day', () => {
   it('says what it is like now and what tomorrow will bring', () => {
     const c = real();
     expect(c.weather.forecast(3).map((w) => w.day)).toEqual([c.today(), c.today() + 1, c.today() + 2]);
-    expect(describeNow({ sky: 'storm', raining: true, storm: true, intensity: 1, overcast: 1, fog: 0, temp: 20 }, false).name).toBe('暴风雨');
-    expect(describeNow({ sky: 'rain', raining: true, storm: false, intensity: 0.3, overcast: 0.8, fog: 0, temp: 20 }, false).name).toBe('小雨');
-    expect(describeNow({ sky: 'rain', raining: false, storm: false, intensity: 0, overcast: 0.55, fog: 0, temp: 20 }, false).name).toBe('阴');
-    expect(describeNow({ sky: 'clear', raining: false, storm: false, intensity: 0, overcast: 0, fog: 0, temp: 20 }, true).icon).toBe('moon');
+    const cond = (o: Partial<Conditions>): Conditions => ({ sky: 'clear', raining: false, snowing: false, storm: false, intensity: 0, overcast: 0, fog: 0, temp: 20, snowCover: 0, wet: 0, ...o });
+    expect(describeNow(cond({ sky: 'storm', raining: true, storm: true, intensity: 1, overcast: 1 }), false).name).toBe('暴风雨');
+    expect(describeNow(cond({ sky: 'rain', raining: true, intensity: 0.3, overcast: 0.8 }), false).name).toBe('小雨');
+    expect(describeNow(cond({ sky: 'snow', raining: true, snowing: true, intensity: 0.9, overcast: 0.8, temp: -1 }), false)).toEqual({ name: '大雪', icon: 'snow' });
+    expect(describeNow(cond({ sky: 'rain', overcast: 0.55 }), false).name).toBe('阴');
+    expect(describeNow(cond({}), true).icon).toBe('moon');
     for (let d = 60; d < 200; d++) {
       const w = dayWeather(2, d);
       const f = forecastLine(w);
@@ -382,5 +388,113 @@ describe('what you hear of it', () => {
     expect(weatherSoundFor(ctx('cafe', { weather: fog }))!.foghorn).toBe(false);
     expect(ambienceFor(ctx('city', { night: true }))).toBeNull();
     expect(ambienceFor(ctx('city', { night: true, weather: fog }))).toBe('city_night');
+  });
+});
+
+describe('snow', () => {
+  it('comes a few times a winter, on cold days, and never in the other seasons', () => {
+    let snow = 0;
+    let winter = 0;
+    for (let seed = 1; seed <= 12; seed++)
+      for (let d = 0; d < DAYS_PER_YEAR * 2; d++) {
+        const season = seasonOfMonth(Math.floor((d % DAYS_PER_YEAR) / 28));
+        const w = dayWeather(seed, d);
+        if (season === 'winter') winter++;
+        if (w.sky !== 'snow') continue;
+        snow++;
+        expect(season).toBe('winter');
+        expect(w.high, `${seed}/${d}`).toBeLessThanOrEqual(4);
+        expect(w.rain).not.toBeNull();
+        expect(forecastLine(w)).toMatchObject({ icon: 'snow' });
+        expect(forecastLine(w).note).toContain('积雪');
+      }
+    expect(snow / winter).toBeGreaterThan(0.04);
+    expect(snow / winter).toBeLessThan(0.1);
+  });
+
+  it('settles while it falls, lies for a while after, and melts (slowly when it stays below freezing)', () => {
+    const d = 400;
+    const today = dayWeather(5, d, 'snow');
+    const before = dayWeather(5, d - 1, 'clear');
+    const at = (m: number) => conditionsAt(today, before, d * MINUTES_PER_DAY + m);
+    expect(at(1)).toMatchObject({ raining: true, snowing: true });
+    expect(at(1).snowCover).toBeLessThan(0.05);
+    expect(at(60).snowCover).toBeGreaterThan(at(1).snowCover);
+    expect(at(hm(6)).snowCover).toBe(1);
+    // snow is not puddles
+    expect(at(hm(6)).wet).toBe(0);
+    // the next day it has stopped: thawing above freezing, lasting below it
+    const thaw = { ...dayWeather(5, d + 1, 'clear'), low: 2, high: 8 };
+    const frost = { ...thaw, low: -6, high: -1 };
+    const after = (w: typeof thaw, h: number) => conditionsAt(w, today, (d + 1) * MINUTES_PER_DAY + hm(h));
+    expect(after(thaw, 1).snowing).toBe(false);
+    expect(after(thaw, 4).snowCover).toBeLessThan(after(thaw, 1).snowCover);
+    expect(after(thaw, 10).snowCover).toBe(0);
+    expect(after(frost, 10).snowCover).toBeGreaterThan(0.6);
+    // melting snow leaves the streets wet; frozen, it does not
+    expect(after(thaw, 4).wet).toBeGreaterThan(0);
+    expect(after(frost, 4).wet).toBe(0);
+  });
+
+  it('a rain day leaves the streets wet for a few hours after; a dry spell leaves them dry', () => {
+    let checked = 0;
+    for (let d = 100; d < 600 && checked < 20; d++) {
+      const w = dayWeather(3, d);
+      const y = dayWeather(3, d - 1);
+      if (w.sky !== 'rain' || !w.rain || y.rain || w.rain.to > MINUTES_PER_DAY - hm(4)) continue;
+      checked++;
+      const at = (m: number) => conditionsAt(w, y, d * MINUTES_PER_DAY + m);
+      if (w.rain.from > 0) expect(at(w.rain.from - 1).wet).toBe(0);
+      expect(at(w.rain.from + 40).wet).toBe(1);
+      expect(at(w.rain.to + 60).wet).toBeGreaterThan(0.5);
+      expect(at(w.rain.to + hm(3) + 1).wet).toBe(0);
+      expect(at(w.rain.to + 60).snowCover).toBe(0);
+    }
+    expect(checked).toBe(20);
+    const clear = dayWeather(3, 50, 'clear');
+    for (let m = 0; m < MINUTES_PER_DAY; m += 60) expect(conditionsAt(clear, clear, 50 * MINUTES_PER_DAY + m).wet).toBe(0);
+  });
+
+  it('caught out in it without an umbrella you get snow down your collar, and you do not hear it fall', () => {
+    const c = newCore();
+    c.weather.force = 'snow';
+    c.state.time.minutes = (c.today() + 1) * MINUTES_PER_DAY + hm(12);
+    c.state.world.location = 'city';
+    expect(c.weather.now()).toMatchObject({ snowing: true, raining: true });
+    live(c, SOAK_MINUTES + 2);
+    expect(c.state.player.moodBuffs.find((b) => b.id === 'wet')?.label).toBe('落了一身雪');
+    const sound = weatherSoundFor({ screen: 'game', location: 'city', ambience: null, hour: 12, night: false, casinoArea: null, table: null, weather: c.weather.now() });
+    expect(sound).toMatchObject({ rain: 0, muffled: false });
+  });
+});
+
+describe('on the ground', () => {
+  it('snow lies on grass, pavements and (as slush) on the roads, never on the water or in the pools', () => {
+    expect(snowKind('grass2')).toBe('soft');
+    expect(snowKind('garden')).toBe('soft');
+    expect(snowKind('sidewalk')).toBe('packed');
+    expect(snowKind('cobble')).toBe('packed');
+    expect(snowKind('road_line_h')).toBe('slush');
+    expect(snowKind('crosswalk_v')).toBe('slush');
+    for (const t of ['water0', 'water1', 'water2', 'pool', 'pool_edge', 'shore_n', 'runner_c', 'carpet_blue']) expect(snowKind(t), t).toBe('none');
+  });
+
+  it('the puddles stand in the same hollows of the paving every time, on open paved ground only, and never indoors', () => {
+    for (const map of [buildCityMap(), buildIsleMap()]) {
+      const spots = puddleSpots(map);
+      expect(spots).toEqual(puddleSpots(map));
+      let paved = 0;
+      for (let i = 0; i < map.w * map.h; i++) if (!map.blocked[i] && /^(sidewalk|plaza|path|cobble|concrete|court|road|crosswalk|parking)/.test(tileName(map.ground[i]))) paved++;
+      expect(spots.length, map.id).toBeGreaterThan(paved * PUDDLE_ODDS * 0.6);
+      expect(spots.length, map.id).toBeLessThan(paved * PUDDLE_ODDS * 1.4);
+      for (const p of spots) {
+        const tx = Math.floor(p.x / 16);
+        const ty = Math.floor(p.y / 16);
+        const i = ty * map.w + tx;
+        expect(map.blocked[i], `${map.id} ${tx},${ty}`).toBe(0);
+        expect(tileName(map.ground[i])).not.toMatch(/water|pool|shore|grass|sand|deck|dock/);
+      }
+    }
+    expect(puddleSpots(interiorMap('cafe'))).toEqual([]);
   });
 });

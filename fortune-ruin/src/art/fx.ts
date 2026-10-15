@@ -5,8 +5,10 @@ import { circle, ellipse, hline, makeCanvas, px, rect, shade, strokeRect, vline,
  * world: the bank card going into the ATM and the notes coming out, a stack
  * of chips across the cage, a paper bag from a shop, steam off the stove, a
  * book in your hands, a basketball, the notes off a piano, a sparkle, the
- * Z's over a sleeper, and the rain: its streaks (straight down, slanting in
- * a breeze, driven by a storm) and the little crown where a drop lands.
+ * Z's over a sleeper, and the weather: the rain's streaks (straight down,
+ * slanting in a breeze, driven by a storm), the little crown where a drop
+ * lands, snowflakes, the puddles left on the paving and the rings a drop
+ * makes in one.
  */
 export const FX: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void }> = {
   card: {
@@ -164,6 +166,24 @@ export const FX: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void
       for (let i = 0; i < 4; i++) vline(c, 3 - i, i * 2, i === 3 ? 3 : 2, i === 0 ? 'rgba(200,214,240,0.4)' : 'rgba(220,230,252,0.78)');
     },
   },
+  flake: {
+    w: 3,
+    h: 3,
+    draw: (c) => {
+      px(c, 1, 0, 'rgba(244,248,255,0.7)');
+      hline(c, 0, 1, 3, 'rgba(244,248,255,0.95)');
+      px(c, 1, 2, 'rgba(244,248,255,0.7)');
+    },
+  },
+  flake_s: {
+    w: 2,
+    h: 2,
+    draw: (c) => {
+      px(c, 0, 0, 'rgba(240,246,255,0.9)');
+      px(c, 1, 1, 'rgba(240,246,255,0.6)');
+      px(c, 1, 0, 'rgba(240,246,255,0.75)');
+    },
+  },
   splash: {
     w: 5,
     h: 3,
@@ -173,6 +193,49 @@ export const FX: Record<string, { w: number; h: number; draw: (ctx: Ctx) => void
       px(c, 0, 1, 'rgba(220,230,252,0.6)');
       px(c, 4, 1, 'rgba(220,230,252,0.6)');
       hline(c, 1, 2, 3, 'rgba(200,214,240,0.55)');
+    },
+  },
+  // standing water after rain: a dark sheen with the sky caught along its far edge
+  puddle0: {
+    w: 12,
+    h: 5,
+    draw: (c) => {
+      ellipse(c, 6, 2, 5, 2, '#46566e');
+      hline(c, 3, 1, 5, '#8a9cb6');
+      hline(c, 4, 4, 4, '#3a4658');
+    },
+  },
+  puddle1: {
+    w: 18,
+    h: 7,
+    draw: (c) => {
+      ellipse(c, 7, 3, 6, 3, '#46566e');
+      ellipse(c, 12, 4, 5, 2, '#46566e');
+      hline(c, 4, 1, 6, '#8a9cb6');
+      hline(c, 11, 2, 3, '#7d90ac');
+      hline(c, 6, 6, 8, '#3a4658');
+    },
+  },
+  puddle2: {
+    w: 26,
+    h: 9,
+    draw: (c) => {
+      ellipse(c, 11, 4, 9, 3, '#46566e');
+      ellipse(c, 18, 5, 7, 3, '#46566e');
+      ellipse(c, 5, 5, 4, 2, '#46566e');
+      hline(c, 6, 1, 9, '#8a9cb6');
+      hline(c, 16, 2, 5, '#7d90ac');
+      hline(c, 9, 8, 12, '#3a4658');
+    },
+  },
+  drip_ring: {
+    w: 9,
+    h: 5,
+    draw: (c) => {
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        px(c, Math.round(4 + 4 * Math.cos(a)), Math.round(2 + 2 * Math.sin(a)), 'rgba(214,226,244,0.85)');
+      }
     },
   },
   zz: {

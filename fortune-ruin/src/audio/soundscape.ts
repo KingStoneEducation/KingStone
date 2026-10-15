@@ -18,7 +18,7 @@ export interface SoundContext {
   /** among the stalls of the night market while it is open */
   nightMarket?: boolean;
   /** what it is doing outside */
-  weather?: { raining: boolean; intensity: number; storm: boolean; fog: number };
+  weather?: { raining: boolean; snowing?: boolean; intensity: number; storm: boolean; fog: number };
 }
 
 const LUXURY_HOMES = new Set(['home_penthouse', 'home_estate']);
@@ -114,6 +114,7 @@ export function weatherSoundFor(c: SoundContext): WeatherSound | null {
   // the casino floor has no windows and the tables are in it
   if (c.location === 'casino' && (c.table || !c.casinoArea || !SKY_AREAS.has(c.casinoArea))) return null;
   const out = outdoors(c);
-  const rain = c.weather.raining ? (c.weather.storm ? 1 : 0.25 + 0.75 * c.weather.intensity) : 0;
+  // snow comes down without a sound
+  const rain = c.weather.raining && !c.weather.snowing ? (c.weather.storm ? 1 : 0.25 + 0.75 * c.weather.intensity) : 0;
   return { rain, muffled: !out, foghorn: out && c.weather.fog > 0.5 };
 }

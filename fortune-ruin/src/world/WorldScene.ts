@@ -462,6 +462,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       this.npcDir = new NpcDirector(this);
       this.npcDir.build();
       this.wx = new WeatherFx(this, () => this.exposure(), (strength, delay, muffled) => audio.thunder(strength, delay, muffled));
+      this.wx.setMap(map);
     }
     this.layoutCamera();
     this.district = '';
@@ -879,7 +880,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     // a grey sky: the day dims to a cold grey under the clouds (a little, through the windows)
     const ex = this.exposure();
     const sky = this.core.weather.now(t);
-    const grey = ex === 'sealed' ? 0 : sky.overcast * (ex === 'out' ? 1 : 0.3);
+    // (snow on the ground throws the light back up: a snowy day is a bright one)
+    const grey = ex === 'sealed' ? 0 : sky.overcast * (ex === 'out' ? 1 - 0.35 * sky.snowCover : 0.3);
     const darkness = 1 - amb + (0.92 - (1 - amb)) * grey * (0.36 * dl + 0.1 * (1 - dl));
     const color = grey > 0 ? mixColor(ambient.color, 0x3e4656, clamp01(grey * dl)) : ambient.color;
     const night = this.nightFactor(t);

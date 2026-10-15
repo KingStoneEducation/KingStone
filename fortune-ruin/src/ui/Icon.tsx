@@ -34,6 +34,7 @@ const ICONS: Record<string, string[]> = {
   rain: ['...kkk....', '..kccck...', '.kcccccck.', 'kccccccGck', '.kkkkkkkk.', '..........', '.b...b..b.', 'b...b..b..', '..........', '..b...b...'],
   storm: ['...kkk....', '..kGGGk...', '.kGGGGGkk.', 'kGGGGGGGGk', '.kkkkykkk.', '....yy....', '...yy.....', '..yyyyy...', '....yy....', '...y......'],
   fog: ['..........', '.GGGGGG...', '..........', '...GGGGGGG', '..........', 'GGGGGGG...', '..........', '..GGGGGGG.', '..........', '..........'],
+  snow: ['...kkk....', '..kccck...', '.kcccccck.', 'kccccccGck', '.kkkkkkkk.', '..b....b..', '.bbb..bbb.', '..b....b..', '....b.....', '...bbb....'],
 };
 
 export type IconName = keyof typeof ICONS;

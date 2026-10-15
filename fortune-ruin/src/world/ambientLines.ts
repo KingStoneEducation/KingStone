@@ -26,6 +26,8 @@ export function pedestrianLine(core: GameCore, seed: number): string {
   // they can see the sky too
   const w = core.weather.now();
   if (w.storm) lines.splice(0, lines.length, '这么大的风你还出门？', '渡轮今天停了，我的货过不去。', '快回家吧，风越来越大了。', '伞都被吹翻了，算了不打了。');
+  else if (w.snowing) lines.push('下雪了！灰港一个冬天也就下这么几回。', '路好滑，慢点走。', '这么冷的天，来碗热汤面就好了。', '手都冻僵了，早知道戴手套出门。');
+  else if (w.snowCover > 0.3) lines.push('雪还没化完，走路小心点。', '屋顶上一片白，像换了一座城。');
   else if (w.raining) {
     lines.push('这雨下得真烦。', '出门的时候还没下呢……', '鞋都湿透了。', '下雨天，赌场的人反而更多。');
     if (!core.weather.hasUmbrella()) lines.push('你没带伞啊？前面便利店有卖。', '淋成这样，快找个地方躲躲雨吧。');

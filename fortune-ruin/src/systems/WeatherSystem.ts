@@ -4,12 +4,12 @@ import { hashString } from '../core/rng';
 import { onIsle } from '../world/maps/isleLayout';
 
 /** The kind of day it is over the bay. */
-export type Sky = 'clear' | 'cloudy' | 'rain' | 'storm' | 'fog';
+export type Sky = 'clear' | 'cloudy' | 'rain' | 'storm' | 'fog' | 'snow';
 
 export interface DayWeather {
   day: number;
   sky: Sky;
-  /** when it rains, in minutes of this day; it can run on past midnight (to > 1440). A storm rains all day. */
+  /** when it rains (or snows), in minutes of this day; it can run on past midnight (to > 1440). A storm rains all day. */
   rain: { from: number; to: number } | null;
   /** 0..1: drizzle to downpour */
   intensity: number;
@@ -24,7 +24,10 @@ export interface DayWeather {
 export interface Conditions {
   /** the day's weather */
   sky: Sky;
+  /** something is coming down (rain, or snow): the rules for being out in it are the same */
   raining: boolean;
+  /** what is coming down is snow */
+  snowing: boolean;
   storm: boolean;
   /** 0..1 how hard it is raining (0 when dry) */
   intensity: number;
@@ -34,6 +37,10 @@ export interface Conditions {
   fog: number;
   /** °C */
   temp: number;
+  /** 0..1 how much snow lies on the ground (it builds up while it snows and melts after) */
+  snowCover: number;
+  /** 0..1 how wet the streets are: puddles in the rain, drying for a few hours after */
+  wet: number;
 }
 
 /** Each season's odds of each kind of day (percent). Greyhaven is a damp port: summer brings the storms, winter the fog. */
@@ -41,8 +48,15 @@ export const SEASON_ODDS: Record<Season, [Sky, number][]> = {
   spring: [['clear', 34], ['cloudy', 26], ['rain', 26], ['storm', 3], ['fog', 11]],
   summer: [['clear', 46], ['cloudy', 16], ['rain', 22], ['storm', 10], ['fog', 6]],
   autumn: [['clear', 40], ['cloudy', 26], ['rain', 22], ['storm', 5], ['fog', 7]],
-  winter: [['clear', 30], ['cloudy', 34], ['rain', 20], ['storm', 1], ['fog', 15]],
+  // a few times a winter it is cold enough for the rain to come down as snow
+  winter: [['clear', 30], ['cloudy', 30], ['rain', 17], ['storm', 1], ['fog', 15], ['snow', 7]],
 };
+/** Minutes of steady snow for the ground to be white (sooner when it comes down hard). */
+const SNOW_BUILD = 150;
+/** After the snow stops: hours for it to melt on a day above freezing, and on one that is not. */
+const MELT_HOURS = { thaw: 8, frost: 30 };
+/** Hours for the streets to dry after the rain. */
+const DRY_HOURS = 3;
 /** After a wet day, the chance the rain carries on into the next. */
 const SPELL = 0.3;
 /** The first morning of a new life in Greyhaven is a clear one. */
@@ -86,7 +100,7 @@ export function dayWeather(seed: number, day: number, force: Sky | null = null):
   if (sky === 'storm') {
     rain = { from: 0, to: MINUTES_PER_DAY };
     intensity = 1;
-  } else if (sky === 'rain') {
+  } else if (sky === 'rain' || sky === 'snow') {
     if (force) rain = { from: 0, to: MINUTES_PER_DAY };
     else {
       // most rain sets in from the afternoon into the night; some any time
@@ -102,7 +116,8 @@ export function dayWeather(seed: number, day: number, force: Sky | null = null):
   const k = Math.cos((((day % DAYS_PER_YEAR) - 182) / DAYS_PER_YEAR) * Math.PI * 2);
   const mean = 16 + 10 * k + (roll(seed, day, 'temp') - 0.5) * 6;
   const spread = sky === 'clear' ? 10 : sky === 'cloudy' || sky === 'fog' ? 7 : 5;
-  const mid = mean - (sky === 'rain' || sky === 'storm' ? 1.5 : 0);
+  // a snow day is a cold one: around freezing
+  const mid = sky === 'snow' ? Math.min(mean - 7, 1) : mean - (sky === 'rain' || sky === 'storm' ? 1.5 : 0);
   return { day, sky, rain, intensity, fogUntil, low: Math.round(mid - spread / 2), high: Math.round(mid + spread / 2) };
 }
 
@@ -115,33 +130,63 @@ function fogLevel(m: number, until: number): number {
 export function conditionsAt(today: DayWeather, yesterday: DayWeather, t: number): Conditions {
   const m = t - today.day * MINUTES_PER_DAY;
   let raining = false;
+  let snowing = false;
   let intensity = 0;
   if (today.rain && m >= today.rain.from && m < today.rain.to) {
     raining = true;
+    snowing = today.sky === 'snow';
     intensity = today.intensity;
   } else if (yesterday.rain && m + MINUTES_PER_DAY >= yesterday.rain.from && m + MINUTES_PER_DAY < yesterday.rain.to) {
     raining = true;
+    snowing = yesterday.sky === 'snow';
     intensity = yesterday.intensity;
   }
   const storm = today.sky === 'storm';
   const fog = today.sky === 'fog' ? fogLevel(m, today.fogUntil) : 0;
-  const overcast = storm ? 1 : raining ? 0.7 + 0.3 * intensity : today.sky === 'cloudy' || today.sky === 'rain' ? 0.55 : 0.3 * fog;
+  const overcast = storm ? 1 : raining ? 0.7 + 0.3 * intensity : today.sky === 'cloudy' || today.sky === 'rain' || today.sky === 'snow' ? 0.55 : 0.3 * fog;
   // coolest just before dawn, warmest mid-afternoon
   const warm = (Math.cos(((m - hm(15)) / MINUTES_PER_DAY) * Math.PI * 2) + 1) / 2;
   const temp = Math.round(today.low + (today.high - today.low) * warm);
-  return { sky: today.sky, raining, storm, intensity, overcast, fog, temp };
+  const snowCover = Math.max(lying(yesterday, t, today.high), lying(today, t, today.high));
+  // once it stops, snow melting on a day above freezing leaves the streets wet
+  const wet = Math.max(wetness(yesterday, t), wetness(today, t), snowCover > 0 && !snowing && today.high > 1 ? snowCover * 0.5 : 0);
+  return { sky: today.sky, raining, snowing, storm, intensity, overcast, fog, temp, snowCover, wet };
+}
+
+/** The snow a day's snowfall leaves lying at minute t: building while it falls, melting after (fast on a day above freezing). */
+function lying(w: DayWeather, t: number, high: number): number {
+  if (w.sky !== 'snow' || !w.rain) return 0;
+  const start = w.day * MINUTES_PER_DAY + w.rain.from;
+  const end = w.day * MINUTES_PER_DAY + w.rain.to;
+  if (t < start) return 0;
+  const rate = (0.6 + w.intensity) / SNOW_BUILD;
+  const peak = Math.min(1, (Math.min(t, end) - start) * rate);
+  if (t <= end) return peak;
+  const hours = (t - end) / 60;
+  return Math.max(0, peak * (1 - hours / (high > 1 ? MELT_HOURS.thaw : MELT_HOURS.frost)));
+}
+
+/** How wet a day's rain leaves the streets at minute t: puddles while it rains, drying after. */
+function wetness(w: DayWeather, t: number): number {
+  if (!w.rain || w.sky === 'snow') return 0;
+  const start = w.day * MINUTES_PER_DAY + w.rain.from;
+  const end = w.day * MINUTES_PER_DAY + w.rain.to;
+  if (t < start) return 0;
+  if (t <= end) return Math.min(1, (t - start) / 30);
+  return Math.max(0, 1 - (t - end) / 60 / DRY_HOURS);
 }
 
 /** A word and an icon for the weather right now. */
 export function describeNow(c: Conditions, night: boolean): { name: string; icon: WeatherIcon } {
   if (c.storm) return { name: '暴风雨', icon: 'storm' };
+  if (c.snowing) return { name: c.intensity < 0.45 ? '小雪' : c.intensity < 0.8 ? '中雪' : '大雪', icon: 'snow' };
   if (c.raining) return { name: c.intensity < 0.45 ? '小雨' : c.intensity < 0.8 ? '中雨' : '大雨', icon: 'rain' };
   if (c.fog > 0.3) return { name: '有雾', icon: 'fog' };
   if (c.overcast >= 0.5) return { name: c.sky === 'cloudy' ? '多云' : '阴', icon: 'cloud' };
   return { name: '晴', icon: night ? 'moon' : 'sun' };
 }
 
-export type WeatherIcon = 'sun' | 'moon' | 'cloud' | 'rain' | 'storm' | 'fog';
+export type WeatherIcon = 'sun' | 'moon' | 'cloud' | 'rain' | 'storm' | 'fog' | 'snow';
 
 /** Which part of the day a minute falls in, the way a forecast says it. */
 export function partOfDay(m: number): string {
@@ -168,6 +213,13 @@ export function forecastLine(w: DayWeather): { name: string; icon: WeatherIcon; 
       const note =
         r.from === 0 && r.to >= MINUTES_PER_DAY ? '下一整天。' : r.to > MINUTES_PER_DAY ? `${a}开始下，一直下到第二天${partOfDay(r.to)}。` : a === b ? `${a}有雨。` : `${a}开始下，${b}停。`;
       return { name, icon: 'rain', note };
+    }
+    case 'snow': {
+      const r = w.rain!;
+      const name = w.intensity < 0.45 ? '小雪' : w.intensity < 0.8 ? '中雪' : '大雪';
+      const a = partOfDay(r.from);
+      const when = r.from === 0 && r.to >= MINUTES_PER_DAY ? '下一整天的雪' : `${a}开始下雪`;
+      return { name, icon: 'snow', note: `${when}，最高 ${w.high}°，路上会积雪。` };
     }
     case 'fog':
       return { name: '晨雾', icon: 'fog', note: w.fogUntil >= MINUTES_PER_DAY ? '整天都有雾。' : `早上海湾起雾，${formatClock(w.fogUntil)} 前后散去。` };
@@ -288,10 +340,16 @@ export class WeatherSystem {
       this.core.toast('风太大了，伞差点被吹翻，裤腿全湿了。', 'warn');
       return;
     }
+    const hint = onIsle(this.core.state.world.location) ? '灰港的便利店有伞卖。' : '便利店有伞卖。';
+    if (c.snowing) {
+      pl.addMoodBuff('wet', -3, 180, '落了一身雪');
+      pl.change('health', -1);
+      this.core.toast(`雪落了一身，化成水渗进了衣领。${hint}`, 'warn');
+      return;
+    }
     pl.addMoodBuff('wet', cold ? -6 : -4, 180, cold ? '淋了一身冷雨' : '淋了一身雨');
     pl.change('stress', 2);
     if (cold) pl.change('health', -2);
-    const hint = onIsle(this.core.state.world.location) ? '灰港的便利店有伞卖。' : '便利店有伞卖。';
     this.core.toast(cold ? `冷雨浇透了衣服，冻得直打哆嗦。${hint}` : `你被雨淋透了。${hint}`, 'warn');
   }
 

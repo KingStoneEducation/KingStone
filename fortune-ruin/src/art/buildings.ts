@@ -587,6 +587,16 @@ export interface BuildingArt {
   offsetY: number;
 }
 
+/** How much of a building's picture, from the top, is roof (the rest is the facade). */
+export function roofHeight(b: BuildingDef): number {
+  const s = SPECS[b.style];
+  const H = b.h * 16 + (b.extraHeight ?? 0) * 16;
+  const totalTiles = b.h + (b.extraHeight ?? 0);
+  const ratio = b.style === 'tower' || b.style === 'river_tower' || b.style === 'finance' ? 0.68 : b.style === 'casino' ? 0.56 : b.style === 'hotel' || b.style === 'lofts' ? 0.6 : 0.52;
+  const facadeTiles = Math.max(s.facade, Math.round(totalTiles * ratio));
+  return H - Math.min(H - 16, facadeTiles * 16);
+}
+
 export function drawBuilding(b: BuildingDef): BuildingArt {
   const s = SPECS[b.style];
   const W = b.w * 16;
@@ -596,11 +606,8 @@ export function drawBuilding(b: BuildingDef): BuildingArt {
   const n = makeCanvas(W, H);
   const night = n.ctx;
   const seed = b.x * 31 + b.y * 17;
-  const totalTiles = b.h + (b.extraHeight ?? 0);
-  const ratio = b.style === 'tower' || b.style === 'river_tower' || b.style === 'finance' ? 0.68 : b.style === 'casino' ? 0.56 : b.style === 'hotel' || b.style === 'lofts' ? 0.6 : 0.52;
-  const facadeTiles = Math.max(s.facade, Math.round(totalTiles * ratio));
-  const facadeH = Math.min(H - 16, facadeTiles * 16);
-  const roofH = H - facadeH;
+  const roofH = roofHeight(b);
+  const facadeH = H - roofH;
   const fy = roofH; // facade top
 
   // roof
