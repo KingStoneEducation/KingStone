@@ -52,15 +52,63 @@ export class PokerScene extends TableScene {
   private vBet: Money[] = [];
   private vPot: Money = 0;
   private running = false;
-  private auto = false;
+  protected auto = false;
   private autoTimer: Phaser.Time.TimerEvent | null = null;
 
-  constructor() {
-    super('poker');
+  constructor(key = 'poker') {
+    super(key);
   }
 
-  private get st(): PK.PokerState {
+  protected get st(): PK.PokerState {
     return this.core.casino.pk(this.tableId);
+  }
+
+  // ------------------------------------------------------------------ where the game comes from
+  // (the casino's cash tables; the Sunday tournament overrides these)
+
+  /** Stacks, bets and pots on the felt. */
+  protected fmt(m: Money): string {
+    return g(m);
+  }
+
+  /** Amounts in messages. */
+  protected fmtFull(m: Money): string {
+    return formatG(m);
+  }
+
+  protected stakesLabel(): string {
+    const r = this.st.rules;
+    return `BLINDS ${r.smallBlind / 100}/${r.bigBlind / 100}`;
+  }
+
+  protected turnOwner(): string | null {
+    return this.core.casino.pkTurnOwner(this.tableId);
+  }
+
+  protected patronAct(): { ok: true; value: PK.PokerEvent[] } | { ok: false; error: string } {
+    return this.core.casino.pkPatronAct(this.tableId);
+  }
+
+  protected playerAct(action: PK.PokerAction): { ok: true; value: PK.PokerEvent[] } | { ok: false; error: string } {
+    return this.core.casino.pkPlayerAct(this.tableId, action);
+  }
+
+  /** Book the finished hand; what it did for the player. */
+  protected collectHand(): { net: Money } | null {
+    return this.core.casino.collect(this.tableId);
+  }
+
+  /** Between hands: people come and go. */
+  protected manage(): void {
+    this.core.casino.pkManage(this.tableId);
+  }
+
+  protected dealHand(): { ok: true; value: PK.PokerEvent[] } | { ok: false; error: string } {
+    return this.core.casino.pkDeal(this.tableId);
+  }
+
+  protected winLine(name: string, amount: Money, hand: string | null, mine: boolean): string {
+    return DEALER.pkWin(name, amount, hand, mine);
   }
 
   private get n(): number {
@@ -68,8 +116,7 @@ export class PokerScene extends TableScene {
   }
 
   protected feltKey(): string {
-    const r = this.st.rules;
-    const stakes = `BLINDS ${r.smallBlind / 100}/${r.bigBlind / 100}`;
+    const stakes = this.stakesLabel();
     return feltTexture(this, `pk:${this.variant}:${stakes}`, (ctx) => drawPokerTable(ctx, this.variant, stakes));
   }
 
@@ -244,7 +291,7 @@ export class PokerScene extends TableScene {
       return;
     }
     const allIn = PK.handInProgress(this.st) && st.inHand && !st.folded && this.vStack[seat] <= 0;
-    const text = allIn ? '全下' : g(this.vStack[seat]);
+    const text = allIn ? '全下' : this.fmt(this.vStack[seat]);
     const l = this.geom(seat).label;
     if (!v.stackText) {
       v.stackText = this.add
@@ -293,7 +340,7 @@ export class PokerScene extends TableScene {
     this.pot?.destroy();
     this.pot = null;
     if (this.vPot > 0) this.pot = this.chipStack(this.vPot, PKT.pot.x, PKT.pot.y, { label: false, depth: 55 });
-    const text = this.vPot > 0 ? `底池 ${g(this.vPot)}` : '';
+    const text = this.vPot > 0 ? `底池 ${this.fmt(this.vPot)}` : '';
     if (!this.potText) {
       this.potText = this.add
         .text(PKT.pot.x, PKT.pot.y - 14, text, { fontFamily: WORLD_FONT, fontSize: '6px', color: '#ffe9a8', stroke: '#120d1f', strokeThickness: 3, resolution: 2 })
@@ -446,7 +493,7 @@ export class PokerScene extends TableScene {
   private async animBlind(seat: number, amount: Money, kind: 'sb' | 'bb'): Promise<void> {
     this.vStack[seat] -= amount;
     this.vBet[seat] += amount;
-    this.setAction(seat, `${kind === 'sb' ? '小盲' : '大盲'} ${g(amount)}`, '#c8c0d8');
+    this.setAction(seat, `${kind === 'sb' ? '小盲' : '大盲'} ${this.fmt(amount)}`, '#c8c0d8');
     this.refreshStack(seat);
     sfx('chip');
     await this.moveChips(amount, this.geom(seat).plaque, this.geom(seat).bet, this.mine(seat), 220);
@@ -492,7 +539,7 @@ export class PokerScene extends TableScene {
         await this.wait(160);
         break;
       default: {
-        const label = e.action === 'call' ? `跟注 ${g(e.add)}` : e.action === 'allin' ? `全下 ${g(e.to)}` : opened ? `加注到 ${g(e.to)}` : `下注 ${g(e.to)}`;
+        const label = e.action === 'call' ? `跟注 ${this.fmt(e.add)}` : e.action === 'allin' ? `全下 ${this.fmt(e.to)}` : opened ? `加注到 ${this.fmt(e.to)}` : `下注 ${this.fmt(e.to)}`;
         this.setAction(seat, label, e.action === 'call' ? '#9fe0ff' : e.action === 'allin' ? '#ff8a8a' : '#ffc56a');
         this.vStack[seat] -= e.add;
         this.vBet[seat] += e.add;
@@ -613,9 +660,9 @@ export class PokerScene extends TableScene {
     await this.moveChips(amount, PKT.pot, this.geom(seat).plaque, mine, 420);
     this.vStack[seat] += amount;
     this.refreshStack(seat);
-    this.setAction(seat, `赢 ${g(amount)}`, '#ffe45c');
+    this.setAction(seat, `赢 ${this.fmt(amount)}`, '#ffe45c');
     if (hand) this.setHandName(seat, hand, true);
-    this.dealerSay(DEALER.pkWin(this.seatName(seat), amount, hand, mine), 2200);
+    this.dealerSay(this.winLine(this.seatName(seat), amount, hand, mine), 2200);
     await this.wait(300);
   }
 
@@ -627,11 +674,11 @@ export class PokerScene extends TableScene {
     for (let guard = 0; guard < 300 && this.alive && gen === this.gen; guard++) {
       const s = this.st;
       if (PK.handInProgress(s)) {
-        const owner = this.core.casino.pkTurnOwner(this.tableId);
+        const owner = this.turnOwner();
         if (owner === PLAYER) {
           this.pointAt(s.toAct);
           const legal = PK.legalPokerActions(s, s.toAct);
-          this.setPhase('player', legal?.check ? '轮到你：可以过牌或下注。' : `轮到你：跟注需要 ${formatG(legal?.call ?? 0)}。`);
+          this.setPhase('player', legal?.check ? '轮到你：可以过牌或下注。' : `轮到你：跟注需要 ${this.fmtFull(legal?.call ?? 0)}。`);
           return;
         }
         this.setPhase('dealing');
@@ -639,7 +686,7 @@ export class PokerScene extends TableScene {
         const away = me < 0 || !s.seats[me].inHand || s.seats[me].folded || s.seats[me].allIn;
         await this.wait((away ? 320 : 600) + Math.random() * (away ? 260 : 600));
         if (!this.alive || gen !== this.gen) return;
-        const r = this.core.casino.pkPatronAct(this.tableId);
+        const r = this.patronAct();
         if (!r.ok) return;
         await this.play(r.value);
         continue;
@@ -660,10 +707,10 @@ export class PokerScene extends TableScene {
     this.pointAt(-1);
     const s = this.st;
     const me = this.mySeat();
-    const res = this.core.casino.collect(this.tableId);
+    const res = this.collectHand();
     if (res && me >= 0) {
       const name = s.result?.showdown.find((h) => h.seat === me)?.name;
-      const text = res.net > 0 ? `赢下底池${name ? `（${name}）` : ''}` : res.net < 0 ? `这一手输了 ${formatG(-res.net)}` : '平分底池';
+      const text = res.net > 0 ? `赢下底池${name ? `（${name}）` : ''}` : res.net < 0 ? `这一手输了 ${this.fmtFull(-res.net)}` : '平分底池';
       this.showResult(res.net, text);
     }
     await this.wait(res ? 2000 : 1300);
@@ -683,14 +730,14 @@ export class PokerScene extends TableScene {
     this.strength?.destroy();
     this.strength = null;
     // patrons come and go between hands
-    this.core.casino.pkManage(this.tableId);
+    this.manage();
     this.syncSeats();
     this.vPot = 0;
     this.refreshPot();
     this.betweenHands(false);
   }
 
-  private betweenHands(initial: boolean): void {
+  protected betweenHands(initial: boolean): void {
     const s = this.st;
     const me = this.mySeat();
     this.setPhase('betting');
@@ -700,7 +747,7 @@ export class PokerScene extends TableScene {
     this.scheduleAuto();
   }
 
-  private scheduleAuto(): void {
+  protected scheduleAuto(): void {
     this.autoTimer?.remove();
     this.autoTimer = null;
     if (!this.auto || !this.alive) return;
@@ -717,7 +764,7 @@ export class PokerScene extends TableScene {
     if (this.running || PK.handInProgress(this.st)) return;
     this.autoTimer?.remove();
     this.autoTimer = null;
-    const r = this.core.casino.pkDeal(this.tableId);
+    const r = this.dealHand();
     if (!r.ok) {
       store.toast(r.error, 'warn');
       return;
@@ -731,8 +778,8 @@ export class PokerScene extends TableScene {
   }
 
   pkAct(action: PK.PokerAction): void {
-    if (this.running || this.core.casino.pkTurnOwner(this.tableId) !== PLAYER) return;
-    const r = this.core.casino.pkPlayerAct(this.tableId, action);
+    if (this.running || this.turnOwner() !== PLAYER) return;
+    const r = this.playerAct(action);
     if (!r.ok) {
       store.toast(r.error, 'warn');
       sfx('deny');

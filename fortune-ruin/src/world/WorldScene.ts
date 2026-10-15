@@ -33,6 +33,7 @@ import { HOMES } from '../data/housing';
 import { NPC_BY_ID } from '../data/npcs';
 import { ITEMS } from '../data/items';
 import { TABLE_BY_ID, type TableConfig } from '../casino/tables';
+import { TOURNEY_HOST, TOURNEY_TABLE } from '../casino/tournament';
 import { formatG } from '../core/money';
 import { patronLine, pedestrianLine, staffLine } from './ambientLines';
 import { audio, sfx } from '../audio/Audio';
@@ -59,6 +60,7 @@ const VERBS: Record<InteractKind, string> = {
   shop: '购物',
   order: '点单',
   table: '入座',
+  tourney: '查看',
   cashier: '兑换筹码',
   atm: '使用 ATM',
   teller: '办理业务',
@@ -197,6 +199,7 @@ export interface WorldApi {
   teleport(location: string, spawn: string | null, tile?: Pt): void;
   refreshPlayerLook(): void;
   leaveTable(): boolean;
+  openTournament(): void;
   openTable(tableId: string): void;
   /** the casino room the player is standing in (null outside the casino) */
   casinoArea(): CasinoArea | null;
@@ -320,6 +323,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     // resume a table that was open when the game was saved
     const active = this.core.state.casino.activeTable;
     if (active && w.location === 'casino') this.time.delayedCall(50, () => this.openTable(active));
+    else if (this.core.tourney.seated() && w.location === 'casino') this.time.delayedCall(50, () => this.openTournament());
   }
 
   private shutdown(): void {
@@ -1441,6 +1445,9 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       case 'table':
         this.sitAtTable(String(d.table));
         break;
+      case 'tourney':
+        store.openModal({ type: 'tourney' });
+        break;
       case 'cashier':
         void this.actions.cage(it, () => store.openModal({ type: 'cashier' }));
         break;
@@ -2332,6 +2339,11 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   // ------------------------------------------------------------------ casino tables
 
   private sitAtTable(tableId: string): void {
+    // Sunday night: the 1/2 table is the tournament's (to play in it, or to watch)
+    if (tableId === TOURNEY_HOST && this.core.tourney.running()) {
+      this.openTournament();
+      return;
+    }
     const r = this.core.casino.sit(tableId);
     if (!r.ok) {
       store.toast(r.error, 'warn');
@@ -2368,8 +2380,43 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.scene.sleep();
   }
 
+  /** Sit down at the Sunday tournament (or watch it from the rail if not in it). */
+  openTournament(): void {
+    if (!this.player) return;
+    if (this.core.state.casino.activeTable) {
+      const up = this.core.casino.standUp();
+      if (!up.ok) {
+        store.toast(up.error, 'warn');
+        return;
+      }
+    }
+    const r = this.core.tourney.sit();
+    if (!r.ok) {
+      store.toast(r.error, 'warn');
+      return;
+    }
+    const seat = this.core.tourney.seatOf('player');
+    const pos = seat >= 0 ? seatPosition(TOURNEY_HOST, seat) : null;
+    if (pos) {
+      this.player.setPos(pos.x, pos.y);
+      this.player.fixedDepth = pos.depth;
+      this.player.setSitting(true, pos.dir);
+    }
+    this.setFocus(null);
+    this.marker?.setVisible(false);
+    this.core.timeMode = 'tourney';
+    this.core.player.activity = 'gambling';
+    store.table = { game: 'poker', tableId: TOURNEY_TABLE };
+    store.notify();
+    this.tableKey = 'tourney';
+    this.scene.launch('tourney', { tableId: TOURNEY_TABLE });
+    this.scene.sleep();
+  }
+
   private closeTableScene(): void {
     if (!this.tableKey) return;
+    // the tournament goes on without the player (their hands are folded for them)
+    if (this.tableKey === 'tourney') this.core.tourney.leaveSeat();
     this.scene.stop(this.tableKey);
     this.tableKey = null;
     store.table = null;
@@ -2396,7 +2443,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
 
   /** Stand up from the current table (returns false when a hand is still in play). */
   leaveTable(): boolean {
-    const r = this.core.casino.standUp();
+    const r = store.table?.tableId === TOURNEY_TABLE ? this.core.tourney.standUp() : this.core.casino.standUp();
     if (!r.ok) {
       store.toast(r.error, 'warn');
       return false;

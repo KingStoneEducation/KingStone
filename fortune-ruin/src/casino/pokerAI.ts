@@ -115,6 +115,14 @@ export function decidePoker(view: PokerView, persona: PokerPersona, tilt: number
 
   if (view.street === 'preflop') {
     const chen = chenScore(view.hole);
+    // ten big blinds or less: all in or out (late in a tournament, or nearly broke at a cash table)
+    const depth = view.maxRaiseTo / Math.max(1, view.bigBlind);
+    if (depth <= 10) {
+      const push = 9 - p.vpip * 8 - (view.isButton ? 1.5 : 0) - (view.behind <= 1 ? 1.5 : 0) + (depth - 5) * 0.35 - p.aggression;
+      const opened = view.currentBet > view.bigBlind;
+      if (chen >= (opened ? push + 2 : push)) return { type: 'allin' };
+      return fold;
+    }
     const threshold = 12 - p.vpip * 20 - (view.isButton ? 1.5 : 0) - (view.behind <= 1 ? 1 : 0);
     const premium = chen >= Math.max(11, threshold + 5);
     const facing = view.toCall / Math.max(1, view.bigBlind);

@@ -151,7 +151,20 @@ export const POKER_TABLES: TableConfig[] = [
   },
 ];
 
-export const TABLE_BY_ID: Record<string, TableConfig> = Object.fromEntries([...TABLES, ...POKER_TABLES].map((t) => [t.id, t]));
+/**
+ * The Sunday tournament's table (see casino/tournament.ts). It is dealt on the 1/2 table's felt and
+ * is not one of the casino's cash tables, so none of their crowd logic ever touches it.
+ */
+export const TOURNEY_TABLE_CONFIG: TableConfig = {
+  id: 'pkt',
+  game: 'poker',
+  name: '周日锦标赛',
+  area: 'main',
+  seats: 6,
+  rules: { seats: 6, smallBlind: 2500, bigBlind: 5000, minBuyIn: 300000, maxBuyIn: 1800000, rakeBp: 0, rakeCap: 0 },
+};
+
+export const TABLE_BY_ID: Record<string, TableConfig> = Object.fromEntries([...TABLES, ...POKER_TABLES, TOURNEY_TABLE_CONFIG].map((t) => [t.id, t]));
 
 export const GAME_NAMES: Record<GameKind, string> = { blackjack: '21点', baccarat: '百家乐', roulette: '轮盘', poker: '德州扑克', slots: '老虎机' };
 

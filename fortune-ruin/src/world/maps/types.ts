@@ -11,6 +11,7 @@ export type InteractKind =
   | 'shop'
   | 'order'
   | 'table'
+  | 'tourney'
   | 'cashier'
   | 'atm'
   | 'teller'

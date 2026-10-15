@@ -119,7 +119,7 @@ export function buildCasinoMap(): MapData {
   b.prop('velvet_post', 33, 12);
   b.prop('velvet_post', 51, 13);
   b.prop('velvet_post', 54, 13);
-  b.prop('poker_sign', 13, 10, undefined, { oy: -2 });
+  b.prop('poker_sign', 13, 10, { kind: 'tourney', label: '扑克室告示：周日锦标赛' }, { oy: -2 });
 
   // the members' lift, at the end of the corridor between the VIP salon and the high-limit room
   b.fill(42, 2, 2, 11, 'marble_dark');

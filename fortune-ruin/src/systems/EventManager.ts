@@ -1,3 +1,4 @@
+import { TOURNEY, tourneyPrizes } from '../casino/tournament';
 import type { GameCore } from '../core/GameCore';
 import { G, formatG, type Money } from '../core/money';
 import { MINUTES_PER_DAY, fromDate, formatDateTime, hm, toDate } from '../core/calendar';
@@ -466,6 +467,22 @@ const DAILY: DailyEventDef[] = [
       const l = core.housing.landlord();
       core.phone.send(l.margaret ? 'margaret' : 'landlord', l.name, `通知：由于房产税和维修成本上涨，从下个月起房租调整为 ${formatG(newRent)}（上涨 ${p.pct}%）。`);
       core.journal.add('money', `房东通知下个月房租上涨到 ${formatG(newRent)}。`, true);
+    },
+  },
+  {
+    // Saturday evening: the poker room reminds its players (and the casino's members) of tomorrow night
+    id: 'tourney_notice',
+    cooldownDays: 6,
+    check: (core) => {
+      const d = toDate(core.now());
+      if (d.weekday !== (TOURNEY.weekday + 6) % 7 || d.hour < 17) return null;
+      const cs = core.state.casino;
+      return cs.stats.byGame.poker.rounds > 0 || cs.membership.visits >= 3 ? {} : null;
+    },
+    chance: () => 1,
+    fire: (core) => {
+      const prize = tourneyPrizes(TOURNEY.seats, TOURNEY.buyIn)[0];
+      core.phone.send('casino', '灰港大赌场', `【周日扑克锦标赛】明晚 19:00 开赛，六人单桌，买入 ${formatG(TOURNEY.buyIn)} + 服务费 ${formatG(TOURNEY.fee)}，冠军 ${formatG(prize)}。明天 17:00 起在扑克室报名，额满即止。`);
     },
   },
   {

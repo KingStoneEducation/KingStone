@@ -1,3 +1,4 @@
+import { TourneyModal } from './modals/TourneyModal';
 import { store, type Panel } from './store';
 import { useKey, useStore } from './hooks';
 import { MainMenu } from './MainMenu';
@@ -87,6 +88,8 @@ function ModalHost(): JSX.Element | null {
       return <LaborModal />;
     case 'furnish':
       return <FurnishModal />;
+    case 'tourney':
+      return <TourneyModal />;
     case 'fortune':
       return <FortuneModal />;
     case 'auction':

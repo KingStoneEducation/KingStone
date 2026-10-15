@@ -89,6 +89,14 @@ const POKER_TALK: Record<string, string[]> = {
   daniel: ['礼拜天晚上来打两手，别告诉艾琳。', '我手一热就收不住，你帮我看着点。', '刚才那手我不该跟的……', '再输一个买入我就走，说到做到。'],
 };
 
+/** What the regulars say on tournament night, while they are still in it. */
+const TOURNEY_TALK: Record<string, string[]> = {
+  sophia: ['锦标赛和现金局不一样：筹码会越来越不值钱，盲注不等人。', '前几级我只打好牌，后面看筹码说话。', '短码的时候要么全下，要么弃牌，没有第三条路。'],
+  alexander: ['奖金？那点钱无所谓。我就是喜欢看别人推全下之前的表情。', '你也报名了？那我可不会手下留情。', '筹码少的人最好欺负，这是锦标赛的规矩。'],
+  tommy: ['拿个冠军，录音棚的钱就有着落了。', '我打得松，可我手气好啊。', '上礼拜我第二，这礼拜该轮到冠军了吧？'],
+  daniel: ['我就是来凑个热闹……上礼拜第一手就全下了。', '别跟我讲概率，我只知道这把能赢。', '出局了就回家，说到做到。'],
+};
+
 /** Read a reaction from the change in how they feel about the player. */
 export function moodFrom(delta: number, disposition: number, temper: number): Expression | undefined {
   if (delta >= 3) return 'grin';
@@ -188,7 +196,11 @@ export class DialogueEngine {
     }
     // Visible state comments; at the poker table, the game in front of them
     if (!fact) {
-      const sl = this.core.casino.npcPokerTable(npcId) ? (this.pick(npcId, POKER_TALK[npcId] ?? []) ?? null) : this.stateLine(npcId);
+      const sl = this.core.tourney.playing(npcId)
+        ? (this.pick(npcId, TOURNEY_TALK[npcId] ?? []) ?? null)
+        : this.core.casino.npcPokerTable(npcId)
+          ? (this.pick(npcId, POKER_TALK[npcId] ?? []) ?? null)
+          : this.stateLine(npcId);
       if (sl) lines.push(sl);
     }
     // money between them and a friend that weighs on them (once a day)

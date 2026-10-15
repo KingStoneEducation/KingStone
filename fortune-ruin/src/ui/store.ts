@@ -34,6 +34,7 @@ export type Modal =
   | { type: 'bus'; stop: string }
   | { type: 'read' }
   | { type: 'furnish' }
+  | { type: 'tourney' }
   | { type: 'text'; title: string; text: string; tone?: 'info' | 'warn' | 'bad' }
   | { type: 'event'; prompt: EventPrompt }
   | { type: 'eventResult'; title: string; text: string }

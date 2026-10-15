@@ -11,6 +11,7 @@ import { basicStrategy } from '../../casino/blackjackStrategy';
 import { beadPlate, bigRoad, shoeStats } from '../../casino/baccaratRoads';
 import { CHIP_COLORS, CHIP_DENOMS } from '../../art/palette';
 import { formatG, G, type Money } from '../../core/money';
+import { LEVELS, TOURNEY, TOURNEY_TABLE, tchips } from '../../casino/tournament';
 import type { GameCore } from '../../core/GameCore';
 
 const ACTION_NAMES: Record<BJE.BJAction, string> = { hit: '要牌', stand: '停牌', double: '加倍', split: '分牌', surrender: '投降' };
@@ -24,6 +25,18 @@ function limits(tableId: string): { min: Money; max: Money } {
 }
 
 export function rulesText(core: GameCore, tableId: string): string[] {
+  if (tableId === TOURNEY_TABLE) {
+    const p = core.state.casino.tourney?.prizes ?? [];
+    return [
+      `无限注德州扑克锦标赛，${TOURNEY.seats} 人单桌；每人 ${tchips(TOURNEY.startStack)} 锦标赛筹码，筹码不能兑换、不能加买`,
+      `盲注从 ${LEVELS[0][0]}/${LEVELS[0][1]} 开始，每 ${TOURNEY.handsPerLevel} 手升一级；按钮位每手顺时针轮转`,
+      '筹码输光就出局；同一手里两人出局时，开局筹码多的名次在前',
+      `冠军 ${formatG(p[0] ?? 0)}、亚军 ${formatG(p[1] ?? 0)}，奖金是全部买入；服务费归赌场，牌局不抽水`,
+      '离开座位时你的牌自动弃掉，盲注照付；回来后接着打',
+      '最小加注 = 本轮上一次加注的幅度（至少一个大盲）；有人全下时按投入额分成主池和边池',
+      '每手都用重新洗过的一副牌；其他牌手只能看到自己的底牌和桌面公开信息',
+    ];
+  }
   const t = core.casino.table(tableId);
   if (t.game === 'blackjack') {
     const r = t.s.rules;
@@ -255,7 +268,10 @@ function RlActions(props: { tableId: string }): JSX.Element {
 function PkActions(props: { tableId: string }): JSX.Element {
   const core = useCore();
   const api = store.tableApi;
-  const s = core.casino.pk(props.tableId);
+  const tourney = props.tableId === TOURNEY_TABLE;
+  const s = tourney ? (core.tourney.view() ?? core.casino.pk('pk1')) : core.casino.pk(props.tableId);
+  // the tournament's chips are not money
+  const fmt = tourney ? (m: Money) => tchips(m) : (m: Money) => formatG(m);
   const ui = store.tableUi;
   const r = s.rules;
   const me = PKE.seatOfPoker(s, 'player');
@@ -296,10 +312,28 @@ function PkActions(props: { tableId: string }): JSX.Element {
     [decisionKey, raiseTo],
   );
   const leaveBtn = (
-    <button className="ghost" disabled={!!seat && live && seat.inHand && !seat.folded} onClick={() => api?.leave()} title="打完这一手（或弃牌）后可以离桌，面前的筹码随身带走">
+    <button
+      className="ghost"
+      disabled={!!seat && live && seat.inHand && !seat.folded}
+      onClick={() => api?.leave()}
+      title={tourney ? '打完这一手（或弃牌）后可以离桌；不在座位上时你的牌会自动弃掉，盲注照付' : '打完这一手（或弃牌）后可以离桌，面前的筹码随身带走'}
+    >
       离桌
     </button>
   );
+  if (!seat && tourney) {
+    const me = core.tourney.entrant('player');
+    const t = core.tourney.current();
+    return (
+      <div className="action-row" style={{ alignItems: 'center' }}>
+        <span className="muted">
+          {t?.status === 'done' ? '锦标赛已经结束。' : me?.place ? `你在第 ${me.place} 名出局，正在旁观。` : '你没有参加这场比赛，正在旁观。'}
+          {me?.prize ? ` 奖金 ${formatG(me.prize)} 已经付给你。` : ''}
+        </span>
+        {leaveBtn}
+      </div>
+    );
+  }
   if (!seat) {
     const short = avail < r.minBuyIn;
     return (
@@ -338,7 +372,7 @@ function PkActions(props: { tableId: string }): JSX.Element {
           </button>
         ) : (
           <button className="primary" onClick={() => api?.pkAct?.({ type: 'call' })} title="快捷键 C">
-            {allInCall ? '全下跟注' : '跟注'} {formatG(legal.call)}
+            {allInCall ? '全下跟注' : '跟注'} {fmt(legal.call)}
           </button>
         )}
         {legal.canRaise && (
@@ -356,13 +390,13 @@ function PkActions(props: { tableId: string }): JSX.Element {
               </button>
             ))}
             <button className="primary" onClick={() => doRaise(snap(raiseTo))} title="快捷键 R">
-              {raiseTo >= legal.maxRaiseTo ? '全下' : s.currentBet === 0 ? '下注' : '加注到'} {formatG(snap(raiseTo))}
+              {raiseTo >= legal.maxRaiseTo ? '全下' : s.currentBet === 0 ? '下注' : '加注到'} {fmt(snap(raiseTo))}
             </button>
           </>
         )}
         {(legal.canRaise || allInCall) && !(legal.canRaise && raiseTo >= legal.maxRaiseTo) && (
           <button onClick={() => api?.pkAct?.({ type: 'allin' })} title="快捷键 A" style={{ borderColor: '#ff5a6a' }}>
-            全下 {formatG(seat.bet + seat.stack)}
+            全下 {fmt(seat.bet + seat.stack)}
           </button>
         )}
       </div>
@@ -370,6 +404,20 @@ function PkActions(props: { tableId: string }): JSX.Element {
   }
   const inHand = live && seat.inHand && !seat.folded;
   const topUp = Math.min(r.maxBuyIn - seat.stack, Math.floor(avail / G(1)) * G(1));
+  if (tourney) {
+    return (
+      <div className="action-row" style={{ alignItems: 'center' }}>
+        <span className="muted">面前筹码 {tchips(seat.stack)}</span>
+        <span className="muted">{inHand ? (seat.allIn ? '你已全下，等待发完公共牌……' : '等待其他玩家行动……') : '下一手马上开始……'}</span>
+        {!inHand && (
+          <button className="primary" disabled={busy || live} onClick={() => api?.deal()} title="快捷键 空格">
+            现在发牌
+          </button>
+        )}
+        {leaveBtn}
+      </div>
+    );
+  }
   return (
     <div className="action-row" style={{ alignItems: 'center' }}>
       <span className="muted">
@@ -405,10 +453,13 @@ function PkActions(props: { tableId: string }): JSX.Element {
 
 function PkHistory(props: { tableId: string }): JSX.Element {
   const core = useCore();
-  const s = core.casino.pk(props.tableId);
+  const tourney = props.tableId === TOURNEY_TABLE;
+  const s = tourney ? (core.tourney.view() ?? core.casino.pk('pk1')) : core.casino.pk(props.tableId);
   const h = s.history.slice(-5).reverse();
+  const amount = (m: Money): string => (tourney ? tchips(m) : formatG(m, { compact: true }));
   const who = (id: string | null): string => {
     if (id === 'player') return '你';
+    if (tourney) return (id ? core.tourney.entrant(id)?.name : undefined) ?? '牌手';
     const p = id ? core.casino.patronById(id) : undefined;
     return p?.name ?? '已离座的牌手';
   };
@@ -422,11 +473,11 @@ function PkHistory(props: { tableId: string }): JSX.Element {
       {h.length === 0 && <div className="dim" style={{ fontSize: 12 }}>—</div>}
       {h.map((e) => (
         <div key={e.hand} style={{ fontSize: 12, lineHeight: 1.5 }} className="muted">
-          #{e.hand} 底池 {formatG(e.pot, { compact: true })}：
+          #{e.hand} 底池 {amount(e.pot)}：
           {e.winners.map((w, i) => (
             <span key={i} style={{ color: w.who === 'player' ? 'var(--gold-light)' : undefined }}>
               {i > 0 ? '、' : ''}
-              {who(w.who)} {formatG(w.amount, { compact: true })}
+              {who(w.who)} {amount(w.amount)}
               {w.name ? `（${w.name}）` : ''}
             </span>
           ))}
@@ -536,7 +587,10 @@ export function TableUI(): JSX.Element | null {
   const cs = core.state.casino;
   const session = cs.session;
   const rules = rulesText(core, t.tableId);
+  const tourney = t.tableId === TOURNEY_TABLE;
+  const tt = core.tourney.current();
   const shoeInfo = (() => {
+    if (tourney) return null;
     const tb = core.casino.table(t.tableId);
     if (tb.game === 'roulette' || tb.game === 'poker') return null;
     const sh = tb.s.shoe;
@@ -567,9 +621,13 @@ export function TableUI(): JSX.Element | null {
             </div>
           </div>
           <div className="muted" style={{ fontSize: 12 }}>
-            {cfg.game === 'poker'
-              ? `无限注 · 盲注 ${formatG(cfg.rules.smallBlind ?? 0)}/${formatG(cfg.rules.bigBlind ?? 0)} · 买入 ${formatG(lim.min)}–${formatG(lim.max)}`
-              : `${GAME_NAMES[cfg.game]} · 限注 ${formatG(lim.min)}–${formatG(lim.max)}`}
+            {tourney
+              ? tt
+                ? `第 ${tt.level + 1} 级 · 盲注 ${core.tourney.blinds(tt).join('/')} · 还剩 ${core.tourney.left(tt).length} 人${tt.status === 'running' ? ` · 再 ${core.tourney.handsToNextLevel(tt)} 手升级` : ''}`
+                : ''
+              : cfg.game === 'poker'
+                ? `无限注 · 盲注 ${formatG(cfg.rules.smallBlind ?? 0)}/${formatG(cfg.rules.bigBlind ?? 0)} · 买入 ${formatG(lim.min)}–${formatG(lim.max)}`
+                : `${GAME_NAMES[cfg.game]} · 限注 ${formatG(lim.min)}–${formatG(lim.max)}`}
           </div>
           {showRules && hints && (
             <ul style={{ margin: '6px 0 0', paddingLeft: 16, fontSize: 12, lineHeight: 1.55, color: 'var(--muted)' }}>
@@ -589,7 +647,23 @@ export function TableUI(): JSX.Element | null {
           )}
         </div>
         <div className="stack" style={{ alignItems: 'flex-end' }}>
-          <div className="table-info">
+          {tourney && tt && (
+            <div className="table-info">
+              <div className="money" style={{ fontSize: 12 }}>
+                <span className="k">冠军奖金</span>
+                <span className="v">{formatG(tt.prizes[0] ?? 0)}</span>
+                <span className="k">亚军奖金</span>
+                <span className="v">{formatG(tt.prizes[1] ?? 0)}</span>
+                {core.tourney.entrant('player')?.place && (
+                  <>
+                    <span className="k">你的名次</span>
+                    <span className="v">第 {core.tourney.entrant('player')!.place} 名</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="table-info" style={tourney ? { display: 'none' } : undefined}>
             <div className="money" style={{ fontSize: 12 }}>
               <span className="k">可用筹码</span>
               <span className="v chips">{formatG(core.casino.availableChips())}</span>
@@ -616,7 +690,7 @@ export function TableUI(): JSX.Element | null {
       {ui.result && (
         <div key={ui.result.t} className="result-pop" style={{ color: ui.result.net > 0 ? 'var(--good)' : ui.result.net < 0 ? 'var(--bad)' : 'var(--text)' }}>
           {ui.result.net > 0 ? '+' : ''}
-          {ui.result.net !== 0 ? formatG(ui.result.net) : '±0'}
+          {ui.result.net !== 0 ? (tourney ? `${tchips(ui.result.net)} 筹码` : formatG(ui.result.net)) : '±0'}
           <div style={{ fontSize: 12, fontWeight: 600, textAlign: 'center', color: 'var(--text)' }}>{ui.result.text}</div>
         </div>
       )}

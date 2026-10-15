@@ -384,6 +384,55 @@ export interface CasinoState {
   invites: { highLimit: number; vip: number; sky: number };
   /** the members' floor: suite, spa and other services */
   sky: SkyState;
+  /** tonight's (or the last) Sunday tournament (absent in old saves) */
+  tourney?: TourneyState | null;
+  /** how the last few tournaments ended */
+  tourneyLog?: TourneyRecord[];
+  tourneySeq?: number;
+}
+
+/** Someone playing in the Sunday tournament. */
+export interface TourneyEntrant {
+  /** 'player', 'npc:<id>' for a named regular, or 't<n>' for a walk-in */
+  id: string;
+  name: string;
+  npc?: string;
+  /** a walk-in's look (anonLook seed) */
+  look?: number;
+  /** how they play (pokerAI style) */
+  style: string;
+  /** finishing place once out, or 1 for the winner */
+  place?: number;
+  prize?: Money;
+  /** who took their last chips */
+  outBy?: string;
+}
+
+export interface TourneyState {
+  id: number;
+  day: number;
+  status: 'open' | 'running' | 'done';
+  buyIn: Money;
+  fee: Money;
+  entrants: TourneyEntrant[];
+  /** the game itself, once the cards are in the air */
+  table: PokerState | null;
+  level: number;
+  handsAtLevel: number;
+  prizes: Money[];
+  /** the player is at the table (otherwise their hands are folded for them) */
+  seated: boolean;
+  /** minute of the last hand played while the player was away */
+  lastHandAt: number;
+}
+
+export interface TourneyRecord {
+  day: number;
+  entrants: number;
+  winner: string;
+  second: string;
+  playerPlace?: number;
+  playerPrize?: Money;
 }
 
 export interface SkyState {

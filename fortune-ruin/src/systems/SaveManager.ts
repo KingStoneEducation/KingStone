@@ -75,6 +75,9 @@ export function migrate(state: GameState): GameState {
   s.social.pairLog ??= [];
   s.social.npcLoans ??= [];
   s.social.npcLoanSeq ??= 0;
+  s.casino.tourney ??= null;
+  s.casino.tourneyLog ??= [];
+  s.casino.tourneySeq ??= 0;
   s.stories ??= { active: [], done: [], ended: {} };
   s.economy.stakes ??= [];
   s.oldtown ??= emptyOldTown();

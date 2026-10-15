@@ -8,6 +8,7 @@ import { BlackjackScene } from './tables/BlackjackScene';
 import { BaccaratScene } from './tables/BaccaratScene';
 import { RouletteScene } from './tables/RouletteScene';
 import { PokerScene } from './tables/PokerScene';
+import { TournamentScene } from './tables/TournamentScene';
 import { setGame } from './game/session';
 import { audio, sfx } from './audio/Audio';
 import { ambienceFor, musicFor, weatherSoundFor, type SoundContext } from './audio/soundscape';
@@ -30,7 +31,7 @@ const game = new Phaser.Game({
   pixelArt: true,
   roundPixels: true,
   scale: { mode: Phaser.Scale.RESIZE, width: window.innerWidth, height: window.innerHeight },
-  scene: [BootScene, WorldScene, BlackjackScene, BaccaratScene, RouletteScene, PokerScene],
+  scene: [BootScene, WorldScene, BlackjackScene, BaccaratScene, RouletteScene, PokerScene, TournamentScene],
   input: { mouse: { preventDefaultWheel: false } },
   disableContextMenu: true,
   fps: { target: 60 },

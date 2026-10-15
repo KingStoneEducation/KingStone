@@ -32,6 +32,7 @@ import { MarinaSystem } from '../systems/MarinaSystem';
 import { IsleSystem, onIsle } from '../systems/IsleSystem';
 import { WeatherSystem } from '../systems/WeatherSystem';
 import { NpcLendingSystem } from '../systems/NpcLendingSystem';
+import { TournamentSystem } from '../systems/TournamentSystem';
 import { HOMES } from '../data/housing';
 
 export interface GameEvents {
@@ -64,6 +65,8 @@ export interface GameEvents {
   'casino:backoff': Record<string, never>;
   'casino:notable': { net: Money };
   'casino:bgResult': { tableId: string; text: string };
+  'tourney:out': { place: number };
+  'tourney:done': { winner: string; playerPlace: number; prize: Money };
   'patron:emote': { id: string; emote: string; net: Money };
   'patron:left': { id: string; net: Money };
   'patron:arrived': { id: string; tableId: string };
@@ -83,7 +86,8 @@ export interface GameEvents {
   autosave: { reason: string };
 }
 
-export const MS_PER_MINUTE = { world: 700, table: 2400 };
+/** Real milliseconds per game minute: in the world, at a table, and at the Sunday tournament (about live pace). */
+export const MS_PER_MINUTE = { world: 700, table: 2400, tourney: 10000 };
 
 export class GameCore {
   state: GameState;
@@ -93,7 +97,7 @@ export class GameCore {
   paused = new Set<string>();
   /** UI change counter */
   version = 0;
-  timeMode: 'world' | 'table' = 'world';
+  timeMode: 'world' | 'table' | 'tourney' = 'world';
   speed = 1;
   private acc = 0;
   private advancing = false;
@@ -127,6 +131,7 @@ export class GameCore {
   isle: IsleSystem;
   weather: WeatherSystem;
   lending: NpcLendingSystem;
+  tourney: TournamentSystem;
 
   constructor(state: GameState) {
     this.state = state;
@@ -160,6 +165,7 @@ export class GameCore {
     this.isle = new IsleSystem(this);
     this.weather = new WeatherSystem(this);
     this.lending = new NpcLendingSystem(this);
+    this.tourney = new TournamentSystem(this);
   }
 
   now(): number {
@@ -266,6 +272,7 @@ export class GameCore {
     this.isle.tickMinute(t);
     this.weather.tickMinute(t, !this.advancing);
     this.casino.tickBackground(1);
+    this.tourney.tickMinute(t);
     if (d.hour !== before.hour) this.onHour(d.hour);
     if (d.dayIndex !== before.dayIndex) this.onDay(d.dayIndex);
     if (activity !== 'sleeping' && !this.advancing) {

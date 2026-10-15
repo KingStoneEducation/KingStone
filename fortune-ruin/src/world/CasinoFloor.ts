@@ -10,6 +10,7 @@ import type { MapData } from './maps/types';
 import type { CharDir } from '../art/characters';
 import { formatG } from '../core/money';
 import { POKER_SEAT_ANGLES } from '../art/tableArt';
+import { TOURNEY_HOST } from '../casino/tournament';
 
 export interface SeatPos {
   x: number;
@@ -86,21 +87,29 @@ export class CasinoFloor {
     );
   }
 
-  private seatOf(id: string): SeatPos | null {
-    const p = this.core.state.casino.patrons.find((x) => x.id === id);
-    if (!p?.seat) return null;
-    const [tableId, s] = p.seat.split(':');
-    return seatPosition(tableId, Number(s));
+  /** Everyone seated at a table who is not a named NPC: the casino's patrons, and the Sunday tournament's walk-ins. */
+  private seatedStrangers(): { id: string; look: number; dressy: boolean; seat: SeatPos }[] {
+    const out: { id: string; look: number; dressy: boolean; seat: SeatPos }[] = [];
+    for (const p of this.core.state.casino.patrons) {
+      if (p.npc || !p.seat || p.state === 'gone') continue;
+      const [tableId, i] = p.seat.split(':');
+      const seat = seatPosition(tableId, Number(i));
+      if (seat) out.push({ id: p.id, look: p.look, dressy: tableId === 'bacv' || tableId === 'bjv', seat });
+    }
+    const s = this.core.tourney.table();
+    s?.seats.forEach((st, i) => {
+      const e = st.occupant ? this.core.tourney.entrant(st.occupant) : undefined;
+      const seat = seatPosition(TOURNEY_HOST, i);
+      if (e && !e.npc && e.id !== 'player' && seat) out.push({ id: `tourney:${e.id}`, look: e.look ?? 1, dressy: false, seat });
+    });
+    return out;
   }
 
   build(): void {
-    for (const p of this.core.state.casino.patrons) {
-      if (p.npc || !p.seat || p.state === 'gone') continue;
-      const seat = this.seatOf(p.id);
-      if (!seat) continue;
-      const s = new CharacterSprite(this.scene, anonLook(p.look, p.seat.startsWith('bacv') || p.seat.startsWith('bjv') ? 0.95 : undefined), seat.x, seat.y, 'up');
-      s.fixedDepth = seat.depth;
-      s.setSitting(true, seat.dir);
+    for (const p of this.seatedStrangers()) {
+      const s = new CharacterSprite(this.scene, anonLook(p.look, p.dressy ? 0.95 : undefined), p.seat.x, p.seat.y, 'up');
+      s.fixedDepth = p.seat.depth;
+      s.setSitting(true, p.seat.dir);
       this.patrons.set(p.id, s);
     }
     this.shuffleSlotPlayers();
@@ -132,6 +141,9 @@ export class CasinoFloor {
 
   /** Seat of a named NPC playing at a table (used by the NPC director). */
   npcSeat(npcId: string): SeatPos | null {
+    // a regular playing in the Sunday tournament sits at its table
+    const ts = this.core.tourney.playing(npcId) ? this.core.tourney.seatOf(`npc:${npcId}`) : -1;
+    if (ts >= 0) return seatPosition(TOURNEY_HOST, ts);
     const p = this.core.state.casino.patrons.find((x) => x.npc === npcId && x.state !== 'gone');
     if (!p?.seat) return null;
     const [tableId, s] = p.seat.split(':');
@@ -140,12 +152,10 @@ export class CasinoFloor {
 
   update(dt: number, now: number): void {
     const alive = new Set<string>();
-    for (const p of this.core.state.casino.patrons) {
-      if (p.npc || !p.seat || p.state === 'gone') continue;
+    for (const p of this.seatedStrangers()) {
       alive.add(p.id);
       if (!this.patrons.has(p.id)) {
-        const seat = this.seatOf(p.id);
-        if (!seat) continue;
+        const seat = p.seat;
         const s = new CharacterSprite(this.scene, anonLook(p.look), this.entry.x * 16 + 8, this.entry.y * 16 + 14, 'up');
         this.patrons.set(p.id, s);
         const path = findPath(this.map, this.entry.x, this.entry.y, Math.floor(seat.x / 16), Math.floor(seat.y / 16), false) ?? [];

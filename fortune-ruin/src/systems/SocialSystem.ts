@@ -57,7 +57,7 @@ export const DIM_NAMES: Record<keyof RelDims, string> = {
 const BIPOLAR: (keyof RelDims)[] = ['affection', 'trust', 'respect'];
 
 /** Kinds that people like to talk about. */
-const GOSSIP_KINDS = new Set(['new_partner', 'big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend', 'donated', 'pawned', 'volunteered', 'donated_kitchen', 'free_meal_rich', 'yacht_trip']);
+const GOSSIP_KINDS = new Set(['tourney_win', 'new_partner', 'big_win', 'big_loss', 'flashy_purchase', 'fired', 'promotion', 'evicted', 'outburst', 'drunk_scene', 'lied', 'loan_default', 'moved', 'vip_upgrade', 'barred', 'generous_treat', 'debt_unpaid', 'helped_friend', 'donated', 'pawned', 'volunteered', 'donated_kitchen', 'free_meal_rich', 'yacht_trip']);
 
 export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   big_win: (m) => `在赌场赢了 ${formatG(Number(m.data.amount ?? 0))}${m.data.game ? `（${m.data.game}）` : ''}`,
@@ -130,6 +130,8 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   outbid_me: (m) => `在拍卖会上抢走了我想要的${m.data.item ?? '拍品'}`,
   covered_debt: (m) => `替我把欠${NPC_BY_ID[String(m.data.npc)]?.name ?? '朋友'}的 ${formatG(Number(m.data.amount ?? 0))} 还上了`,
   paid_for_friend: (m) => `替${NPC_BY_ID[String(m.data.npc)]?.name ?? '朋友'}把欠我的 ${formatG(Number(m.data.amount ?? 0))} 还了`,
+  tourney_win: (m) => `赢了周日扑克锦标赛（奖金 ${formatG(Number(m.data.amount ?? 0))}）`,
+  knocked_me_out: () => '在扑克锦标赛上把我淘汰出局',
   bought_flat: (m) => `从我手里买下了${m.data.home ?? '房子'}`,
   pledged_support: () => '答应在评审前帮我',
   stood_by_me: () => '在部门评审的时候站在我这边',
@@ -580,6 +582,7 @@ export class SocialSystem {
       fired: { kind: 'fired', facets: { wealthLoss: 0.4, unreliability: 0.3, crisis: 0.3 }, importance: 35, data },
       moved: { kind: 'moved', facets: Number(data.tier ?? 1) >= 3 ? { wealthDisplay: 0.6, success: 0.3 } : Number(data.tier ?? 1) === 0 ? { wealthLoss: 0.3, crisis: 0.2 } : { attention: 0 }, importance: Number(data.tier ?? 1) >= 3 ? 30 : 15, data },
       evicted: { kind: 'evicted', facets: { wealthLoss: 0.7, crisis: 0.8, unreliability: 0.4 }, importance: 45, data },
+      tourney_win: { kind: 'tourney_win', facets: { success: 0.6, gambling: 0.5, wealthGain: 0.3 }, importance: 26, data },
     };
     const spec = specs[kind];
     if (!spec) return;
@@ -592,6 +595,8 @@ export class SocialSystem {
       }
     }
     if (kind === 'evicted' || kind === 'moved') firstHand.push('margaret');
+    // the others at the table saw it
+    if (kind === 'tourney_win') firstHand.push(...String(data.at ?? '').split(',').filter((x) => NPC_BY_ID[x]));
     for (const id of new Set(firstHand)) this.applyDirect(id, spec, { source: 'witnessed', silent: true });
     // close friends are usually told directly by the player character's social circle
     for (const def of NPCS) {
