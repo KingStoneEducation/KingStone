@@ -9,7 +9,7 @@ import { ownShopMap } from './maps/ownShop';
 import { BIZ_TYPES } from '../data/business';
 import { CASINO_TABLES, casinoArea, type CasinoArea } from './maps/casinoMap';
 import { regionAt, type Door, type Face, type Interactable, type InteractKind, type MapData, type MapRegion, type PlacedProp, type StaffWhen } from './maps/types';
-import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING, MARINA } from './maps/cityLayout';
+import { BUILDING_BY_ID, BUS_STOPS, CITY_SPOTS, LOCATION_BUILDING, MARINA, type BuildingDef } from './maps/cityLayout';
 import { PROPS, propFrameName, type PropDef } from '../art/props';
 import { TILE_INDEX, displayTile, tileIndex } from '../art/tiles';
 import { buildShading } from './shading';
@@ -272,6 +272,8 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   /** temporary images of a lift ride in progress */
   private liftParts: Phaser.GameObjects.GameObject[] = [];
   private pendingLight: { darkness: number; color: number; lights: LightSource[]; glow: number; time: number } | null = null;
+  /** a building's door standing open while someone goes through it */
+  private doorway: Phaser.GameObjects.Graphics | null = null;
   /** the small animations of everyday things (see actions.ts) */
   private actions: Actions = new Actions(this.actionHost());
   /** the bed the player last lay down on, to sleep in it */
@@ -1095,7 +1097,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   private useDoor(d: Door): void {
     const p = this.player!;
     if (d.target === 'city' || d.target === 'isle') {
-      this.travel(d.target, d.spawn);
+      this.travel(d.target, d.spawn, undefined, undefined, d);
       return;
     }
     const refusal = entryRefusal(this.core, d.target);
@@ -1109,11 +1111,15 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
       store.toast(refusal, 'warn');
       return;
     }
-    this.travel(d.target, d.spawn);
+    this.travel(d.target, d.spawn, undefined, undefined, d);
   }
 
-  /** Fade out, switch map, fade in. */
-  private travel(location: string, spawn: string | null, tile?: Pt, face?: Face): void {
+  /**
+   * Fade out, switch map, fade in. Through a door between the street and a building, the player
+   * walks it: the building's door opens and they step into the doorway; inside, they step in off
+   * the mat; coming out, they step out of the open door, which then closes behind them.
+   */
+  private travel(location: string, spawn: string | null, tile?: Pt, face?: Face, door?: Door): void {
     if (this.transitioning) return;
     this.transitioning = true;
     store.fade = true;
@@ -1121,19 +1127,115 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.core.paused.add('transition');
     this.player?.stop();
     const cam = this.cameras.main;
-    cam.fadeOut(200, 8, 6, 14);
-    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      const from = this.map.id;
-      this.core.setLocation(location, -1, -1);
-      this.loadMap(location, spawn, tile, face);
-      this.syncState();
-      this.onArrive(from, location);
-      cam.fadeIn(260, 8, 6, 14);
+    const outside = (id: string) => id === 'city' || id === 'isle';
+    const from = this.map.id;
+    const into = door && this.map.outdoor && !outside(location) ? this.doorBuilding(this.map, (b) => b.door!.x === door.x && b.door!.y === door.y) : null;
+    const outOf = !!door && !this.map.outdoor && outside(location);
+    const done = () => {
       this.core.paused.delete('transition');
       this.transitioning = false;
       store.fade = false;
       store.notify();
+    };
+    const go = () => {
+      cam.fadeOut(200, 8, 6, 14);
+      cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        this.closeDoorway();
+        this.core.setLocation(location, -1, -1);
+        this.loadMap(location, spawn, tile, face);
+        this.syncState();
+        this.onArrive(from, location);
+        cam.fadeIn(260, 8, 6, 14);
+        if (into) void this.stepPlayer(16, 0, 'up', 300).then(done);
+        else if (outOf) {
+          const bd = this.doorBuilding(this.map, (b) => b.target === from);
+          if (bd) this.openDoorway(bd, false);
+          void this.stepPlayer(-14, 0, 'down', 320).then(() => {
+            this.time.delayedCall(240, () => this.closeDoorway());
+            done();
+          });
+        } else done();
+      });
+    };
+    if (into) {
+      this.openDoorway(into, true);
+      void this.stepPlayer(0, -10, 'up', 230, 0.15).then(go);
+    } else if (outOf) void this.stepPlayer(0, 10, 'down', 200, 0.15).then(go);
+    else go();
+  }
+
+  /** The building on this map whose door matches. */
+  private doorBuilding(map: MapData, match: (b: BuildingDef) => boolean): BuildingDef | null {
+    for (const id of map.buildings ?? []) {
+      const b = BUILDING_BY_ID[id];
+      if (b?.door && match(b)) return b;
+    }
+    return null;
+  }
+
+  /**
+   * Walk the player a few pixels on their own (through a doorway): from `fromDy` to `toDy` off
+   * where they stand, fading to `alphaTo` (or in from faint, when they come through towards us).
+   */
+  private stepPlayer(fromDy: number, toDy: number, dir: CharDir, ms: number, alphaTo = 1): Promise<void> {
+    const p = this.player;
+    if (!p) return Promise.resolve();
+    const base = p.y;
+    const o = { dy: fromDy, a: alphaTo === 1 ? 0.3 : 1 };
+    p.setMoving(true, dir);
+    p.alpha = o.a;
+    p.setPos(p.x, base + fromDy);
+    return new Promise((resolve) => {
+      this.tweens.add({
+        targets: o,
+        dy: toDy,
+        a: alphaTo,
+        duration: ms,
+        onUpdate: () => {
+          p.alpha = o.a;
+          p.setPos(p.x, base + o.dy);
+        },
+        onComplete: () => {
+          p.setMoving(false, dir);
+          p.alpha = alphaTo === 1 ? 1 : alphaTo;
+          p.setPos(p.x, base + toDy);
+          resolve();
+        },
+      });
     });
+  }
+
+  /** The door in a facade swings open onto the dark (or, at night, lamp-lit) hallway behind it. */
+  private openDoorway(bd: BuildingDef, swing: boolean): void {
+    this.closeDoorway();
+    const w = (bd.door!.w ?? 1) * 16 - 6;
+    const x = bd.door!.x * 16 + 3;
+    const bottom = (bd.y + bd.h) * 16;
+    const h = 26;
+    const night = (this.pendingLight?.darkness ?? 0) > 0.35;
+    const g = this.add.graphics().setDepth((bd.y + bd.h) * 16 - 2 + 0.05);
+    this.doorway = g;
+    const draw = (k: number) => {
+      g.clear();
+      const open = Math.round(w * k);
+      // the hallway, the light on its floor, and the leaf of the door turned in against the jamb
+      g.fillStyle(0x140e0a, 1).fillRect(x, bottom - h, open, h);
+      g.fillStyle(night ? 0xffcf7a : 0x8a6e52, night ? 0.6 : 0.4).fillRect(x, bottom - 7, open, 5);
+      g.fillStyle(night ? 0xffe2a0 : 0xb89a78, night ? 0.35 : 0.2).fillRect(x + 1, bottom - h + 3, Math.max(0, open - 2), 2);
+      g.fillStyle(0x5a3e28, 1).fillRect(x + open - 2, bottom - h, Math.max(2, Math.round((w - open) * 0.35) + 2), h);
+    };
+    if (!swing) {
+      draw(1);
+      return;
+    }
+    draw(0);
+    const o = { k: 0 };
+    this.tweens.add({ targets: o, k: 1, duration: 140, onUpdate: () => draw(o.k) });
+  }
+
+  private closeDoorway(): void {
+    this.doorway?.destroy();
+    this.doorway = null;
   }
 
   teleport(location: string, spawn: string | null, tile?: Pt): void {
