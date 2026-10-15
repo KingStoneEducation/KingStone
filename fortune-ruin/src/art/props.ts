@@ -1100,6 +1100,77 @@ def({
   },
 });
 
+// the same pieces turned to face left (mirrored, they face right): for putting them along a side wall
+def({
+  id: 'sofa_side',
+  w: 24,
+  h: 56,
+  foot: { w: 1, h: 3 },
+  draw: (ctx) => {
+    shadow(ctx, 12, 54, 11, 2);
+    // the back along the right, the seat cushions facing left, an arm at each end
+    rect(ctx, 14, 6, 8, 44, '#3e5a76');
+    rect(ctx, 3, 10, 12, 38, '#5a7a9a');
+    vline(ctx, 4, 11, 36, '#7a9aba');
+    hline(ctx, 3, 22, 12, '#4a6a8a');
+    hline(ctx, 3, 35, 12, '#4a6a8a');
+    rect(ctx, 2, 4, 20, 7, '#3e5a76');
+    rect(ctx, 2, 46, 20, 7, '#3e5a76');
+    hline(ctx, 2, 4, 20, '#5a7a9a');
+    hline(ctx, 2, 46, 20, '#5a7a9a');
+    strokeRect(ctx, 2, 4, 20, 49, O);
+  },
+});
+def({
+  id: 'tv_side',
+  w: 18,
+  h: 44,
+  foot: { w: 1, h: 2 },
+  light: { x: 4, y: 16, r: 30, color: '#9fc8ff' },
+  frames: 2,
+  draw: (ctx, f) => {
+    // the low cabinet seen from above, the screen standing on it edge-on, its face lit on the left
+    box(ctx, 1, 12, 16, 22, 8, P.woodDark, '#4a2e1a');
+    rect(ctx, 9, 0, 5, 30, '#141218');
+    vline(ctx, 9, 1, 28, f ? '#3a6aa8' : '#4a8ab8');
+    rect(ctx, 8, 28, 7, 3, '#2a2a2e');
+  },
+  night: (ctx, f) => {
+    vline(ctx, 9, 1, 28, f ? '#6a9ad8' : '#8ac8f8');
+    vline(ctx, 8, 3, 24, 'rgba(138,200,248,0.5)');
+  },
+});
+def({
+  id: 'piano_side',
+  w: 24,
+  h: 58,
+  foot: { w: 1, h: 3 },
+  draw: (ctx) => {
+    shadow(ctx, 13, 56, 11, 2);
+    // the tall case, the keys sticking out on the left, the stool in front of them
+    box(ctx, 8, 2, 14, 46, 8, '#1a1a1e', '#141218');
+    rect(ctx, 3, 14, 6, 30, '#f4f1ea');
+    for (let y = 15; y < 43; y += 3) hline(ctx, 3, y, 4, '#1a1a1e');
+    strokeRect(ctx, 3, 14, 6, 30, O);
+    rect(ctx, 0, 24, 3, 10, '#3a2416');
+  },
+});
+def({
+  id: 'treadmill_side',
+  w: 34,
+  h: 24,
+  foot: { w: 2, h: 1 },
+  draw: (ctx) => {
+    shadow(ctx, 17, 22, 15, 2);
+    // the belt running left to right, the console at the left end
+    rect(ctx, 4, 10, 28, 10, '#2a2a30');
+    rect(ctx, 6, 12, 24, 6, '#4a4a52');
+    rect(ctx, 1, 0, 7, 14, '#3a3a40');
+    rect(ctx, 2, 2, 5, 3, '#3ab86a');
+    strokeRect(ctx, 4, 10, 28, 10, O);
+  },
+});
+
 // ------------------------------------------------------------------ shops / venues
 
 def({

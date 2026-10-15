@@ -4,11 +4,16 @@ import type { Interaction, MapData, PlacedProp } from './maps/types';
 
 type Pt = { x: number; y: number };
 
+/** Which way a piece faces: towards the room (the way it is bought), or turned to face left or right. */
+export type Facing = 'down' | 'left' | 'right';
+
 /** A piece of furniture the player has put down somewhere in their home (tile of its anchor, as MapBuilder.prop takes it). */
 export interface Placement {
   item: string;
   x: number;
   y: number;
+  /** absent: facing the room */
+  facing?: Facing;
 }
 
 /**
@@ -16,13 +21,28 @@ export interface Placement {
  * (The memory-foam mattress goes on the bed, the luxury bed takes the old bed's place and the
  * painting hangs on the wall by itself; see furnish.)
  */
-export const FURNISHINGS: Record<string, { prop: string; interact?: Interaction }> = {
-  furn_sofa: { prop: 'sofa' },
-  furn_tv: { prop: 'tv', interact: { kind: 'tv', label: '大屏电视' } },
+export const FURNISHINGS: Record<string, { prop: string; side?: string; interact?: Interaction }> = {
+  furn_sofa: { prop: 'sofa', side: 'sofa_side' },
+  furn_tv: { prop: 'tv', side: 'tv_side', interact: { kind: 'tv', label: '大屏电视' } },
   furn_plants: { prop: 'plant' },
-  furn_treadmill: { prop: 'treadmill', interact: { kind: 'treadmill', label: '跑步机' } },
-  furn_piano: { prop: 'piano', interact: { kind: 'piano', label: '立式钢琴' } },
+  furn_treadmill: { prop: 'treadmill', side: 'treadmill_side', interact: { kind: 'treadmill', label: '跑步机' } },
+  furn_piano: { prop: 'piano', side: 'piano_side', interact: { kind: 'piano', label: '立式钢琴' } },
 };
+
+/** The ways a piece can be turned (a pot plant looks the same from every side). */
+export function facings(item: string): Facing[] {
+  return FURNISHINGS[item]?.side ? ['down', 'left', 'right'] : ['down'];
+}
+
+/** What a piece is drawn as when it faces this way: its side view, mirrored for facing right. */
+export function propFor(item: string, facing: Facing = 'down'): { prop: string; flipX: boolean } {
+  const f = FURNISHINGS[item];
+  if (!f?.side || facing === 'down') return { prop: f?.prop ?? item, flipX: false };
+  return { prop: f.side, flipX: facing === 'right' };
+}
+
+const FACING_NAME: Record<Facing, string> = { down: '朝向房间', left: '朝左', right: '朝右' };
+export const facingName = (f: Facing) => FACING_NAME[f];
 
 /** The tiles a prop covers when anchored at (x, y): from the anchor, rightwards and upwards. */
 export function footprint(prop: string, x: number, y: number): Pt[] {
@@ -103,12 +123,13 @@ export function furnish(map: MapData, owned: string[], placed: Placement[]): Map
   for (const p of placed) {
     const f = FURNISHINGS[p.item];
     if (!f || !owned.includes(p.item)) continue;
+    const { prop: id, flipX } = propFor(p.item, p.facing);
     // a piece whose place has since been taken (or a save from another layout) waits to be put down again
-    if (placementError(out, f.prop, p.x, p.y)) continue;
-    const prop: PlacedProp = { id: f.prop, x: p.x, y: p.y, interact: f.interact };
+    if (placementError(out, id, p.x, p.y)) continue;
+    const prop: PlacedProp = { id, x: p.x, y: p.y, interact: f.interact, flipX: flipX || undefined };
     out.props.push(prop);
-    for (const t of footprint(f.prop, p.x, p.y)) out.blocked[t.y * out.w + t.x] = 1;
-    const d = PROPS[f.prop];
+    for (const t of footprint(id, p.x, p.y)) out.blocked[t.y * out.w + t.x] = 1;
+    const d = PROPS[id];
     if (f.interact) out.interactables.push({ id: `${p.item}@${p.x},${p.y}`, x: p.x, y: p.y - Math.max(1, d.foot.h) + 1, w: Math.max(1, d.foot.w), h: Math.max(1, d.foot.h), interact: f.interact });
   }
   return out;

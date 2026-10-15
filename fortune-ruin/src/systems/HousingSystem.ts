@@ -3,7 +3,8 @@ import { G, formatG, mulRatio, type Money } from '../core/money';
 import { HOMES, HOME_ORDER, type HomeDef } from '../data/housing';
 import { ITEMS } from '../data/items';
 import { DAYS_PER_MONTH } from '../core/calendar';
-import { FURNISHINGS, furnish, misplaced, placementError, type Placement } from '../world/furnish';
+import { FURNISHINGS, facings, furnish, misplaced, placementError, propFor, type Facing, type Placement } from '../world/furnish';
+import { FLOOR_CHOICES, WALL_CHOICES, decorCost, decorPrestige, decorate, type Decor } from '../world/decor';
 import { interiorMap } from '../world/maps/interiors';
 import type { MapData } from '../world/maps/types';
 
@@ -45,32 +46,106 @@ export class HousingSystem {
 
   /** The current home's room with everything you have put in it. */
   room(): MapData {
-    return furnish(interiorMap(this.current().location), this.furniture(), this.placed());
+    return furnish(this.bareRoom(), this.furniture(), this.placed());
+  }
+
+  /** The current home with its floor and walls as you have had them done, before the furniture. */
+  bareRoom(): MapData {
+    return decorate(interiorMap(this.current().location), this.decor());
+  }
+
+  // ---------------------------------------------------------------- redecorating
+
+  /** The floor and walls you have had done in a home (this one by default), once the crew has finished. */
+  decor(homeId = this.h.homeId): Decor | undefined {
+    const d = this.h.decor?.[homeId];
+    return d && (d.floor || d.wall) ? { floor: d.floor, wall: d.wall } : undefined;
+  }
+
+  /** Work the crew has not finished yet in a home. */
+  decorPending(homeId = this.h.homeId): { floor?: string; wall?: string; readyDay: number } | undefined {
+    return this.h.decor?.[homeId]?.pending;
+  }
+
+  /** What redecorating the current home this way would cost. */
+  decorQuote(change: Decor): Money {
+    return decorCost(interiorMap(this.current().location), change);
+  }
+
+  /** Why the current home cannot be redecorated this way, or null. */
+  decorError(change: Decor): string | null {
+    if (!this.h.owned.includes(this.h.homeId)) return '租来的房子不能动地板和墙面，买下的房子才能装修';
+    if (this.decorPending()) return '装修队已经在干活了，明天收工';
+    const now = this.decor() ?? {};
+    const floor = change.floor && change.floor !== now.floor ? change.floor : undefined;
+    const wall = change.wall && change.wall !== now.wall ? change.wall : undefined;
+    if (!floor && !wall) return '没有要改的地方';
+    if (floor && !FLOOR_CHOICES.some((x) => x.id === floor)) return '没有这种地板';
+    if (wall && !WALL_CHOICES.some((x) => x.id === wall)) return '没有这种墙面';
+    const cost = this.decorQuote({ floor, wall });
+    if (this.core.economy.balance('bank') + this.core.economy.balance('cash') < cost) return `需要 ${formatG(cost)}`;
+    return null;
+  }
+
+  /** Have the current home's floor and/or walls redone: paid now, finished by the crew tomorrow. */
+  redecorate(change: Decor): HousingResult {
+    const err = this.decorError(change);
+    if (err) return { ok: false, error: err };
+    const now = this.decor() ?? {};
+    const floor = change.floor && change.floor !== now.floor ? change.floor : undefined;
+    const wall = change.wall && change.wall !== now.wall ? change.wall : undefined;
+    const cost = this.decorQuote({ floor, wall });
+    const what = [floor && FLOOR_CHOICES.find((x) => x.id === floor)!.name, wall && WALL_CHOICES.find((x) => x.id === wall)!.name].filter(Boolean).join('、');
+    const home = this.current();
+    const r = this.core.economy.pay(cost, 'housing', `${home.name}装修：${what}`, 'renovation', ['bank', 'cash']);
+    if (!r.ok) return { ok: false, error: r.error };
+    const all = (this.h.decor ??= {});
+    const d = (all[this.h.homeId] ??= {});
+    d.pending = { floor, wall, readyDay: this.core.today() + 1 };
+    this.core.journal.add('money', `请了装修队给${home.name}换${what}，花了 ${formatG(cost)}。`);
+    this.core.phone.send('renovation', '安家装修队', `收到。明天一早我们进场，${what}，当天收工。家具我们会挪开再摆回原位。`);
+    this.core.touch();
+    return { ok: true, message: `装修队明天来，${what}，当天就能弄好。` };
+  }
+
+  /** Each morning: the crew finishes the homes they started the day before. */
+  settleDecor(): void {
+    const today = this.core.today();
+    for (const [homeId, d] of Object.entries(this.h.decor ?? {})) {
+      if (!d.pending || d.pending.readyDay > today) continue;
+      if (d.pending.floor) d.floor = d.pending.floor;
+      if (d.pending.wall) d.wall = d.pending.wall;
+      delete d.pending;
+      this.core.journal.add('money', `${HOMES[homeId]?.name ?? '家里'}装修好了。`, true);
+      this.core.bus.emit('home:redecorated', { homeId });
+      this.core.touch();
+    }
   }
 
   /** Pieces in this home that stand on the floor but are not standing anywhere yet (just delivered, or their place is taken). */
   unplaced(): string[] {
-    const lost = new Set(misplaced(interiorMap(this.current().location), this.furniture(), this.placed()));
+    const lost = new Set(misplaced(this.bareRoom(), this.furniture(), this.placed()));
     const on = new Set(this.placed().map((p) => p.item));
     return this.furniture().filter((f) => FURNISHINGS[f] && (!on.has(f) || lost.has(f)));
   }
 
-  /** Why this piece cannot be put at (x, y), or null. Moving a piece: its old place does not count. */
-  placeError(item: string, x: number, y: number): string | null {
+  /** Why this piece cannot be put at (x, y) facing this way, or null. Moving a piece: its old place does not count. */
+  placeError(item: string, x: number, y: number, facing: Facing = 'down'): string | null {
     if (!this.furniture().includes(item)) return '家里没有这件家具';
     const f = FURNISHINGS[item];
     if (!f) return '这件不用摆放';
+    if (!facings(item).includes(facing)) return '这件家具不能这样摆';
     const others = this.placed().filter((p) => p.item !== item);
-    return placementError(furnish(interiorMap(this.current().location), this.furniture(), others), f.prop, x, y);
+    return placementError(furnish(this.bareRoom(), this.furniture(), others), propFor(item, facing).prop, x, y);
   }
 
-  /** Put a piece down (or move it) at (x, y) in the current home. */
-  place(item: string, x: number, y: number): HousingResult {
-    const err = this.placeError(item, x, y);
+  /** Put a piece down (or move it) at (x, y) in the current home, facing the room or turned to one side. */
+  place(item: string, x: number, y: number, facing: Facing = 'down'): HousingResult {
+    const err = this.placeError(item, x, y, facing);
     if (err) return { ok: false, error: err };
     const all = (this.h.placed ??= {});
     const list = (all[this.h.homeId] = this.placed().filter((p) => p.item !== item));
-    list.push({ item, x, y });
+    list.push(facing === 'down' ? { item, x, y } : { item, x, y, facing });
     this.core.touch();
     return { ok: true, message: `${ITEMS[item]?.name ?? item}摆好了。` };
   }
@@ -134,6 +209,8 @@ export class HousingSystem {
   prestige(): number {
     let p = this.current().prestige;
     for (const f of this.furniture()) p += ITEMS[f]?.homePrestige ?? 0;
+    // a marble floor, panelled walls
+    p += decorPrestige(this.decor());
     // paintings from the auction house on the walls
     let art = 0;
     for (const a of this.core.state.auction?.collection ?? []) if (a.kind === 'painting' && a.consigned === undefined) art += Math.min(0.8, Math.max(0.1, Math.log10(a.value / G(1000)) * 0.3));
@@ -359,6 +436,8 @@ export class HousingSystem {
     eco.receive('bank', value, 'property_sale', `出售${HOMES[homeId].name}`, 'buyer');
     eco.spend('bank', fee, 'fees', '房产中介费 5%', 'agent');
     this.h.owned = this.h.owned.filter((h) => h !== homeId);
+    // the new owners get the floors and walls you had done
+    if (this.h.decor) delete this.h.decor[homeId];
     // the mortgage is cleared from the proceeds
     const mortgage = this.core.state.economy.loans.find((l) => l.kind === 'mortgage' && l.status === 'active');
     if (mortgage && this.h.owned.length === 0) eco.prepayLoan(mortgage.id, mortgage.balance);

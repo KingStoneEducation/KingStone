@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { store } from '../store';
 import { FURNISHINGS } from '../../world/furnish';
+import { CREW_FEE, FLOOR_CHOICES, WALL_CHOICES, decorArea } from '../../world/decor';
+import { interiorMap } from '../../world/maps/interiors';
 import { useCore } from '../hooks';
 import { AmountInput, GV, ItemIcon, Modal, useFeedback } from '../components';
 import { HOMES, HOME_ORDER } from '../../data/housing';
@@ -280,6 +282,80 @@ export function FurnitureTab(): JSX.Element {
             </button>
           </div>
         </div>
+      )}
+      <RedecorateCard />
+      {fb}
+    </div>
+  );
+}
+
+/** New floors and walls for a home you own: chosen here, laid by a crew the next day. */
+function RedecorateCard(): JSX.Element {
+  const core = useCore();
+  const h = core.housing;
+  const [fb, say] = useFeedback();
+  const now = h.decor() ?? {};
+  const [floor, setFloor] = useState<string | undefined>(undefined);
+  const [wall, setWall] = useState<string | undefined>(undefined);
+  const owned = core.state.housing.owned.includes(core.state.housing.homeId);
+  const pending = h.decorPending();
+  const area = decorArea(interiorMap(h.current().location));
+  const change = { floor: floor && floor !== now.floor ? floor : undefined, wall: wall && wall !== now.wall ? wall : undefined };
+  const err = h.decorError(change);
+  const cost = h.decorQuote(change);
+  const nameOf = (list: { id: string; name: string }[], id?: string) => list.find((x) => x.id === id)?.name;
+  return (
+    <div className="card stack" style={{ gap: 8 }}>
+      <h3>装修：{h.current().name}</h3>
+      {!owned ? (
+        <div className="note">租来的房子不能动地板和墙面。买下的房子才能装修。</div>
+      ) : pending ? (
+        <div className="note">装修队明天收工：{[nameOf(FLOOR_CHOICES, pending.floor), nameOf(WALL_CHOICES, pending.wall)].filter(Boolean).join('、')}。</div>
+      ) : (
+        <>
+          <div className="muted" style={{ fontSize: 12 }}>
+            换掉家里面积最大的那种地板（{area.floor} 块；厨房、卫生间的瓷砖和别处的地毯不动）和墙面（{area.wall} 块）。装修队上门费 {formatG(CREW_FEE)}，第二天收工，家具挪开再摆回原位。
+            现在：{nameOf(FLOOR_CHOICES, now.floor) ?? '原来的地板'}、{nameOf(WALL_CHOICES, now.wall) ?? '原来的墙面'}。好的地板和墙面会让家里更体面，但不会提高房子的估价。
+          </div>
+          <div className="field">
+            <label>地板（每块）</label>
+            <div className="row wrap" style={{ gap: 4 }}>
+              {FLOOR_CHOICES.map((f) => (
+                <button key={f.id} className={`small ${floor === f.id ? 'primary' : ''}`} disabled={f.id === now.floor} onClick={() => setFloor(floor === f.id ? undefined : f.id)}>
+                  {f.name} {formatG(f.perTile)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="field">
+            <label>墙面（每块）</label>
+            <div className="row wrap" style={{ gap: 4 }}>
+              {WALL_CHOICES.map((w) => (
+                <button key={w.id} className={`small ${wall === w.id ? 'primary' : ''}`} disabled={w.id === now.wall} onClick={() => setWall(wall === w.id ? undefined : w.id)}>
+                  {w.name} {formatG(w.perTile)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="row between">
+            <span style={{ fontSize: 12 }}>{cost > 0 ? <>合计 <GV v={cost} /></> : <span className="muted">选好地板或墙面</span>}</span>
+            <button
+              className="small primary"
+              disabled={!!err}
+              title={err ?? undefined}
+              onClick={() => {
+                const r = h.redecorate(change);
+                say(r.ok, r.ok ? r.message : r.error);
+                if (r.ok) {
+                  setFloor(undefined);
+                  setWall(undefined);
+                }
+              }}
+            >
+              请装修队
+            </button>
+          </div>
+        </>
       )}
       {fb}
     </div>

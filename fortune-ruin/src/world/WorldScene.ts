@@ -19,7 +19,7 @@ import { Lighting, hexColor, type Emissive, type LightSource } from './Lighting'
 import { NpcDirector, type WorldHost } from './NpcDirector';
 import { CityLife } from './CityLife';
 import { WeatherFx, type Exposure } from './WeatherFx';
-import { FURNISHINGS } from './furnish';
+import { FURNISHINGS, facingName, facings, propFor, type Facing } from './furnish';
 import { CasinoFloor, seatPosition } from './CasinoFloor';
 import { findPath, type Pt } from './pathfinding';
 import { entryRefusal } from './access';
@@ -244,7 +244,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
   /** rain, fog and lightning over the map (none on the title screen) */
   private wx: WeatherFx | null = null;
   /** putting furniture down: a ghost of the piece over the floor */
-  private placing: { item: string; prop: string; x: number; y: number; ghost: Phaser.GameObjects.Image; err: string | null } | null = null;
+  private placing: { item: string; prop: string; facing: Facing; x: number; y: number; ghost: Phaser.GameObjects.Image; err: string | null } | null = null;
   private npcDir: NpcDirector | null = null;
   private city: CityLife | null = null;
   private floor: CasinoFloor | null = null;
@@ -313,6 +313,7 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     this.offs.push(
       bus.on('world:teleport', ({ location, spawn }) => this.teleport(location, spawn)),
       bus.on('appearance', () => this.refreshPlayerLook()),
+      bus.on('home:redecorated', () => this.refreshHome()),
       bus.on('casino:backoff', () => this.guardApproach()),
       bus.on('dialogue:start', ({ npc }) => this.npcDir?.engage(npc)),
       bus.on('dialogue:end', ({ npc }) => this.npcDir?.disengage(npc)),
@@ -2102,8 +2103,10 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const p = this.player;
     if (!f || !p || this.placing || !this.core.isAtHome() || this.map.id !== this.core.state.world.location) return;
     store.closeAll();
-    // the room without the piece itself (when moving it)
-    if (this.core.housing.placed().some((x) => x.item === item)) {
+    // the room without the piece itself (when moving it); it keeps the way it was facing
+    const was = this.core.housing.placed().find((x) => x.item === item);
+    const facing: Facing = was?.facing ?? 'down';
+    if (was) {
       this.core.housing.pickUp(item);
       this.reloadHome();
     }
@@ -2111,9 +2114,28 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const v = DIR_VEC[this.player!.dir];
     const tx = Math.floor(this.player!.x / 16) + v.x;
     const ty = Math.floor((this.player!.y - 2) / 16) + v.y;
-    const ref = frameRef(propFrameName(f.prop, 0));
-    const ghost = this.add.image(0, 0, ref.key, ref.frame).setOrigin(0, 0).setDepth(LABEL_DEPTH - 10).setAlpha(0.75);
-    this.placing = { item, prop: f.prop, x: tx, y: ty, ghost, err: null };
+    const look = propFor(item, facing);
+    const ref = frameRef(propFrameName(look.prop, 0));
+    const ghost = this.add.image(0, 0, ref.key, ref.frame).setOrigin(0, 0).setDepth(LABEL_DEPTH - 10).setAlpha(0.75).setFlipX(look.flipX);
+    this.placing = { item, prop: look.prop, facing, x: tx, y: ty, ghost, err: null };
+    this.movePlacing(0, 0);
+  }
+
+  /** Turn the piece being placed to face the next way (towards the room, left, right). */
+  private turnPlacing(): void {
+    const pl = this.placing;
+    if (!pl) return;
+    const ways = facings(pl.item);
+    if (ways.length < 2) {
+      store.toast(`${ITEMS[pl.item]?.name ?? ''}从哪边看都一样。`, 'info');
+      return;
+    }
+    pl.facing = ways[(ways.indexOf(pl.facing) + 1) % ways.length];
+    const look = propFor(pl.item, pl.facing);
+    pl.prop = look.prop;
+    const ref = frameRef(propFrameName(look.prop, 0));
+    pl.ghost.setTexture(ref.key, ref.frame).setFlipX(look.flipX);
+    sfx('slide');
     this.movePlacing(0, 0);
   }
 
@@ -2136,12 +2158,13 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     const d = PROPS[pl.prop];
     pl.x = Math.max(0, Math.min(this.map.w - Math.max(1, d.foot.w), pl.x + dx));
     pl.y = Math.max(Math.max(1, d.foot.h) - 1, Math.min(this.map.h - 1, pl.y + dy));
-    pl.err = this.core.housing.placeError(pl.item, pl.x, pl.y);
+    pl.err = this.core.housing.placeError(pl.item, pl.x, pl.y, pl.facing);
     const x = Math.round(pl.x * 16 + (Math.max(1, d.foot.w) * 16 - d.w) / 2);
     const y = Math.round((pl.y + 1) * 16 - d.h + (d.dy ?? 0));
     pl.ghost.setPosition(x, y).setTint(pl.err ? 0xff8a80 : 0xb8f5b0);
     const name = ITEMS[pl.item]?.name ?? '';
-    store.setPrompt({ verb: pl.err ? `${name}：${pl.err}` : `把${name}放在这里`, label: '方向键或鼠标移动，Esc 取消' });
+    const turn = facings(pl.item).length > 1 ? `，R 转向（现在${facingName(pl.facing)}）` : '';
+    store.setPrompt({ verb: pl.err ? `${name}：${pl.err}` : `把${name}放在这里`, label: `方向键或鼠标移动${turn}，Esc 取消` });
   }
 
   /** The ghost under the mouse: the piece's footprint centred on the tile pointed at. */
@@ -2166,14 +2189,15 @@ export class WorldScene extends Phaser.Scene implements WorldHost, WorldApi {
     if (s) {
       ev.preventDefault();
       this.movePlacing(s[0], s[1]);
-    } else if (ev.code === 'KeyE' || ev.code === 'Enter' || ev.code === 'NumpadEnter' || ev.code === 'Space') this.confirmPlacing();
+    } else if (ev.code === 'KeyR' || ev.code === 'KeyQ') this.turnPlacing();
+    else if (ev.code === 'KeyE' || ev.code === 'Enter' || ev.code === 'NumpadEnter' || ev.code === 'Space') this.confirmPlacing();
     else if (ev.code === 'Escape') this.endPlacing(false);
   }
 
   private confirmPlacing(): void {
     const pl = this.placing;
     if (!pl) return;
-    const r = this.core.housing.place(pl.item, pl.x, pl.y);
+    const r = this.core.housing.place(pl.item, pl.x, pl.y, pl.facing);
     if (!r.ok) {
       sfx('deny');
       store.toast(r.error, 'warn');

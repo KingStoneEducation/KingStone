@@ -67,6 +67,7 @@ export interface GameEvents {
   'casino:bgResult': { tableId: string; text: string };
   'tourney:out': { place: number };
   'tourney:done': { winner: string; playerPlace: number; prize: Money };
+  'home:redecorated': { homeId: string };
   'patron:emote': { id: string; emote: string; net: Money };
   'patron:left': { id: string; net: Money };
   'patron:arrived': { id: string; tableId: string };
@@ -322,6 +323,7 @@ export class GameCore {
     this.social.spreadRumors();
     this.casino.dailyUpdate();
     this.pawn.daily(day);
+    this.housing.settleDecor();
     const d = toDate(day * MINUTES_PER_DAY);
     if (d.day === 1) {
       this.housing.issueMonthlyBills();

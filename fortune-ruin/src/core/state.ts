@@ -261,7 +261,9 @@ export interface HousingState {
   owned: string[];
   furniture: Record<string, ItemId[]>;
   /** where each piece stands in each home (absent in old saves) */
-  placed?: Record<string, { item: ItemId; x: number; y: number }[]>;
+  placed?: Record<string, { item: ItemId; x: number; y: number; facing?: 'down' | 'left' | 'right' }[]>;
+  /** the floor and walls of homes you have redecorated, and work the crew is still doing (absent in old saves) */
+  decor?: Record<string, { floor?: string; wall?: string; pending?: { floor?: string; wall?: string; readyDay: number } }>;
   /** furniture that did not fit into the home you moved to (absent in old saves) */
   storage?: ItemId[];
   pendingRent: { amount: Money; effectiveDay: number } | null;
