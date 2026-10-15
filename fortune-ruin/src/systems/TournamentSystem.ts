@@ -446,7 +446,7 @@ export class TournamentSystem {
       } else if (prize > 0) this.core.journal.add('casino', `周日扑克锦标赛：你拿到第 ${me.place} 名，奖金 ${formatG(prize)}。冠军是${winner?.name ?? '别人'}。`, true);
       else this.core.journal.add('casino', `周日扑克锦标赛结束了，冠军是${winner?.name ?? '别人'}。`);
       if (this.core.state.world.location !== 'casino') {
-        this.core.phone.send('casino', '灰港大赌场', prize > 0 ? `周日锦标赛结束：您获得第 ${me.place} 名，奖金 ${formatG(prize)} 请到兑换台领取（已存入您的现金）。` : `周日锦标赛结束：您获得第 ${me.place} 名。冠军是${winner?.name ?? '别人'}。`, undefined, `tourney:end:${t.id}`);
+        this.core.phone.send('casino', '灰港大赌场', prize > 0 ? `周日锦标赛结束：您获得第 ${me.place} 名，奖金 ${formatG(prize)}。` : `周日锦标赛结束：您获得第 ${me.place} 名。冠军是${winner?.name ?? '别人'}。`, undefined, `tourney:end:${t.id}`);
       }
     }
     this.core.bus.emit('tourney:done', { winner: winner?.name ?? '', playerPlace: me?.place ?? 0, prize: me?.prize ?? 0 });

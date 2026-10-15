@@ -314,8 +314,8 @@ function RedecorateCard(): JSX.Element {
       ) : (
         <>
           <div className="muted" style={{ fontSize: 12 }}>
-            换掉家里面积最大的那种地板（{area.floor} 块；厨房、卫生间的瓷砖和别处的地毯不动）和墙面（{area.wall} 块）。装修队上门费 {formatG(CREW_FEE)}，第二天收工，家具挪开再摆回原位。
-            现在：{nameOf(FLOOR_CHOICES, now.floor) ?? '原来的地板'}、{nameOf(WALL_CHOICES, now.wall) ?? '原来的墙面'}。好的地板和墙面会让家里更体面，但不会提高房子的估价。
+            换掉家里面积最大的那种地板（{area.floor} 块，厨房、卫生间和别处的地毯不动）和墙面（{area.wall} 块）。上门费 {formatG(CREW_FEE)}，第二天收工。装修不算进房价。
+            现在是{nameOf(FLOOR_CHOICES, now.floor) ?? '原来的地板'}、{nameOf(WALL_CHOICES, now.wall) ?? '原来的墙面'}。
           </div>
           <div className="field">
             <label>地板（每块）</label>

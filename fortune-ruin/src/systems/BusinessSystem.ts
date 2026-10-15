@@ -92,7 +92,7 @@ export class BusinessSystem {
       totals: { revenue: 0, cogs: 0, fixed: p.rent * 3, invested: d.fitout },
     });
     this.core.journal.add('money', `租下${p.address}，开一家${d.name}。装修 ${RENOVATION_DAYS} 天。`, true);
-    this.core.phone.send('premises', p.landlord, `${p.address}的租约已经签好，装修队明天进场，预计 ${RENOVATION_DAYS} 天后可以开业。房租每月 1 日自动扣款。`);
+    this.core.phone.send('premises', p.landlord, `${p.address}的租约签好了。装修队明天进场，${RENOVATION_DAYS} 天左右能开业。房租每月 1 日交。`);
     this.core.touch();
     return { ok: true, message: `签约成功。${RENOVATION_DAYS} 天后开业。` };
   }

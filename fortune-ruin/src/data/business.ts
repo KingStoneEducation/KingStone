@@ -167,7 +167,7 @@ export const PREMISES: Record<string, PremiseDef> = {
     weekend: 0.7,
     suits: { cafe: 1.15, boutique: 1.3, bar: 0.8, bakery: 0.9 },
     crowd: '市中心，工作日人很多：上班族、银行和酒店的客人；周末少三成',
-    desc: '市中心联合广场南侧的临街铺面，正对喷泉，银行和大酒店都在附近。租金是集市街的两倍多。',
+    desc: '市中心联合广场南侧的临街铺面，正对喷泉，银行和大酒店就在旁边。',
   },
   park_unit: {
     id: 'park_unit',
@@ -181,7 +181,7 @@ export const PREMISES: Record<string, PremiseDef> = {
     weekend: 1.6,
     suits: { cafe: 1.35, bakery: 1.35, bar: 0.7, boutique: 0.6 },
     crowd: '公园步道边，工作日安静，周末遛弯、跑步、带孩子的人很多',
-    desc: '河畔公园步道旁的一栋小楼，门前就是公园的长椅和篮球场。工作日很安静。',
+    desc: '河畔公园步道旁的一栋小楼，门前就是长椅和篮球场。',
   },
 };
 

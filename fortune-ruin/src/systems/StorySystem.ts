@@ -1162,12 +1162,12 @@ const TOMMY_JACKPOT: ArcDef = {
   endings: {
     album: {
       important: true,
-      text: () => '汤米的第一张 EP 录完了。他把头奖花在了自己的歌上，一分也没有送回赌桌。',
+      text: () => '汤米的第一张 EP 录完了。',
       apply: ({ core }) => {
         core.social.applyDelta('tommy', { affection: 8, trust: 8, respect: 4 });
         core.state.npcs.tommy.mood = Math.min(100, core.state.npcs.tommy.mood + 25);
         core.player.addMoodBuff('tommy_ep', 6, 3 * 1440, '汤米的新歌');
-        core.phone.send('tommy', name('tommy'), '录完了！我的第一张 EP！第一首歌叫《十七号》，送给你——没有你那句话，那笔钱早就没了。');
+        core.phone.send('tommy', name('tommy'), '录完了！我的第一张 EP！第一首叫《十七号》。改天来酒吧，我唱给你听。');
       },
     },
     cashed: {
@@ -1204,7 +1204,7 @@ const TOMMY_JACKPOT: ArcDef = {
     },
     rescued: {
       important: true,
-      text: ({ st }) => `你替汤米还了 ${formatG(Number(st.data.paid))} 的签单${Number(st.data.owed) > 0 ? `，剩下的 ${formatG(Number(st.data.owed))} 他从工资里慢慢还` : ''}。他说这辈子都记得。`,
+      text: ({ st }) => `你替汤米还了 ${formatG(Number(st.data.paid))} 的签单${Number(st.data.owed) > 0 ? `，剩下的 ${formatG(Number(st.data.owed))} 他从工资里慢慢还` : ''}。`,
       apply: ({ core }) => {
         core.social.applyDelta('tommy', { affection: 10, trust: 10, dependency: 6 });
         core.phone.send('tommy', name('tommy'), '……谢谢。我不会再去 VIP 厅了。这笔钱我一定还你，哪怕一个月还一百。');
