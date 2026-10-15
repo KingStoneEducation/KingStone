@@ -29,7 +29,8 @@ const ok = <T>(value: T): CasinoResult<T> => ({ ok: true, value });
 const fail = (error: string): CasinoResult<never> => ({ ok: false, error });
 
 /** Default favourite table for named NPC gamblers. */
-const NPC_TABLES: Record<string, string> = { marco: 'bj2', kiki: 'rl1', lillian: 'bacv', alexander: 'bacv' };
+// (Tommy only ever gambles at a casino table on his VIP nights; his Monday nights are at the poker table)
+const NPC_TABLES: Record<string, string> = { marco: 'bj2', kiki: 'rl1', lillian: 'bacv', alexander: 'bacv', tommy: 'bacv' };
 
 /**
  * Named NPCs who come to play poker: their table, how they play, and when they get up (a share
@@ -506,7 +507,7 @@ export class CasinoManager {
         p.style = npcId === 'marco' ? 'reckless' : npcId === 'alexander' ? 'basic' : 'dealer-mimic';
         p.skill = npcId === 'alexander' ? 0.9 : npcId === 'marco' ? 0.35 : 0.5;
         p.superstition = npcId === 'marco' || npcId === 'lillian' ? 0.9 : 0.3;
-        p.risk = npcId === 'marco' ? 0.12 : 0.05;
+        p.risk = npcId === 'marco' ? 0.12 : npcId === 'tommy' ? 0.1 : 0.05;
         p.stopLoss = npcId === 'marco' ? 0.02 : 0.4;
         p.winGoal = npcId === 'marco' ? 9 : 2;
         p.leaveAt = this.core.now() + 600;

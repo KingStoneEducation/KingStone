@@ -2,6 +2,7 @@ import type { GameCore } from '../core/GameCore';
 import { G, formatG, type Money } from '../core/money';
 import type { JobState, PhoneAction, Stake, StoryState } from '../core/state';
 import { NPC_BY_ID } from '../data/npcs';
+import { GAME_START_MINUTES, MINUTES_PER_DAY, hm, toDate } from '../core/calendar';
 
 /**
  * Storylines that unfold over weeks. Each arc is a small state machine:
@@ -885,7 +886,348 @@ const OLDZHOU_STORY: ArcDef = {
   },
 };
 
-export const ARCS: Record<string, ArcDef> = { marco_debt: MARCO_DEBT, daniel_stall: DANIEL_STALL, maple_sale: MAPLE_SALE, office_review: OFFICE_REVIEW, oldzhou_story: OLDZHOU_STORY };
+// ---------------------------------------------------------------- Tommy's jackpot
+
+/** What Tommy wins at the roulette table. */
+export const JACKPOT = G(24000);
+/** The markers Victor lets a new VIP sign. */
+export const VIP_CREDIT = G(20000);
+/** His nights in the VIP room, every other evening from the night after he says yes. */
+export const VIP_NIGHTS = 4;
+/** Why Tommy is at the VIP baccarat table instead of behind the bar. */
+export const HIGH_ROLLER = '汤米的 VIP 夜';
+/** A good guitar, and three weeks in a studio. */
+const GUITAR = G(4500);
+const STUDIO = G(3500);
+
+const nightDay = (st: StoryState, k: number) => Number(st.data.first) + 2 * k;
+
+/** The rest of his VIP nights are off: he is not going back. */
+function callOffNights(core: GameCore): void {
+  const rt = core.state.npcs.tommy;
+  if (rt) rt.overrides = rt.overrides.filter((o) => o.reason !== HIGH_ROLLER);
+}
+
+/** What the jackpot buys when it goes on music: the guitar, the studio if there is enough, and his old debts. */
+function spendOnMusic(core: GameCore, studio: boolean): void {
+  const rt = core.state.npcs.tommy;
+  const spend = Math.min(rt.money, GUITAR + (studio ? STUDIO : 0));
+  rt.money -= spend;
+  const payoff = Math.min(rt.debt, rt.money);
+  rt.money -= payoff;
+  rt.debt -= payoff;
+}
+
+/**
+ * Every VIP night that is over and not yet counted. A night you were at the table for already
+ * counted itself (the table's real result is his); the others are played out here, the way a
+ * new high roller plays: a tenth of everything he can get his hands on, credit included, a hand.
+ */
+function playNights(core: GameCore, st: StoryState, today: number): void {
+  const rt = core.state.npcs.tommy;
+  while (Number(st.data.played) < VIP_NIGHTS && nightDay(st, Number(st.data.played)) < today && !st.data.stopped) {
+    const night = nightDay(st, Number(st.data.played));
+    if (rt.flags.liveGambleDay !== night) {
+      const creditLeft = Math.max(0, Number(st.data.credit) - Number(st.data.drawn));
+      const stake = round100(Math.max(G(200), (rt.money + creditLeft) * 0.1));
+      const hands = core.rng.int(30, 50);
+      // the banker bet: a 1.06% edge to the house, about a stake's swing a hand
+      let result = round100(core.rng.normal(-0.0106 * stake * hands, 0.95 * stake * Math.sqrt(hands)));
+      result = Math.max(result, -(rt.money + creditLeft));
+      rt.money += result;
+      if (rt.money < 0) {
+        // signed for at the table: a marker he owes the casino
+        st.data.drawn = Number(st.data.drawn) + -rt.money;
+        rt.debt += -rt.money;
+        rt.money = 0;
+      }
+      if (result >= G(3000)) core.social.npcEvent('tommy', 'npc_big_win', { amount: result });
+      if (result <= -G(3000)) core.social.npcEvent('tommy', 'npc_big_loss', { amount: -result });
+    }
+    st.data.played = Number(st.data.played) + 1;
+    st.data.peak = Math.max(Number(st.data.peak), rt.money);
+  }
+}
+
+/** Where he stands once the nights are over (or he stops): the markers come due first. */
+function reckoning(core: GameCore, st: StoryState): string {
+  callOffNights(core);
+  const rt = core.state.npcs.tommy;
+  const drawn = Number(st.data.drawn);
+  const repay = Math.min(rt.money, drawn);
+  rt.money -= repay;
+  rt.debt -= repay;
+  st.data.owed = drawn - repay;
+  st.data.left = rt.money;
+  if (Number(st.data.owed) > 0) return 'markers';
+  if (rt.money >= Number(st.data.start)) return st.data.stopped ? 'end:cashed' : 'end:lucky';
+  if (rt.money >= Number(st.data.base) + GUITAR + G(1500)) return 'end:kept_some';
+  return 'end:broke';
+}
+
+const tommySays = (lines: Record<string, string>) => (_c: StoryCtx, npc: string) => lines[npc] ?? null;
+
+const TOMMY_JACKPOT: ArcDef = {
+  id: 'tommy_jackpot',
+  title: '汤米的头奖',
+  cooldownDays: 0,
+  once: true,
+  trigger: (core) => {
+    const rt = core.state.npcs.tommy;
+    if (!knows(core, 'tommy') || !rt || rt.flags.inCrisis) return null;
+    // the morning after his Monday night at the casino, a few weeks into your life here
+    const d = toDate(core.now());
+    if (d.weekday !== 1 || core.today() - Math.floor(GAME_START_MINUTES / MINUTES_PER_DAY) < 14) return null;
+    return {};
+  },
+  chance: 0.15,
+  start: () => 'jackpot',
+  stages: {
+    jackpot: {
+      status: () => '汤米在轮盘上中了一大笔，问你这钱该怎么花。',
+      enter: ({ core, st }) => {
+        const rt = core.state.npcs.tommy;
+        st.data.base = rt.money;
+        rt.money += JACKPOT;
+        st.data.start = rt.money;
+        st.data.peak = rt.money;
+        core.social.npcEvent('tommy', 'npc_big_win', { amount: JACKPOT });
+        core.phone.send(
+          'tommy',
+          name('tommy'),
+          `兄弟！！昨晚我在轮盘上押 17 号，中了，我把赢的全押回 17 号——又中了！${formatG(JACKPOT)}！我到现在手还在抖。你说我该拿它干什么？`,
+          [act('tommy_jackpot', 'jackpot', 'bank', '先存起来，买琴、录专辑'), act('tommy_jackpot', 'jackpot', 'party', '今晚去庆祝！')],
+        );
+      },
+      choose: ({ core }, choice) => {
+        if (choice === 'party') {
+          core.social.applyDelta('tommy', { affection: 3 });
+          return { text: '「就等你这句话！」', next: 'courted' };
+        }
+        if (core.rng.chance(persuasion(core, 'tommy', 0.2))) {
+          core.social.applyDirect('tommy', { kind: 'talked_me_down', facets: { support: 0.7, honesty: 0.4 }, importance: 26 });
+          return { text: '电话那头安静了一会儿。「……你说得对。我明天就去琴行。」', next: 'album' };
+        }
+        core.social.applyDelta('tommy', { affection: -1 });
+        return { text: '「哎呀，存什么存，我就玩一次！」', next: 'courted' };
+      },
+      daily: ({ day, st }) => (day - st.since >= 3 ? 'courted' : null),
+      talk: tommySays({ tommy: `${formatG(JACKPOT)}！你说，这是不是老天爷让我别再调酒了？` }),
+    },
+    courted: {
+      status: () => '赌场的维克多请汤米去 VIP 厅，还给他开了签单额度。',
+      enter: ({ core, st }) => {
+        st.data.credit = VIP_CREDIT;
+        st.data.drawn = 0;
+        st.data.played = 0;
+        core.phone.send(
+          'tommy',
+          name('tommy'),
+          `你猜怎么着，赌场的维克多先生亲自给我打电话，请我去 VIP 厅玩，还说给我开 ${formatG(VIP_CREDIT)} 的签单额度，手上的钱不够可以先签。位子随时给我留着，你也一起来吧？`,
+          [act('tommy_jackpot', 'courted', 'come', '我陪你去'), act('tommy_jackpot', 'courted', 'warn', '签单就是借债，别签'), act('tommy_jackpot', 'courted', 'pass', '你自己去吧')],
+        );
+      },
+      choose: ({ core, st, day }, choice) => {
+        if (choice === 'come') {
+          st.data.with = true;
+          // Victor's invitation covers his guest: the VIP room until the last of the nights is over
+          const until = day + 1 + 2 * (VIP_NIGHTS - 1) + 1;
+          core.state.casino.invites.vip = Math.max(core.state.casino.invites.vip, until);
+          core.social.applyDirect('tommy', { kind: 'came_vip', facets: { support: 0.4, gambling: 0.3 }, importance: 16 });
+          return { text: `维克多给你也发了一张 VIP 厅的邀请（到 ${toDate(until * MINUTES_PER_DAY).month + 1} 月 ${toDate(until * MINUTES_PER_DAY).day} 日，要穿正装）。`, next: 'highlife' };
+        }
+        if (choice === 'warn' && core.rng.chance(persuasion(core, 'tommy', 0.05))) {
+          st.data.credit = 0;
+          core.social.applyDirect('tommy', { kind: 'talked_me_down', facets: { support: 0.6, honesty: 0.4 }, importance: 18 });
+          return { text: '汤米想了想：「行，签单就算了，我只拿赢来的钱玩。」', next: 'highlife' };
+        }
+        if (choice === 'warn') return { text: '「你怎么跟我妈一个口气。」', next: 'highlife' };
+        return { text: '「那我赢了请你喝酒！」', next: 'highlife' };
+      },
+      daily: ({ day, st }) => (day - st.since >= 2 ? 'highlife' : null),
+      talk: tommySays({ tommy: '维克多先生说我有「贵宾的气质」。我？贵宾？', victor: '汤米先生是我们新的贵宾。年轻人，手气正旺。' }),
+    },
+    highlife: {
+      status: ({ core, st }) => `汤米这几天晚上都在 VIP 厅（打了 ${Number(st.data.played)}/${VIP_NIGHTS} 晚，手上大约 ${formatG(round100(core.state.npcs.tommy.money))}${Number(st.data.drawn) > 0 ? `，签了 ${formatG(Number(st.data.drawn))} 的单` : ''}）。`,
+      enter: ({ core, st, day }) => {
+        st.data.first = day + 1;
+        for (let k = 0; k < VIP_NIGHTS; k++) core.npcs.setOverrideAt('tommy', nightDay(st, k) * MINUTES_PER_DAY + hm(21, 30), hm(5, 30), 'casino', 'vip_bac3', 'gamble', HIGH_ROLLER);
+      },
+      daily: ({ core, st, day }) => {
+        playNights(core, st, day);
+        if (Number(st.data.played) >= VIP_NIGHTS) return reckoning(core, st);
+        return Number(st.data.played) >= 2 ? 'crossroads' : null;
+      },
+      talk: tommySays({ tommy: '昨晚在 VIP 厅，荷官发牌的手法跟变魔术一样。今晚还去！', victor: '汤米先生这几天都来。我们为他留了位子。', kiki: '听说汤米中了头奖，现在天天穿着新西装去 VIP 厅？', daniel: '汤米这礼拜没来上班，酒吧老板在找他。' }),
+    },
+    crossroads: {
+      status: ({ core, st }) => `汤米在 VIP 厅已经打了 ${Number(st.data.played)} 晚，${core.state.npcs.tommy.money >= Number(st.data.start) ? '手气正旺' : '输了不少'}。`,
+      enter: ({ core, st }) => {
+        const rt = core.state.npcs.tommy;
+        const up = rt.money >= Number(st.data.start);
+        st.data.up = up;
+        const drawn = Number(st.data.drawn);
+        const actions = up
+          ? [act('tommy_jackpot', 'crossroads', 'stop', '见好就收吧'), act('tommy_jackpot', 'crossroads', 'cheer', '手气这么好，接着来！')]
+          : [act('tommy_jackpot', 'crossroads', 'stop', '别再签单了，停下来'), act('tommy_jackpot', 'crossroads', 'victor', '去找维克多，请他停掉汤米的额度'), act('tommy_jackpot', 'crossroads', 'cheer', '没事，会赢回来的')];
+        const body = up
+          ? `两个晚上，我手上已经有 ${formatG(round100(rt.money))} 了！维克多说再来两晚就给我升会员。我就知道我的运气来了。`
+          : `这两晚手气有点背……${drawn > 0 ? `已经签了 ${formatG(drawn)} 的单，` : ''}不过没事，百家乐就是这样，下一晚肯定能翻回来。`;
+        core.phone.send('tommy', name('tommy'), body, actions);
+      },
+      choose: ({ core, st }, choice) => {
+        if (choice === 'cheer') {
+          core.social.applyDirect('tommy', { kind: 'cheered_me_on', facets: { gambling: 0.6, recklessness: 0.4 }, importance: 14 });
+          core.social.applyDelta('tommy', { affection: 2 });
+          return { text: '「对吧！今晚等我的好消息。」' };
+        }
+        if (choice === 'victor') {
+          if (st.data.askedVictor) return { text: '维克多已经给过你答复了。', keep: true };
+          st.data.askedVictor = true;
+          const v = core.social.rel('victor');
+          if (v.trust >= 20 || core.casino.tierAtLeast('platinum')) {
+            st.data.credit = st.data.drawn;
+            core.social.applyDelta('victor', { trust: 2 });
+            // Victor tells him whose idea it was
+            core.social.applyDirect('tommy', { kind: 'cut_my_credit', facets: { support: 0.5, betrayal: 0.3 }, importance: 22 }, { source: 'told' });
+            return { text: '维克多沉默了一下：「我明白了。汤米先生的额度，我们会重新评估。」第二天，汤米的签单额度没有了。', keep: true };
+          }
+          return { text: '维克多礼貌地笑了笑：「每位贵宾的额度，都是他本人和赌场之间的事。」', keep: true };
+        }
+        if (core.rng.chance(persuasion(core, 'tommy', (st.data.with ? 0.15 : 0) + (st.data.up ? 0.1 : 0)))) {
+          st.data.stopped = true;
+          core.social.applyDirect('tommy', { kind: 'talked_me_down', facets: { support: 0.8, honesty: 0.4 }, importance: 30 });
+          return { text: st.data.up ? '「……好。见好就收。」汤米没再去 VIP 厅。' : '汤米很久没说话，最后说：「好，我不去了。」', next: reckoning(core, st) };
+        }
+        core.social.applyDelta('tommy', { affection: -2 });
+        return { text: st.data.up ? '「收什么收，运气来了挡都挡不住！」' : '「再一晚，就一晚。」' };
+      },
+      daily: ({ core, st, day }) => {
+        playNights(core, st, day);
+        return Number(st.data.played) >= VIP_NIGHTS ? reckoning(core, st) : null;
+      },
+      talk: ({ st }, npc) => (npc === 'tommy' ? (st.data.up ? '我就说我手气正旺！' : '没事，下一晚就赢回来了。') : npc === 'victor' ? '汤米先生是位很有激情的客人。' : null),
+    },
+    markers: {
+      status: ({ st }) => `汤米欠了赌场 ${formatG(Number(st.data.owed))} 的签单，还不上。`,
+      enter: ({ core, st }) => {
+        const owed = Number(st.data.owed);
+        st.data.help = round100(Math.min(owed, G(5000)));
+        const from = knows(core, 'daniel') ? 'daniel' : 'tommy';
+        const body =
+          from === 'daniel'
+            ? `汤米出事了。头奖的钱全输光了，还欠赌场 ${formatG(owed)} 的签单，维克多那边已经在催。他好几晚没去上班，酒吧老板气坏了。你能帮帮他吗？`
+            : `……钱没了。全没了。还欠赌场 ${formatG(owed)} 的签单，他们说月底前要还。我不知道该怎么办。`;
+        core.phone.send(from, name(from), body, [
+          act('tommy_jackpot', 'markers', 'pay', `帮他还一部分（${formatG(Number(st.data.help))}）`),
+          act('tommy_jackpot', 'markers', 'exclude', '陪他去签自我限制'),
+          act('tommy_jackpot', 'markers', 'nothing', '这次帮不了'),
+        ]);
+      },
+      choose: ({ core, st, day }, choice) => {
+        const rt = core.state.npcs.tommy;
+        if (choice === 'pay') {
+          const help = Number(st.data.help);
+          const r = core.economy.pay(help, 'gift_given', '替汤米还赌场的签单', 'tommy', ['bank', 'cash']);
+          if (!r.ok) return { text: `转账失败：${r.error}`, keep: true };
+          rt.debt = Math.max(0, rt.debt - help);
+          st.data.owed = Number(st.data.owed) - help;
+          st.data.paid = help;
+          core.social.applyDirect('tommy', { kind: 'paid_markers', facets: { generosity: 0.9, support: 0.9 }, importance: 40, data: { amount: help } }, { source: 'witnessed' });
+          return { text: `你替汤米还了 ${formatG(help)}。`, next: 'end:rescued' };
+        }
+        if (choice === 'exclude') {
+          if (core.rng.chance(persuasion(core, 'tommy', 0.25))) {
+            rt.flags.noGambleUntil = day + 90;
+            core.social.applyDirect('tommy', { kind: 'talked_me_down', facets: { support: 0.8 }, importance: 28 });
+            return { text: '你陪汤米去了赌场的客户服务台。他签字的时候，手一直在抖。', next: 'end:excluded' };
+          }
+          return { text: '「签那个干什么？我又不是马可。」汤米挂了电话。', next: 'end:fall' };
+        }
+        return { text: '你没有插手。', next: 'end:fall' };
+      },
+      daily: ({ day, st }) => (day - st.since >= 4 ? 'end:fall' : null),
+      talk: tommySays({ tommy: '……别问了。', victor: '汤米先生的账户，我们正在和他商量还款的安排。' }),
+    },
+    album: {
+      status: ({ st, day }) => `汤米用头奖买了琴、订了录音棚（还要 ${Math.max(0, 21 - (day - st.since))} 天录完）。`,
+      enter: ({ core }) => {
+        spendOnMusic(core, true);
+        core.journal.add('social', `汤米用头奖买了一把好琴，还订了三个礼拜的录音棚。`, true);
+      },
+      daily: ({ day, st }) => (day - st.since >= 21 ? 'end:album' : null),
+      talk: tommySays({ tommy: '录音棚的师傅说我嗓子不错！再过几个礼拜就能录完。', daniel: '汤米最近天天泡在录音棚，人都瘦了。' }),
+    },
+  },
+  endings: {
+    album: {
+      important: true,
+      text: () => '汤米的第一张 EP 录完了。他把头奖花在了自己的歌上，一分也没有送回赌桌。',
+      apply: ({ core }) => {
+        core.social.applyDelta('tommy', { affection: 8, trust: 8, respect: 4 });
+        core.state.npcs.tommy.mood = Math.min(100, core.state.npcs.tommy.mood + 25);
+        core.player.addMoodBuff('tommy_ep', 6, 3 * 1440, '汤米的新歌');
+        core.phone.send('tommy', name('tommy'), '录完了！我的第一张 EP！第一首歌叫《十七号》，送给你——没有你那句话，那笔钱早就没了。');
+      },
+    },
+    cashed: {
+      important: true,
+      text: ({ st }) => `你劝住了汤米。他带着 ${formatG(round100(Number(st.data.left)))} 离开了 VIP 厅，第二天就去琴行买了琴、订了录音棚。`,
+      apply: ({ core }) => {
+        spendOnMusic(core, true);
+        core.social.applyDelta('tommy', { affection: 8, trust: 10, respect: 4 });
+        core.phone.send('tommy', name('tommy'), '琴买了，录音棚也订了。剩下的钱我存了定期，取不出来的那种。谢了，兄弟。');
+      },
+    },
+    lucky: {
+      important: true,
+      text: ({ st }) => `汤米在 VIP 厅连着打了 ${VIP_NIGHTS} 个晚上，最后手上还有 ${formatG(round100(Number(st.data.left)))}。维克多给他寄了一张会员卡，他说下个月还去。`,
+      apply: ({ core }) => {
+        core.state.npcs.tommy.mood = Math.min(100, core.state.npcs.tommy.mood + 20);
+        core.phone.send('tommy', name('tommy'), '你看，我就说我运气来了！下个月再去，这次带你一起赢。');
+      },
+    },
+    kept_some: {
+      important: true,
+      text: ({ st }) => `头奖在 VIP 厅里输掉了一大半。汤米用剩下的 ${formatG(round100(Number(st.data.left)))} 买了一把琴，又回到了吧台后面。`,
+      apply: ({ core }) => {
+        spendOnMusic(core, false);
+        core.state.npcs.tommy.mood = Math.max(-100, core.state.npcs.tommy.mood - 10);
+      },
+    },
+    broke: {
+      important: true,
+      text: () => `${formatG(JACKPOT)} 的头奖在 VIP 厅里输得一分不剩。汤米回到了吧台后面，再也不提那几个晚上。`,
+      apply: ({ core }) => {
+        core.state.npcs.tommy.mood = Math.max(-100, core.state.npcs.tommy.mood - 20);
+      },
+    },
+    rescued: {
+      important: true,
+      text: ({ st }) => `你替汤米还了 ${formatG(Number(st.data.paid))} 的签单${Number(st.data.owed) > 0 ? `，剩下的 ${formatG(Number(st.data.owed))} 他从工资里慢慢还` : ''}。他说这辈子都记得。`,
+      apply: ({ core }) => {
+        core.social.applyDelta('tommy', { affection: 10, trust: 10, dependency: 6 });
+        core.phone.send('tommy', name('tommy'), '……谢谢。我不会再去 VIP 厅了。这笔钱我一定还你，哪怕一个月还一百。');
+      },
+    },
+    excluded: {
+      important: true,
+      text: ({ st }) => `汤米在赌场签了自我限制，九十天不进赌场。欠下的 ${formatG(Number(st.data.owed))} 签单，他从工资里一点一点还。`,
+      apply: ({ core }) => core.social.applyDelta('tommy', { trust: 8, affection: 4, respect: 4 }),
+    },
+    fall: {
+      important: true,
+      text: ({ st }) => `头奖输光了，汤米还欠着赌场 ${formatG(Number(st.data.owed))} 的签单。酒吧因为他连着几晚旷工，停了他两个礼拜的班。`,
+      apply: ({ core, day }) => {
+        const rt = core.state.npcs.tommy;
+        rt.flags.suspendedUntil = day + 14;
+        rt.mood = Math.max(-100, rt.mood - 25);
+      },
+    },
+  },
+};
+
+export const ARCS: Record<string, ArcDef> = { marco_debt: MARCO_DEBT, daniel_stall: DANIEL_STALL, maple_sale: MAPLE_SALE, office_review: OFFICE_REVIEW, oldzhou_story: OLDZHOU_STORY, tommy_jackpot: TOMMY_JACKPOT };
 
 export class StorySystem {
   constructor(private core: GameCore) {}

@@ -158,6 +158,7 @@ export function buildCasinoMap(): MapData {
   b.prop('neon_vip', 25, 1, undefined, { oy: -1 });
   b.spot('vip_bac1', 26, 9, 'up', true);
   b.spot('vip_bac2', 28, 9, 'up', true);
+  b.spot('vip_bac3', 27, 9, 'up', true);
   b.spot('vip_host', 34, 12, 'down');
 
   // high-limit room

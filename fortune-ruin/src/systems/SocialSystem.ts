@@ -139,6 +139,11 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   pledged_support: () => '答应在评审前帮我',
   stood_by_me: () => '在部门评审的时候站在我这边',
   sided_against_me: () => '在总部的评审谈话里说我的不是',
+  talked_me_down: () => '在我上头的时候把我劝住了',
+  came_vip: () => '陪我去了 VIP 厅',
+  cheered_me_on: () => '在我上头的时候给我打气',
+  cut_my_credit: () => '背着我让维克多停了我的签单额度',
+  paid_markers: (m) => `替我还了 ${formatG(Number(m.data.amount ?? 0))} 的赌场签单`,
   casino_night: (m) => `和我一起去了赌场${Number(m.data.net ?? 0) ? `（我${Number(m.data.net) > 0 ? '赢' : '输'}了 ${formatG(Math.abs(Number(m.data.net)))}）` : ''}`,
 };
 
