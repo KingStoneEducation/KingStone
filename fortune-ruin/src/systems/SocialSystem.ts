@@ -130,6 +130,10 @@ export const MEMORY_TEXT: Record<string, (m: Memory) => string> = {
   outbid_me: (m) => `在拍卖会上抢走了我想要的${m.data.item ?? '拍品'}`,
   covered_debt: (m) => `替我把欠${NPC_BY_ID[String(m.data.npc)]?.name ?? '朋友'}的 ${formatG(Number(m.data.amount ?? 0))} 还上了`,
   paid_for_friend: (m) => `替${NPC_BY_ID[String(m.data.npc)]?.name ?? '朋友'}把欠我的 ${formatG(Number(m.data.amount ?? 0))} 还了`,
+  bought_flat: (m) => `从我手里买下了${m.data.home ?? '房子'}`,
+  pledged_support: () => '答应在评审前帮我',
+  stood_by_me: () => '在部门评审的时候站在我这边',
+  sided_against_me: () => '在总部的评审谈话里说我的不是',
   casino_night: (m) => `和我一起去了赌场${Number(m.data.net ?? 0) ? `（我${Number(m.data.net) > 0 ? '赢' : '输'}了 ${formatG(Math.abs(Number(m.data.net)))}）` : ''}`,
 };
 

@@ -268,6 +268,8 @@ export interface HousingState {
   overdueDays: number;
   evictionNoticeDay: number | null;
   guestsHosted: number;
+  /** who owns Maple Court once Margaret has sold it (absent while she still does) */
+  mapleSoldTo?: string;
 }
 
 export interface JobState {
@@ -287,6 +289,8 @@ export interface JobState {
   workedToday: number;
   status: 'active' | 'fired' | 'quit';
   promotionsDeclined: number;
+  /** who has promised you the next promotion sooner (fewer shifts needed), if anyone */
+  fastTrack?: string;
 }
 
 export interface CareerState {

@@ -269,7 +269,9 @@ export class CareerSystem {
     const d = this.def(j.jobId);
     const next = d.levels[j.level + 1];
     if (!next) return null;
-    if (j.shifts >= next.shiftsRequired && j.performance >= next.perfRequired && j.warnings === 0) {
+    // a boss who has promised you the next step asks for fewer shifts first
+    const shifts = j.fastTrack ? Math.round(next.shiftsRequired * 0.6) : next.shiftsRequired;
+    if (j.shifts >= shifts && j.performance >= next.perfRequired && j.warnings === 0) {
       const id = `promo:${j.jobId}:${j.level + 1}`;
       if (this.core.phone.hasRef(id)) return null;
       this.core.phone.send(d.boss ?? 'hr', d.bossName, `你最近的表现很稳定。我们想提拔你为「${next.title}」，薪资上调到原来的 ${Math.round(next.payMult * 100)}%。你愿意吗？`, [
@@ -287,6 +289,7 @@ export class CareerSystem {
     const d = this.def(jobId);
     if (!d.levels[j.level + 1]) return { ok: false, error: '已经是最高职级' };
     j.level += 1;
+    delete j.fastTrack;
     const t = this.title(j);
     this.core.journal.add('milestone', `升职为${d.employer}的${t}！`, true);
     this.core.player.change('confidence', 12);

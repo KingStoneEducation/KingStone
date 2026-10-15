@@ -1,6 +1,6 @@
 import type { GameCore } from '../core/GameCore';
 import { G, formatG, type Money } from '../core/money';
-import type { PhoneAction, Stake, StoryState } from '../core/state';
+import type { JobState, PhoneAction, Stake, StoryState } from '../core/state';
 import { NPC_BY_ID } from '../data/npcs';
 
 /**
@@ -25,6 +25,8 @@ export interface StageDef {
   daily?: (c: StoryCtx) => string | null;
   /** the player's answer to this stage's message */
   choose?: (c: StoryCtx, choice: string) => { text: string; next?: string; keep?: boolean };
+  /** what someone in the story says about it when you talk to them in person, if anything */
+  talk?: (c: StoryCtx, npc: string) => string | null;
 }
 
 export interface ArcDef {
@@ -450,7 +452,327 @@ function buyBack({ core, st }: StoryCtx, premium: number): void {
   core.social.applyDelta('daniel', { affection: 6, trust: 6, respect: 3 });
 }
 
-export const ARCS: Record<string, ArcDef> = { marco_debt: MARCO_DEBT, daniel_stall: DANIEL_STALL };
+// ---------------------------------------------------------------- Maple Court changes hands
+
+/** The two buyers Margaret has for Maple Court: the highest bid, and a family who would keep the tenants on. */
+const MAPLE_BUYERS: Record<'company' | 'family', { name: string; raise: number }> = {
+  company: { name: '港湾置业', raise: 30 },
+  family: { name: '新房东林先生', raise: 5 },
+};
+
+/** What Margaret asks of the tenant who lives in 3B, against what it would fetch on the market. */
+export const SITTING_TENANT = 0.9;
+
+function mapleTenant(core: GameCore): boolean {
+  const h = core.state.housing;
+  return h.homeId === 'home_basic' && h.tenure === 'rent';
+}
+
+/** Whether Margaret takes less from a buyer who keeps the tenants on depends on the tenant you have been. */
+export function mapleGoodwill(core: GameCore): number {
+  const r = core.social.rel('margaret');
+  const late = core.social.memoriesOf('margaret').filter((m) => m.kind === 'rent_late').length;
+  const months = Math.floor((core.today() - core.state.housing.leaseStartDay) / 30);
+  return Math.max(0.05, Math.min(0.85, 0.15 + r.affection / 120 + r.trust / 160 + months * 0.03 - late * 0.12));
+}
+
+/** The sale goes through: the building has a new owner, and (if you still live in 3B) a new rent. */
+function sellMaple({ core, st }: StoryCtx, buyer: 'company' | 'family'): void {
+  const b = MAPLE_BUYERS[buyer];
+  core.state.housing.mapleSoldTo = b.name;
+  if (mapleTenant(core)) {
+    const rent = core.housing.scheduleRentIncrease(b.raise);
+    st.data.newRent = rent;
+    core.phone.send(
+      'landlord',
+      b.name,
+      buyer === 'company'
+        ? `您好，枫庭公寓已由港湾置业接手。根据市场行情，3B 的月租从下个月起调整为 ${formatG(rent)}。原租约照常有效；如不续租，押金在退房时退还。`
+        : `你好，我是新房东林先生，住一楼。玛格丽特阿姨交代过，楼里的规矩都照旧。房租从下个月起是 ${formatG(rent)}，有什么事敲一楼的门就行。`,
+    );
+  }
+  core.phone.send('margaret', name('margaret'), '手续都办完了。这些年谢谢你。以后在路上碰见，还是叫我玛格丽特就好。');
+}
+
+const MAPLE_SALE: ArcDef = {
+  id: 'maple_sale',
+  title: '枫庭公寓易主',
+  cooldownDays: 9999,
+  once: true,
+  trigger: (core) => {
+    const h = core.state.housing;
+    if (!mapleTenant(core) || h.mapleSoldTo || core.today() < 20 || core.today() - h.leaseStartDay < 30) return null;
+    if (!knows(core, 'margaret') || core.housing.rentOverdue() || h.evictionNoticeDay !== null) return null;
+    return {};
+  },
+  chance: 0.04,
+  start: () => 'notice',
+  stages: {
+    notice: {
+      status: () => '玛格丽特打算卖掉枫庭公寓，还没决定卖给谁。',
+      enter: ({ core }) => {
+        core.phone.send(
+          'margaret',
+          name('margaret'),
+          '有件事得先跟你说。这栋楼我一个人管了十几年，实在管不动了，打算把枫庭卖掉。出价最高的是港湾置业，可他们接手以后要翻新，按市价重新定租金，3B 大概要涨三成。还有一户姓林的人家想买，自己住一楼，其余的照旧租出去，就是出价低一些。我还没拿定主意。',
+          [act('maple_sale', 'notice', 'buy', '问她能不能把 3B 卖给我'), act('maple_sale', 'notice', 'family', '请她考虑林家'), act('maple_sale', 'notice', 'fine', '谢谢你告诉我')],
+        );
+      },
+      choose: ({ core, st }, choice) => {
+        if (choice === 'buy') return { text: '你问玛格丽特，3B 能不能直接卖给你。', next: 'offer' };
+        if (choice === 'family') {
+          if (core.rng.chance(mapleGoodwill(core))) {
+            st.data.buyer = 'family';
+            core.social.applyDelta('margaret', { respect: 2 });
+            return { text: '玛格丽特沉默了一会儿：「……你说得对。少卖一点就少卖一点吧，我也不想看你们被赶走。」', next: 'pending' };
+          }
+          st.data.buyer = 'company';
+          return { text: '「我也想啊。可差的那些钱，是我后半辈子的养老钱。」', next: 'pending' };
+        }
+        st.data.buyer = 'company';
+        return { text: '玛格丽特说，手续办完之前一切照旧。', next: 'pending' };
+      },
+      // no answer: she takes the best offer
+      daily: ({ day, st }) => {
+        if (day - st.since < 7) return null;
+        st.data.buyer = 'company';
+        return 'pending';
+      },
+      talk: (_c, npc) => (npc === 'margaret' ? '这栋楼的事……我还在想。卖给谁都舍不得。' : null),
+    },
+    offer: {
+      status: ({ st }) => `玛格丽特愿意以 ${formatG(Number(st.data.price))} 把 3B 卖给你。`,
+      enter: ({ core, st }) => {
+        const late = core.social.memoriesOf('margaret').some((m) => m.kind === 'rent_late');
+        const price = round100(core.housing.marketValue('home_basic') * SITTING_TENANT);
+        st.data.price = price;
+        core.phone.send(
+          'margaret',
+          name('margaret'),
+          `你要是真想买，3B 我按 ${formatG(price)} 卖给你，比挂出去的价低一成——${late ? '谁让你是住在里面的人呢' : '就当谢谢你这些年按时交租'}。全款也好、贷款也好，十天之内给我个准话。`,
+          [act('maple_sale', 'offer', 'cash', `全款买下（${formatG(price)}，另付 2% 税费）`), act('maple_sale', 'offer', 'loan', '首付两成，向银行申请房贷'), act('maple_sale', 'offer', 'no', '还是算了')],
+        );
+      },
+      choose: ({ core, st }, choice) => {
+        if (choice !== 'no' && !mapleTenant(core)) {
+          st.data.buyer = 'company';
+          return { text: '你已经不住在 3B 了，玛格丽特把它和楼里其余的房子一起卖了。', next: 'pending' };
+        }
+        if (choice === 'no') {
+          st.data.buyer = 'company';
+          return { text: '你跟玛格丽特说，还是不买了。', next: 'pending' };
+        }
+        const r = core.housing.buy('home_basic', choice === 'loan', { price: Number(st.data.price), seller: 'margaret' });
+        if (!r.ok) return { text: `没能买下：${r.error}`, keep: true };
+        return { text: r.message, next: 'end:bought' };
+      },
+      daily: ({ core, day, st }) => {
+        if (day - st.since < 10 && mapleTenant(core)) return null;
+        st.data.buyer = 'company';
+        return 'pending';
+      },
+      talk: ({ st }, npc) => (npc === 'margaret' ? `3B 的事你想好了吗？${formatG(Number(st.data.price))}，我不会再低了。` : null),
+    },
+    pending: {
+      status: ({ st }) => (st.data.buyer === 'family' ? '枫庭公寓要卖给林家了，房租只会涨一点。' : '枫庭公寓要卖给港湾置业了，手续办完后 3B 的房租要涨三成。'),
+      daily: ({ day, st }) => (day - st.started >= 21 ? `end:${st.data.buyer === 'family' ? 'family' : 'company'}` : null),
+      talk: ({ st }, npc) => (npc !== 'margaret' ? null : st.data.buyer === 'family' ? '林家人很客气，说楼里的规矩都照旧。我也就放心了。' : '港湾置业的人来量过房子了……对不起啊。'),
+    },
+  },
+  endings: {
+    bought: {
+      important: true,
+      text: ({ st }) => `你从玛格丽特手里买下了枫庭公寓 3B（${formatG(Number(st.data.price))}）。楼里其余的房子卖给了港湾置业，3B 从此是你自己的了。`,
+      apply: ({ core }) => {
+        core.state.housing.mapleSoldTo = MAPLE_BUYERS.company.name;
+        core.social.applyDirect('margaret', { kind: 'bought_flat', facets: { reliability: 0.5, success: 0.4 }, importance: 26, data: { home: '枫庭公寓 3B' } });
+      },
+    },
+    company: {
+      important: true,
+      text: ({ st }) => `玛格丽特把枫庭公寓卖给了港湾置业。${st.data.newRent ? `从下个月起，3B 的房租涨到 ${formatG(Number(st.data.newRent))}。` : ''}`,
+      apply: (c) => sellMaple(c, 'company'),
+    },
+    family: {
+      important: true,
+      text: ({ st }) => `玛格丽特把枫庭公寓卖给了林家，新房东留下了所有老租客。${st.data.newRent ? `3B 的房租只涨到 ${formatG(Number(st.data.newRent))}。` : ''}`,
+      apply: (c) => sellMaple(c, 'family'),
+    },
+  },
+};
+
+// ---------------------------------------------------------------- the merger review at Harbor Logistics
+
+/** Days from Raymond's ask to the review: the attendance and performance in between are what count. */
+export const REVIEW_DAYS = 14;
+
+function officeJob(core: GameCore): JobState | undefined {
+  const j = core.career.job('office_clerk');
+  return j && j.status === 'active' ? j : undefined;
+}
+
+/** Whom the player ended up standing with: Raymond, the man from head office, both (and so neither), or nobody. */
+function officeSide(st: StoryState): 'raymond' | 'west' | 'double' | 'neutral' {
+  if (st.data.west) return st.data.side === 'raymond' ? 'double' : 'west';
+  return st.data.side === 'raymond' ? 'raymond' : 'neutral';
+}
+
+/** The review: the department's numbers (in which the player's own record counts) against what was said about Raymond. */
+function reviewVerdict({ core, st }: StoryCtx, j: JobState): string {
+  const lates = j.lates - Number(st.data.lates0);
+  const absences = j.absences - Number(st.data.absences0);
+  const clean = lates === 0 && absences === 0;
+  const work = (j.performance - 65) / 100 + (clean ? 0.08 : -0.06 * (lates + 2 * absences));
+  const side = officeSide(st);
+  const p = Math.max(0.1, Math.min(0.9, 0.5 + (side === 'raymond' ? work * 1.5 + 0.05 : side === 'neutral' ? work * 0.5 : -0.2)));
+  st.data.final = side;
+  st.data.clean = clean;
+  st.data.chance = Math.round(p * 100);
+  return core.rng.chance(p) ? 'end:raymond' : 'end:west';
+}
+
+/** Raymond finds out (from Kiki) what the player told head office about him. */
+function raymondLearns(core: GameCore, double: boolean): void {
+  core.social.applyDirect('raymond', { kind: 'sided_against_me', facets: { betrayal: double ? 1 : 0.8 }, importance: double ? 44 : 36 }, { source: 'told' });
+}
+
+const OFFICE_REVIEW: ArcDef = {
+  id: 'office_review',
+  title: '部门合并',
+  cooldownDays: 9999,
+  once: true,
+  trigger: (core) => {
+    const j = officeJob(core);
+    if (!j || j.shifts < 12 || core.today() < 14) return null;
+    if (!knows(core, 'raymond') || !knows(core, 'kiki')) return null;
+    return {};
+  },
+  chance: 0.03,
+  start: () => 'rumor',
+  stages: {
+    rumor: {
+      status: () => '琪琪说部门要合并，雷蒙德和总部派来的韦斯特在争新部门的总监。',
+      enter: ({ core }) => {
+        core.phone.send('kiki', name('kiki'), '听说了吗？总部要把我们部门和仓储部合并，新部门的总监在雷蒙德和总部派来的韦斯特之间选，两周后总部来人评审。韦斯特这几天挨个请人喝咖啡……你小心点，站错队可不是闹着玩的。');
+      },
+      daily: ({ core, day, st }) => (!officeJob(core) ? 'end:left' : day - st.since >= 1 ? 'raymond' : null),
+      talk: (_c, npc) => (npc === 'kiki' ? '韦斯特今天又请财务部的人吃午饭了。我跟你说，这里面水深着呢。' : null),
+    },
+    raymond: {
+      status: () => '雷蒙德问你能不能在评审前帮他一把。',
+      enter: ({ core, st }) => {
+        const j = officeJob(core);
+        st.data.lates0 = j?.lates ?? 0;
+        st.data.absences0 = j?.absences ?? 0;
+        st.data.reviewDay = st.since + REVIEW_DAYS;
+        core.phone.send(
+          'raymond',
+          name('raymond'),
+          `总部 ${REVIEW_DAYS} 天后来评审，定合并以后的部门由谁带。他们只看数字：出勤、效率、有没有出错。这两周我需要部门的表现漂漂亮亮的，尤其是你们几个——我能指望你吗？`,
+          [act('office_review', 'raymond', 'back', '放心，我会全力以赴'), act('office_review', 'raymond', 'duty', '我会做好分内的事')],
+        );
+      },
+      choose: ({ core, st }, choice) => {
+        if (choice === 'back') {
+          st.data.side = 'raymond';
+          core.social.applyDirect('raymond', { kind: 'pledged_support', facets: { support: 0.6, reliability: 0.3 }, importance: 16 });
+          return { text: '雷蒙德回了一个字：「好。」' };
+        }
+        st.data.side = 'neutral';
+        return { text: '「……行，分内的事做好也够了。」' };
+      },
+      daily: ({ core, day, st }) => (!officeJob(core) ? 'end:left' : day - st.since >= 2 ? 'west' : null),
+      talk: (_c, npc) => (npc === 'raymond' ? '这两周别给我出岔子。总部的人盯着呢。' : null),
+    },
+    west: {
+      status: () => '总部的韦斯特找你，想让你在评审谈话时讲讲雷蒙德的问题。',
+      enter: ({ core }) => {
+        core.phone.send(
+          'west',
+          '韦斯特（总部）',
+          '你好，我是总部的韦斯特。合并以后我需要了解这个部门的人。评审的时候总部会单独找几个员工谈话，问问部门现在的问题——你只要实话实说，讲讲雷蒙德的管理有哪些问题就行。帮过我的人，我不会忘记。',
+          [act('office_review', 'west', 'join', '好，谈话时我会说'), act('office_review', 'west', 'no', '我不掺和这些')],
+        );
+      },
+      choose: ({ st }, choice) => {
+        if (choice === 'join') {
+          st.data.west = true;
+          return { text: '「很好。我会记住的。」' };
+        }
+        return { text: '韦斯特没有再回复。' };
+      },
+      daily: ({ core, day, st }) => (!officeJob(core) ? 'end:left' : day - st.since >= 2 ? 'review' : null),
+      talk: (_c, npc) => (npc === 'kiki' ? '韦斯特是不是也找过你了？……放心，我嘴很严的。' : null),
+    },
+    review: {
+      status: ({ core, st, day }) => `总部评审还有 ${Math.max(0, Number(st.data.reviewDay) - day)} 天，这两周的出勤和表现都算数（目前表现 ${officeJob(core)?.performance ?? 0}/100）。`,
+      daily: (c) => {
+        const j = officeJob(c.core);
+        if (!j) return 'end:left';
+        return c.day < Number(c.st.data.reviewDay) ? null : reviewVerdict(c, j);
+      },
+      talk: ({ core, st }, npc) => {
+        const j = officeJob(core);
+        if (!j) return null;
+        const slipped = j.lates > Number(st.data.lates0) || j.absences > Number(st.data.absences0);
+        if (npc === 'raymond') return slipped ? '这种时候你还迟到缺勤？总部的人可都看在眼里。' : '还有几天总部就来了。这两周你做得不错。';
+        if (npc === 'kiki') return st.data.west ? '韦斯特这几天心情很好。你知道为什么吗？' : '雷蒙德这两周每天第一个到公司，最后一个走。';
+        return null;
+      },
+    },
+  },
+  endings: {
+    raymond: {
+      important: true,
+      text: ({ st }) => {
+        const side = st.data.final;
+        if (side === 'raymond') return st.data.clean ? '总部选了雷蒙德做新部门的总监。他批给你 1,500 G 的奖金，还说下一次升职不会让你等那么久。' : '总部选了雷蒙德做新部门的总监。他给你批了 500 G 的奖金——这两周的迟到和缺勤，他也都记着。';
+        if (side === 'west' || side === 'double') return '总部还是选了雷蒙德。琪琪悄悄告诉你：谈话时谁说了什么，雷蒙德全都知道了。';
+        return '总部选了雷蒙德做新部门的总监。';
+      },
+      apply: ({ core, st }) => {
+        const j = officeJob(core);
+        const side = st.data.final;
+        if (side === 'raymond') {
+          const bonus = st.data.clean ? G(1500) : G(500);
+          core.economy.receive('bank', bonus, 'bonus', '部门合并评审奖金', 'harbor_logistics');
+          if (st.data.clean && j) j.fastTrack = 'raymond';
+          core.social.applyDirect('raymond', { kind: 'stood_by_me', facets: { support: 0.8, reliability: 0.5 }, importance: 30 });
+          core.social.applyDelta('raymond', { trust: 4, affection: 3 });
+        } else if (side === 'west' || side === 'double') {
+          raymondLearns(core, side === 'double');
+          if (j) j.performance = Math.max(0, j.performance - 8);
+        } else core.social.applyDelta('raymond', { affection: 2 });
+        core.state.npcs.raymond.mood = Math.min(100, core.state.npcs.raymond.mood + 20);
+      },
+    },
+    west: {
+      important: true,
+      text: ({ st }) => {
+        const side = st.data.final;
+        if (side === 'west' || side === 'double') return '总部选了韦斯特。他让人给你发了 2,000 G 的奖金，说下一次升职他会替你说话。雷蒙德还是你的直属上司，可他已经不怎么跟你说话了。';
+        if (side === 'raymond') return '总部选了韦斯特，雷蒙德只管原来那一摊。那天下班，他请你喝了一杯，什么也没多说。';
+        return '总部选了韦斯特做新部门的总监，雷蒙德只管原来那一摊。';
+      },
+      apply: ({ core, st }) => {
+        const j = officeJob(core);
+        const side = st.data.final;
+        if (side === 'west' || side === 'double') {
+          core.economy.receive('bank', G(2000), 'bonus', '部门合并评审奖金（韦斯特）', 'harbor_logistics');
+          if (j) j.fastTrack = 'west';
+          raymondLearns(core, side === 'double');
+        } else if (side === 'raymond') {
+          core.social.applyDirect('raymond', { kind: 'stood_by_me', facets: { support: 0.8, reliability: 0.5 }, importance: 30 });
+          core.social.applyDelta('raymond', { affection: 5, trust: 4 });
+        }
+        core.state.npcs.raymond.mood = Math.max(-100, core.state.npcs.raymond.mood - 25);
+      },
+    },
+    left: { important: false, text: () => '你离开了灰港物流，部门合并的事与你无关了。' },
+  },
+};
+
+export const ARCS: Record<string, ArcDef> = { marco_debt: MARCO_DEBT, daniel_stall: DANIEL_STALL, maple_sale: MAPLE_SALE, office_review: OFFICE_REVIEW };
 
 export class StorySystem {
   constructor(private core: GameCore) {}
@@ -471,6 +793,16 @@ export class StorySystem {
       const status = def?.stages[st.stage]?.status?.({ core: this.core, st, day }) ?? '';
       return { arc: st.arc, title: def?.title ?? st.arc, status, days: day - st.started };
     });
+  }
+
+  /** What this person says in passing about a storyline they are part of (at most one). */
+  talk(npc: string): string | null {
+    const day = this.core.today();
+    for (const st of this.s.active) {
+      const line = ARCS[st.arc]?.stages[st.stage]?.talk?.({ core: this.core, st, day }, npc);
+      if (line) return line;
+    }
+    return null;
   }
 
   /** Once a day: advance running storylines, then perhaps begin a new one. */

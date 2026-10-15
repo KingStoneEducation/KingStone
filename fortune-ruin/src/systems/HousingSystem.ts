@@ -181,8 +181,8 @@ export class HousingSystem {
       this.h.pendingRent = null;
     }
     if (this.h.tenure === 'rent') {
-      const landlord = d.id === 'home_basic' ? 'margaret' : `landlord:${d.id}`;
-      eco.issueBill('rent', landlord, d.id === 'home_basic' ? '房东玛格丽特' : `${d.name}物业`, this.h.rent, 4, `${d.name}本月房租`);
+      const l = this.landlord();
+      eco.issueBill('rent', l.id, l.name, this.h.rent, 4, `${d.name}本月房租`);
     }
     eco.issueBill('utilities', 'utility', '灰港水电燃气', d.utilities, 6, '水电燃气费');
     eco.issueBill('phone', 'telecom', '港湾电信', PHONE_BILL, 6, '手机月租');
@@ -194,6 +194,13 @@ export class HousingSystem {
     const v = this.core.inventory.vehicle();
     const upkeep = this.vehicleUpkeep();
     if (v && upkeep > 0) eco.issueBill('other', 'auto', '车辆保险与保养', upkeep, 6, this.mechanicFriend() ? `${v.name}月度费用（丹尼尔按成本价）` : `${v.name}月度费用`);
+  }
+
+  /** Who the rent goes to: Margaret for Maple Court (until she sells it), otherwise the building's management. */
+  landlord(homeId = this.h.homeId): { id: string; name: string; margaret: boolean } {
+    if (homeId === 'home_basic' && !this.h.mapleSoldTo) return { id: 'margaret', name: '房东玛格丽特', margaret: true };
+    if (homeId === 'home_basic') return { id: 'landlord:home_basic', name: this.h.mapleSoldTo!, margaret: false };
+    return { id: `landlord:${homeId}`, name: `${HOMES[homeId]?.name ?? homeId}物业`, margaret: false };
   }
 
   rentOverdue(): boolean {
@@ -225,6 +232,7 @@ export class HousingSystem {
     this.h.homeId = 'home_shared';
     this.h.tenure = 'rent';
     this.h.rent = HOMES.home_shared.rent!;
+    this.h.pendingRent = null;
     this.h.leaseStartDay = this.core.today();
     this.h.evictionNoticeDay = null;
     this.h.overdueDays = 0;
@@ -262,6 +270,8 @@ export class HousingSystem {
     this.h.homeId = homeId;
     this.h.tenure = 'rent';
     this.h.rent = d.rent!;
+    // a rise the old landlord announced does not follow you to the new place
+    this.h.pendingRent = null;
     this.h.leaseStartDay = this.core.today();
     this.afterMove(d, '租下了');
     return { ok: true, message: `你租下了${d.name}。` };
@@ -277,11 +287,11 @@ export class HousingSystem {
     }
   }
 
-  buyCheck(homeId: string, mortgage: boolean): string | null {
+  buyCheck(homeId: string, mortgage: boolean, offer?: Money): string | null {
     const d = HOMES[homeId];
     if (!d || d.price === null) return '这处房产不出售';
     if (this.h.owned.includes(homeId)) return '你已经拥有这处房产';
-    const price = this.marketValue(homeId);
+    const price = offer ?? this.marketValue(homeId);
     const closing = mulRatio(price, 2, 100);
     if (!mortgage) return this.core.economy.balance('bank') >= price + closing ? null : `银行存款不足（需要 ${formatG(price + closing)}，含 2% 交易费）`;
     const down = mulRatio(price, 20, 100);
@@ -290,31 +300,38 @@ export class HousingSystem {
     const loan = price - down;
     const payment = Math.ceil((loan * (650 / 10000 / 12)) / (1 - Math.pow(1 + 650 / 10000 / 12, -240)));
     const income = this.core.career.monthlyIncomeEstimate();
-    if (payment + this.core.economy.monthlyObligations() > income * 0.45) return `月供约 ${formatG(payment)}，超过了收入的可承受范围`;
+    // what you will be paying once you live there: no more rent, that home's upkeep instead of this one's
+    const after = this.core.economy.monthlyObligations() - (this.h.tenure === 'rent' ? this.h.rent : 0) - this.current().utilities + d.utilities + d.maintenance;
+    if (payment + after > income * 0.45) return `月供约 ${formatG(payment)}，超过了收入的可承受范围`;
     return null;
   }
 
-  buy(homeId: string, mortgage: boolean): HousingResult {
-    const err = this.buyCheck(homeId, mortgage);
+  /** Buy a home at its market value, or at a price agreed with the seller (`offer.price`). */
+  buy(homeId: string, mortgage: boolean, offer?: { price: Money; seller: string }): HousingResult {
+    const err = this.buyCheck(homeId, mortgage, offer?.price);
     if (err) return { ok: false, error: err };
     const d = HOMES[homeId];
-    const price = this.marketValue(homeId);
+    const price = offer?.price ?? this.marketValue(homeId);
     const closing = mulRatio(price, 2, 100);
     const eco = this.core.economy;
     if (mortgage) {
       const down = mulRatio(price, 20, 100);
       eco.openLoan({ lender: 'bank', lenderName: '灰港储蓄信托（房贷）', principal: price - down, aprBp: 650, termMonths: 240, kind: 'mortgage' });
     }
-    const r = eco.spend('bank', price, 'property_purchase', `购买${d.name}`, 'seller');
+    const r = eco.spend('bank', price, 'property_purchase', `购买${d.name}`, offer?.seller ?? 'seller');
     if (!r.ok) return { ok: false, error: r.error };
     eco.spend('bank', closing, 'fees', `${d.name}交易税费`, 'registry');
+    // a tenant buying the home they live in stays put (the landlord still hands back the deposit)
+    const stays = homeId === this.h.homeId;
     this.leaveCurrentRental();
     this.carryFurniture(homeId);
     this.h.owned.push(homeId);
     this.h.homeId = homeId;
     this.h.tenure = 'own';
     this.h.rent = 0;
-    this.afterMove(d, '买下了');
+    this.h.pendingRent = null;
+    if (stays) this.core.touch();
+    else this.afterMove(d, '买下了');
     this.core.journal.add('milestone', `买下了自己的房子：${d.name}（${formatG(price)}）`, true);
     return { ok: true, message: `恭喜！你成为了${d.name}的业主。` };
   }
@@ -328,6 +345,7 @@ export class HousingSystem {
     this.h.homeId = homeId;
     this.h.tenure = 'own';
     this.h.rent = 0;
+    this.h.pendingRent = null;
     this.afterMove(HOMES[homeId], '搬回了');
     return { ok: true, message: `搬进了${HOMES[homeId].name}` };
   }

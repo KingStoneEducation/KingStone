@@ -438,9 +438,9 @@ const DAILY: DailyEventDef[] = [
     chance: () => 1,
     fire: (core, p) => {
       const stage = Number(p.stage);
-      const isMaggie = core.housing.current().id === 'home_basic';
+      const isMaggie = core.housing.landlord().margaret;
       const from = isMaggie ? 'margaret' : 'landlord';
-      const name = isMaggie ? '房东玛格丽特' : '物业公司';
+      const name = isMaggie ? '房东玛格丽特' : core.housing.landlord().name;
       const lines = [
         '房租已经逾期了，已经加收了滞纳金。请尽快付清。',
         '这已经是第二次提醒了。我也有房贷要还，请你理解。',
@@ -463,8 +463,8 @@ const DAILY: DailyEventDef[] = [
     chance: () => 0.06,
     fire: (core, p) => {
       const newRent = core.housing.scheduleRentIncrease(Number(p.pct));
-      const isMaggie = core.housing.current().id === 'home_basic';
-      core.phone.send(isMaggie ? 'margaret' : 'landlord', isMaggie ? '房东玛格丽特' : '物业公司', `通知：由于房产税和维修成本上涨，从下个月起房租调整为 ${formatG(newRent)}（上涨 ${p.pct}%）。`);
+      const l = core.housing.landlord();
+      core.phone.send(l.margaret ? 'margaret' : 'landlord', l.name, `通知：由于房产税和维修成本上涨，从下个月起房租调整为 ${formatG(newRent)}（上涨 ${p.pct}%）。`);
       core.journal.add('money', `房东通知下个月房租上涨到 ${formatG(newRent)}。`, true);
     },
   },

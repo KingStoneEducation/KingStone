@@ -205,7 +205,7 @@ const RULES: Rule[] = [
     chance: 0.5,
     when: (core) => {
       const h = core.state.housing;
-      if (h.homeId !== 'home_basic' || h.tenure !== 'rent' || core.today() - h.leaseStartDay < 56) return null;
+      if (h.homeId !== 'home_basic' || h.tenure !== 'rent' || !core.housing.landlord().margaret || core.today() - h.leaseStartDay < 56) return null;
       if (h.overdueDays > 0 || h.evictionNoticeDay !== null || core.housing.rentOverdue()) return null;
       return core.social.rel('margaret').affection >= 10 ? {} : null;
     },

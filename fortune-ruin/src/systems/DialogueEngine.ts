@@ -199,6 +199,14 @@ export class DialogueEngine {
         r.flags.loanTalkDay = this.core.today();
       }
     }
+    // a storyline they are part of (once a day)
+    if (!fact && r.flags.storyTalkDay !== this.core.today()) {
+      const story = this.core.stories.talk(npcId);
+      if (story) {
+        lines.push(story);
+        r.flags.storyTalkDay = this.core.today();
+      }
+    }
     // Upcoming shared plans
     const plan = this.core.events.upcoming().find((e) => e.npc === npcId && e.status === 'accepted' && e.at - this.core.now() < 18 * 60);
     if (plan) lines.push(`别忘了${toDate(plan.at).hour}点的约哦。`);
@@ -1001,7 +1009,10 @@ export class DialogueEngine {
         const j = core.career.job('office_clerk');
         if (!j) return { lines: ['你不在我手下工作。'] };
         const p = j.performance;
-        return { lines: [p >= 75 ? '你最近表现不错，继续保持，升职的事我会考虑。' : p >= 55 ? '还行，但还不够突出。' : '说实话，你最近的表现很让我失望。', `（表现评分 ${p}/100，出勤 ${j.shifts} 次，迟到 ${j.lates} 次，缺勤 ${j.absences} 次）`] };
+        const lines = [p >= 75 ? '你最近表现不错，继续保持，升职的事我会考虑。' : p >= 55 ? '还行，但还不够突出。' : '说实话，你最近的表现很让我失望。', `（表现评分 ${p}/100，出勤 ${j.shifts} 次，迟到 ${j.lates} 次，缺勤 ${j.absences} 次）`];
+        if (j.fastTrack === 'raymond') lines.splice(1, 0, '说好的事我记着：下一次升职，你不用像别人那样等那么久。');
+        else if (j.fastTrack) lines.splice(1, 0, '韦斯特跟我打过招呼了，下一次升职不用等那么久。……他说你很「配合」。');
+        return { lines };
       }
       case 'svc_apply': {
         const job = JOBS[String(arg)];
