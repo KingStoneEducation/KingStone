@@ -772,7 +772,120 @@ const OFFICE_REVIEW: ArcDef = {
   },
 };
 
-export const ARCS: Record<string, ArcDef> = { marco_debt: MARCO_DEBT, daniel_stall: DANIEL_STALL, maple_sale: MAPLE_SALE, office_review: OFFICE_REVIEW };
+// ---------------------------------------------------------------- Old Zhou's story
+
+/** The player has walked into the casino since a moment in time (a visit that began after it). */
+export function casinoSince(core: GameCore, at: number): boolean {
+  const cs = core.state.casino;
+  return (cs.session !== null && cs.session.start > at) || cs.stats.sessions.some((x) => x.start > at);
+}
+
+const OLDZHOU_STORY: ArcDef = {
+  id: 'oldzhou_story',
+  title: '周伯的旧事',
+  cooldownDays: 60,
+  trigger: (core) => {
+    if (!knows(core, 'oldzhou') || core.state.casino.bannedUntil > core.now()) return null;
+    const heavy = core.casino.recentHours(7) >= 10 || core.casino.netLast(7) <= -G(3000);
+    return heavy && core.social.rel('oldzhou').affection >= 0 ? {} : null;
+  },
+  chance: 0.3,
+  start: () => 'tea',
+  stages: {
+    tea: {
+      status: () => '周伯听说你常去赌场，想请你喝茶。',
+      enter: ({ core }) => {
+        core.phone.send('oldzhou', name('oldzhou'), '年轻人，码头上的人说你这阵子天天往赌场跑。有空到公园棋桌这边坐坐，我请你喝茶，跟你讲个老头子的故事。', [
+          act('oldzhou_story', 'tea', 'listen', '去听听他想说什么'),
+          act('oldzhou_story', 'tea', 'fine', '我心里有数'),
+        ]);
+      },
+      choose: ({ core }, choice) => {
+        if (choice === 'fine') {
+          core.social.applyDelta('oldzhou', { affection: -2 });
+          return { text: '「……那你保重。」', next: 'end:dismissed' };
+        }
+        return { text: '你回他说，这就过去。', next: 'story' };
+      },
+      daily: ({ day, st }) => (day - st.since >= 5 ? 'end:dismissed' : null),
+      talk: (_c, npc) => (npc === 'oldzhou' ? '来啦？我给你发的消息看了没有？' : null),
+    },
+    story: {
+      status: () => '周伯讲了他三十年前的事，想让你答应他一件事。',
+      enter: ({ core }) => {
+        core.phone.send(
+          'oldzhou',
+          name('oldzhou'),
+          '三十二年前，我也觉得自己有一套。第一年赢了一辆摩托，第二年把房子押了进去，第三年你周婶带着孩子回了娘家。我在码头又扛了二十年货，才把债还清。孩子结婚那天，没有请我。……我不是要教训你，就想请你答应我一件事：这个礼拜，一次也别进那扇门。要是觉得一个礼拜不够，就去找赌场签一份自我限制，让他们替你拦着。',
+          [act('oldzhou_story', 'story', 'week', '好，这个礼拜我不去'), act('oldzhou_story', 'story', 'limit', '我去找赌场签自我限制'), act('oldzhou_story', 'story', 'no', '我做不到')],
+        );
+      },
+      choose: ({ core }, choice) => {
+        if (choice === 'no') {
+          core.social.applyDelta('oldzhou', { affection: -3, trust: -2 });
+          return { text: '「……我知道。我当年也是这么说的。」', next: 'end:refused' };
+        }
+        core.social.applyDirect('oldzhou', { kind: 'promised_casino', facets: { honesty: 0.3, reliability: 0.3 }, importance: 14 });
+        if (choice === 'limit') return { text: '你说你会去找赌场的客户经理签自我限制。', next: 'limit' };
+        return { text: '「好。一个礼拜，我记着。」', next: 'week' };
+      },
+      daily: ({ day, st }) => (day - st.since >= 5 ? 'end:dismissed' : null),
+      talk: (_c, npc) => (npc === 'oldzhou' ? '我的事，你都听到了。我不逼你，你自己想。' : null),
+    },
+    limit: {
+      status: ({ st, day }) => `你答应周伯去找赌场签自我限制（客户经理维克多那里可以办，还有 ${Math.max(0, 3 - (day - st.since))} 天）。`,
+      // not signed within three days: then it is the week's promise after all
+      daily: ({ core, day, st }) => (core.state.casino.bannedUntil > core.now() ? 'end:excluded' : day - st.since >= 3 ? 'week' : null),
+      talk: (_c, npc) => (npc === 'oldzhou' ? '签了没有？签了我请你吃饭。' : null),
+    },
+    week: {
+      status: ({ st, day }) => `你答应周伯这个礼拜不进赌场（还剩 ${Math.max(0, 7 - (day - st.since))} 天）。`,
+      enter: ({ core, st }) => {
+        st.data.at = core.now();
+      },
+      daily: ({ core, day, st }) => {
+        if (core.state.casino.bannedUntil > core.now()) return 'end:excluded';
+        if (casinoSince(core, Number(st.data.at))) return 'end:broken';
+        return day - st.since >= 7 ? 'end:kept' : null;
+      },
+      talk: ({ st, day }, npc) => (npc === 'oldzhou' ? `还有 ${Math.max(1, 7 - (day - st.since))} 天。手痒吧？痒就来下棋。` : null),
+    },
+  },
+  endings: {
+    kept: {
+      important: true,
+      text: () => '整整一个礼拜，你没有去赌场。周伯在棋桌边泡了一壶好茶，说三十年前要是有人这样拉他一把就好了。',
+      apply: ({ core }) => {
+        core.social.applyDirect('oldzhou', { kind: 'kept_promise', facets: { reliability: 0.8, honesty: 0.4 }, importance: 26 });
+        core.social.applyDelta('oldzhou', { affection: 6, trust: 8, respect: 4 });
+        core.player.addMoodBuff('oldzhou_tea', 8, 3 * 1440, '周伯的一壶茶');
+        core.phone.send('oldzhou', name('oldzhou'), '一个礼拜。好样的。明天上午棋桌见，我让你三步。');
+      },
+    },
+    excluded: {
+      important: true,
+      text: () => '你在赌场签了自我限制。周伯听说以后，在棋桌边坐了很久，然后请你吃了一碗面。',
+      apply: ({ core }) => {
+        core.social.applyDirect('oldzhou', { kind: 'kept_promise', facets: { reliability: 0.9, honesty: 0.5 }, importance: 32 });
+        core.social.applyDelta('oldzhou', { affection: 10, trust: 10, respect: 6 });
+        core.player.addMoodBuff('oldzhou_tea', 10, 5 * 1440, '周伯请的那碗面');
+        core.phone.send('oldzhou', name('oldzhou'), '我听说了。这比什么都难。有空来下棋，面我请。');
+      },
+    },
+    broken: {
+      important: true,
+      text: () => '你答应周伯一个礼拜不去赌场，还是去了。他什么也没说，只是下棋的时候不再叫你了。',
+      apply: ({ core }) => {
+        core.social.applyDirect('oldzhou', { kind: 'broke_promise', facets: { unreliability: 0.7, deceit: 0.3 }, importance: 30 }, { source: 'told' });
+        core.social.applyDelta('oldzhou', { trust: -8, affection: -4 });
+      },
+    },
+    refused: { important: false, text: () => '周伯想让你答应他一个礼拜不去赌场，你没有答应。' },
+    dismissed: { important: false, text: () => '周伯请你去喝茶，你没有去。' },
+  },
+};
+
+export const ARCS: Record<string, ArcDef> = { marco_debt: MARCO_DEBT, daniel_stall: DANIEL_STALL, maple_sale: MAPLE_SALE, office_review: OFFICE_REVIEW, oldzhou_story: OLDZHOU_STORY };
 
 export class StorySystem {
   constructor(private core: GameCore) {}
